@@ -1,0 +1,406 @@
+//! rbar: a prototype of the Quickshell bar (~/dotfiles/config/quickshell) in Rust on GTK4 and
+//! gtk4-layer-shell, to weigh against it: Hyprland's workspaces as dots, the clock and the weather in the
+//! middle, at the right the layout, the tray (StatusNotifierItem with its DBusMenu) and the status (Wi-Fi,
+//! volume, battery). Wi-Fi, the weather and the layout from wmd watch, the volume from wpctl, the battery
+//! from sysfs, the workspaces from Hyprland's sockets, the tray from the system-tray crate.
+
+use std::io::{BufRead, BufReader, Read, Write};
+use std::os::unix::net::UnixStream;
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
+
+use gtk4::prelude::*;
+use gtk4::{gdk, glib};
+use gtk4_layer_shell::{Edge, Layer, LayerShell};
+use system_tray::client::{ActivateRequest, Client};
+use system_tray::item::StatusNotifierItem;
+use system_tray::menu::{MenuItem, MenuType, ToggleState, ToggleType, TrayMenu};
+
+const CSS: &str = r#"
+window { background: rgba(0, 0, 0, ALPHA); }
+* { font-family: "Iosevka"; font-size: 11pt; color: #ffffff; }
+.dot { min-width: 8px; min-height: 8px; border-radius: 4px; background: #666666;
+       transition: min-width 100ms ease-out, background 100ms; }
+.dot.focused { min-width: 28px; background: #ffffff; }
+.dot:hover { background: #ffffff; }
+.mark { color: #e01b24; font-weight: bold; }
+.pill { padding: 0 8px; margin: 2px 0; border-radius: 6px; transition: background 100ms; }
+.pill:hover { background: rgba(255, 255, 255, 0.15); }
+.tray-item { padding: 0 5px; }
+image { -gtk-icon-size: 16px; }
+popover > contents { background: #000000; border: 1px solid #ffffff; border-radius: 10px; padding: 4px; }
+popover button { background: none; border: none; box-shadow: none; padding: 4px 12px; border-radius: 6px; }
+popover button:hover { background: #ffffff; }
+popover button:hover label { color: #000000; }
+popover separator { background: #333333; margin: 4px 6px; }
+"#;
+
+fn home() -> PathBuf {
+    PathBuf::from(std::env::var("HOME").unwrap_or_default())
+}
+
+fn hypr_socket(name: &str) -> Option<String> {
+    let sig = std::env::var("HYPRLAND_INSTANCE_SIGNATURE").ok()?;
+    let run = std::env::var("XDG_RUNTIME_DIR").ok()?;
+    Some(format!("{run}/hypr/{sig}/{name}"))
+}
+
+/// A request to Hyprland's socket ("j/workspaces"), its answer.
+fn hyprctl(req: &str) -> String {
+    let Some(Ok(mut s)) = hypr_socket(".socket.sock").map(UnixStream::connect) else {
+        return String::new();
+    };
+    let _ = s.write_all(req.as_bytes());
+    let mut out = String::new();
+    let _ = s.read_to_string(&mut out);
+    out
+}
+
+/// Every workspace event of Hyprland's, as a kick down the channel.
+fn hypr_events(tx: async_channel::Sender<()>) {
+    let Some(Ok(s)) = hypr_socket(".socket2.sock").map(UnixStream::connect) else { return };
+    for line in BufReader::new(s).lines().map_while(Result::ok) {
+        if ["workspace", "createworkspace", "destroyworkspace", "urgent", "focusedmon"]
+            .iter()
+            .any(|e| line.starts_with(&format!("{e}>>")))
+        {
+            let _ = tx.send_blocking(());
+        }
+    }
+}
+
+/// wmd watch's lines, parsed.
+fn wmd_watch(tx: async_channel::Sender<serde_json::Value>) {
+    let Ok(child) = Command::new(home().join("go/bin/wmd")).arg("watch").stdout(Stdio::piped()).spawn() else {
+        return;
+    };
+    for line in BufReader::new(child.stdout.unwrap()).lines().map_while(Result::ok) {
+        if let Ok(v) = serde_json::from_str(&line) {
+            let _ = tx.send_blocking(v);
+        }
+    }
+}
+
+/// What the tray shows of an item: its address, its icon, its menu.
+#[derive(Clone)]
+struct TrayEntry {
+    address: String,
+    item: StatusNotifierItem,
+    menu: Option<TrayMenu>,
+}
+
+/// The tray in its own Tokio runtime: every change sends the whole list over; activations come back.
+fn tray(tx: async_channel::Sender<Vec<TrayEntry>>, mut rx: tokio::sync::mpsc::UnboundedReceiver<ActivateRequest>) {
+    let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap();
+    rt.block_on(async move {
+        let Ok(client) = Client::new().await else { return };
+        let client = std::sync::Arc::new(client);
+        let mut events = client.subscribe();
+        let snapshot = |client: &Client| -> Vec<TrayEntry> {
+            let map = client.items();
+            let map = map.lock().unwrap();
+            let mut v: Vec<TrayEntry> = map
+                .iter()
+                .map(|(a, (item, menu))| TrayEntry { address: a.clone(), item: item.clone(), menu: menu.clone() })
+                .collect();
+            v.sort_by(|a, b| a.item.id.cmp(&b.item.id));
+            v
+        };
+        let _ = tx.send(snapshot(&client)).await;
+        let c2 = client.clone();
+        tokio::spawn(async move {
+            while let Some(req) = rx.recv().await {
+                let _ = c2.activate(req).await;
+            }
+        });
+        while events.recv().await.is_ok() {
+            let _ = tx.send(snapshot(&client)).await;
+        }
+    });
+}
+
+/// An item's icon: its theme icon by name, else its pixmap (ARGB32, big-endian) as a texture.
+fn tray_icon(item: &StatusNotifierItem) -> gtk4::Image {
+    if let Some(name) = item.icon_name.as_deref().filter(|n| !n.is_empty()) {
+        return gtk4::Image::from_icon_name(name);
+    }
+    if let Some(px) = item.icon_pixmap.as_ref().and_then(|v| v.iter().max_by_key(|p| p.width)) {
+        let mut rgba = Vec::with_capacity(px.pixels.len());
+        for c in px.pixels.chunks_exact(4) {
+            rgba.extend_from_slice(&[c[1], c[2], c[3], c[0]]);
+        }
+        let tex = gdk::MemoryTexture::new(
+            px.width,
+            px.height,
+            gdk::MemoryFormat::R8g8b8a8,
+            &glib::Bytes::from_owned(rgba),
+            (px.width * 4) as usize,
+        );
+        return gtk4::Image::from_paintable(Some(&tex));
+    }
+    gtk4::Image::from_icon_name("application-x-executable-symbolic")
+}
+
+/// A menu's entries into a box of buttons, a submenu's entries indented under its own.
+fn fill_menu(
+    bx: &gtk4::Box,
+    items: &[MenuItem],
+    depth: i32,
+    at: (&str, &str),
+    act: &tokio::sync::mpsc::UnboundedSender<ActivateRequest>,
+    pop: &gtk4::Popover,
+) {
+    for it in items.iter().filter(|i| i.visible) {
+        if matches!(it.menu_type, MenuType::Separator) {
+            bx.append(&gtk4::Separator::new(gtk4::Orientation::Horizontal));
+            continue;
+        }
+        let toggles = !matches!(it.toggle_type, ToggleType::CannotBeToggled);
+        let mark = match it.toggle_state {
+            ToggleState::On if toggles => "■ ",
+            ToggleState::Off if toggles => "□ ",
+            _ => "",
+        };
+        let label = it.label.clone().unwrap_or_default().replace("__", "\u{0}").replace('_', "").replace('\u{0}', "_");
+        let b = gtk4::Button::with_label(&format!("{mark}{label}"));
+        b.set_sensitive(it.enabled);
+        b.set_margin_start(depth * 12);
+        if let Some(l) = b.child().and_downcast::<gtk4::Label>() {
+            l.set_xalign(0.0);
+        }
+        if it.submenu.is_empty() {
+            let (act, address, path, id, pop) = (act.clone(), at.0.to_string(), at.1.to_string(), it.id, pop.clone());
+            b.connect_clicked(move |_| {
+                let _ = act.send(ActivateRequest::MenuItem { address: address.clone(), menu_path: path.clone(), submenu_id: id });
+                pop.popdown();
+            });
+            bx.append(&b);
+        } else {
+            b.set_sensitive(false);
+            bx.append(&b);
+            fill_menu(bx, &it.submenu, depth + 1, at, act, pop);
+        }
+    }
+}
+
+fn volume() -> (f64, bool) {
+    let out = Command::new("wpctl").args(["get-volume", "@DEFAULT_AUDIO_SINK@"]).output();
+    let s = out.map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
+    let v = s.split_whitespace().nth(1).and_then(|x| x.parse().ok()).unwrap_or(0.0);
+    (v, s.contains("MUTED"))
+}
+
+fn volume_icon((v, muted): (f64, bool)) -> &'static str {
+    if muted || v == 0.0 {
+        "audio-volume-muted-symbolic"
+    } else if v < 0.34 {
+        "audio-volume-low-symbolic"
+    } else if v < 0.67 {
+        "audio-volume-medium-symbolic"
+    } else {
+        "audio-volume-high-symbolic"
+    }
+}
+
+fn battery_icon() -> String {
+    let read = |p: &str| std::fs::read_to_string(p).unwrap_or_default().trim().to_string();
+    let cap: i32 = read("/sys/class/power_supply/BAT0/capacity").parse().unwrap_or(0);
+    let level = (cap + 5) / 10 * 10;
+    let suffix = if read("/sys/class/power_supply/BAT0/status") == "Full" {
+        "-charged"
+    } else if read("/sys/class/power_supply/ADP1/online") == "1" {
+        "-charging"
+    } else {
+        ""
+    };
+    format!("battery-level-{level}{suffix}-symbolic")
+}
+
+fn pill() -> gtk4::Box {
+    let b = gtk4::Box::new(gtk4::Orientation::Horizontal, 7);
+    b.add_css_class("pill");
+    b
+}
+
+fn activate(app: &gtk4::Application) {
+    let win = gtk4::ApplicationWindow::new(app);
+    win.init_layer_shell();
+    win.set_layer(Layer::Top);
+    win.set_namespace(Some("rbar"));
+    for e in [Edge::Top, Edge::Left, Edge::Right] {
+        win.set_anchor(e, true);
+    }
+    win.auto_exclusive_zone_enable();
+    win.set_default_size(-1, 25);
+
+    let display = gdk::Display::default().unwrap();
+    let alpha = std::fs::read_to_string(home().join(".cache/theme/alpha")).unwrap_or("1".into());
+    let css = gtk4::CssProvider::new();
+    css.load_from_string(&CSS.replace("ALPHA", alpha.trim()));
+    gtk4::style_context_add_provider_for_display(&display, &css, 900);
+    gtk4::IconTheme::for_display(&display).set_theme_name(Some("Adwaita"));
+
+    let bar = gtk4::CenterBox::new();
+    bar.set_margin_start(12);
+    bar.set_margin_end(6);
+
+    // the workspaces
+    let dots = gtk4::Box::new(gtk4::Orientation::Horizontal, 6);
+    dots.set_valign(gtk4::Align::Center);
+    // the prototype's mark, so it is not taken for the Quickshell bar
+    let start = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
+    let mark = gtk4::Label::new(Some("rbar"));
+    mark.add_css_class("mark");
+    start.append(&mark);
+    start.append(&dots);
+    bar.set_start_widget(Some(&start));
+    let draw_dots = {
+        let dots = dots.clone();
+        move || {
+            while let Some(c) = dots.first_child() {
+                dots.remove(&c);
+            }
+            let ws: serde_json::Value = serde_json::from_str(&hyprctl("j/workspaces")).unwrap_or_default();
+            let active: serde_json::Value = serde_json::from_str(&hyprctl("j/activeworkspace")).unwrap_or_default();
+            let mut ids: Vec<i64> =
+                ws.as_array().into_iter().flatten().filter_map(|w| w["id"].as_i64()).filter(|i| *i > 0).collect();
+            ids.sort();
+            for id in ids {
+                let dot = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+                dot.add_css_class("dot");
+                if Some(id) == active["id"].as_i64() {
+                    dot.add_css_class("focused");
+                }
+                dot.set_valign(gtk4::Align::Center);
+                let click = gtk4::GestureClick::new();
+                click.connect_released(move |_, _, _, _| {
+                    hyprctl(&format!("dispatch workspace {id}"));
+                });
+                dot.add_controller(click);
+                dot.set_cursor_from_name(Some("pointer"));
+                dots.append(&dot);
+            }
+        }
+    };
+    draw_dots();
+    let (ws_tx, ws_rx) = async_channel::unbounded();
+    std::thread::spawn(move || hypr_events(ws_tx));
+    glib::spawn_future_local(async move {
+        while ws_rx.recv().await.is_ok() {
+            draw_dots();
+        }
+    });
+
+    // the clock and the weather
+    let mid = pill();
+    let weather_icon = gtk4::Image::new();
+    let weather = gtk4::Label::new(None);
+    let clock = gtk4::Label::new(None);
+    mid.append(&weather_icon);
+    mid.append(&weather);
+    mid.append(&clock);
+    bar.set_center_widget(Some(&mid));
+
+    // the right: layout, tray, status
+    let right = gtk4::Box::new(gtk4::Orientation::Horizontal, 2);
+    let layout = gtk4::Label::new(Some("US"));
+    layout.add_css_class("pill");
+    let tray_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+    let status = pill();
+    let wifi = gtk4::Image::from_icon_name("network-wireless-offline-symbolic");
+    let vol = gtk4::Image::from_icon_name("audio-volume-high-symbolic");
+    let bat = gtk4::Image::from_icon_name("battery-missing-symbolic");
+    status.append(&wifi);
+    status.append(&vol);
+    status.append(&bat);
+    right.append(&layout);
+    right.append(&tray_box);
+    right.append(&status);
+    bar.set_end_widget(Some(&right));
+
+    // once a second: the clock, the volume, the battery
+    let tick = move || {
+        if let Ok(now) = glib::DateTime::now_local() {
+            clock.set_text(&now.format("%a %b %-d  %H:%M").unwrap_or_default());
+        }
+        vol.set_icon_name(Some(volume_icon(volume())));
+        bat.set_icon_name(Some(&battery_icon()));
+        glib::ControlFlow::Continue
+    };
+    let _ = tick.clone()();
+    glib::timeout_add_seconds_local(1, tick);
+
+    // wmd: Wi-Fi, the weather, the layout
+    let (wmd_tx, wmd_rx) = async_channel::unbounded::<serde_json::Value>();
+    std::thread::spawn(move || wmd_watch(wmd_tx));
+    glib::spawn_future_local(async move {
+        while let Ok(s) = wmd_rx.recv().await {
+            let w = &s["wifi"];
+            let icon = if !w["on"].as_bool().unwrap_or(false) {
+                "network-wireless-disabled-symbolic".to_string()
+            } else if w["ssid"].as_str().unwrap_or("").is_empty() {
+                "network-wireless-offline-symbolic".to_string()
+            } else {
+                let bars = ["none", "weak", "ok", "good", "excellent"];
+                format!("network-wireless-signal-{}-symbolic", bars[w["signal"].as_u64().unwrap_or(0).min(4) as usize])
+            };
+            wifi.set_icon_name(Some(&icon));
+            layout.set_text(if s["keymap"].as_str().unwrap_or("").contains("Russian") { "RU" } else { "US" });
+            let wt = s["weather"].as_object();
+            weather_icon.set_visible(wt.is_some());
+            weather.set_visible(wt.is_some());
+            if let Some(wt) = wt {
+                weather_icon.set_icon_name(wt["icon"].as_str());
+                weather.set_text(&format!("{}°", wt["temp"]));
+            }
+        }
+    });
+
+    // the tray: a click activates, a right click opens its menu in a popover
+    let (tray_tx, tray_rx) = async_channel::unbounded::<Vec<TrayEntry>>();
+    let (act_tx, act_rx) = tokio::sync::mpsc::unbounded_channel::<ActivateRequest>();
+    std::thread::spawn(move || tray(tray_tx, act_rx));
+    glib::spawn_future_local(async move {
+        while let Ok(items) = tray_rx.recv().await {
+            while let Some(c) = tray_box.first_child() {
+                tray_box.remove(&c);
+            }
+            for e in items {
+                let cell = pill();
+                cell.add_css_class("tray-item");
+                cell.append(&tray_icon(&e.item));
+                cell.set_cursor_from_name(Some("pointer"));
+                let click = gtk4::GestureClick::new();
+                click.set_button(0);
+                let (act, cell2) = (act_tx.clone(), cell.clone());
+                click.connect_released(move |g, _, _, _| {
+                    if g.current_button() == 3 || e.item.item_is_menu {
+                        let Some(menu) = &e.menu else { return };
+                        let pop = gtk4::Popover::new();
+                        pop.set_has_arrow(false);
+                        pop.set_parent(&cell2);
+                        let bx = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+                        let path = e.item.menu.clone().unwrap_or_default();
+                        fill_menu(&bx, &menu.submenus, 0, (&e.address, &path), &act, &pop);
+                        pop.set_child(Some(&bx));
+                        pop.connect_closed(|p| p.unparent());
+                        pop.popup();
+                    } else {
+                        let _ = act.send(ActivateRequest::Default { address: e.address.clone(), x: 0, y: 0 });
+                    }
+                });
+                cell.add_controller(click);
+                tray_box.append(&cell);
+            }
+        }
+    });
+
+    win.set_child(Some(&bar));
+    win.present();
+}
+
+fn main() -> glib::ExitCode {
+    let app = gtk4::Application::builder().application_id("dev.danil.rbar").build();
+    app.connect_activate(activate);
+    app.run()
+}
