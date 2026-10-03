@@ -29,6 +29,7 @@ const CSS: &str = r#"
 @define-color idle #666666;                     /* a workspace not focused */
 @define-color urgent #cd0000;                   /* an error, a critical notification */
 @define-color lock #000000;                     /* the lock screen */
+@define-color ground #000000;                   /* under the wallpaper, and in its place under the dark theme */
 
 /* the shapes: a surface rounded 10, what is on it 6 */
 * { font-family: "Iosevka"; font-size: 11pt; color: @fg; }
@@ -128,6 +129,8 @@ calendar > grid > label.day-number:selected { background: @accent; color: @ink; 
 /* the launcher in it */
 text.query { background: none; border: none; box-shadow: none; padding: 0; }
 .hit { padding: 0 10px; }
+
+window.wallpaper { background: @ground; }
 
 /* the lock screen */
 window.lock { background: @lock; }

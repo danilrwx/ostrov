@@ -14,6 +14,7 @@ mod panel;
 mod popup;
 mod services;
 mod style;
+mod wallpaper;
 mod wm;
 
 use std::rc::Rc;
@@ -39,6 +40,7 @@ fn activate(app: &gtk4::Application) {
     let over = gtk4::Overlay::new();
     let host = popup::Host::new(app, &over);
     style::load();
+    wallpaper::start(app);
 
     let hub = Hub::start();
     let notes = notes::start(app);
