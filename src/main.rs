@@ -188,8 +188,10 @@ fn main() -> glib::ExitCode {
         return greet::run();
     }
     // one ostrov: run again, it hands its arguments to the running one and exits
+    // OSTROV_APP_ID: another id, a second ostrov beside the running one (a build tried out without stopping it)
+    let id = std::env::var("OSTROV_APP_ID").unwrap_or_else(|_| "dev.danil.ostrov".into());
     let app = gtk4::Application::builder()
-        .application_id("dev.danil.ostrov")
+        .application_id(id.as_str())
         .flags(gtk4::gio::ApplicationFlags::HANDLES_COMMAND_LINE)
         .build();
     app.connect_activate(activate);

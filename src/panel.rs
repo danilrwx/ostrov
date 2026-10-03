@@ -226,7 +226,13 @@ fn app_icon(icon: &str, bin: &str, name: &str) -> gtk4::Image {
     let all = gtk4::gio::AppInfo::all();
     let exact = |a: &&gtk4::gio::AppInfo| {
         a.display_name().eq_ignore_ascii_case(name)
-            || !bin.is_empty() && a.executable().file_name() == Some(bin.as_ref())
+            // the command line's program, not executable(): GLib's may be NULL, which its binding takes as never
+            || !bin.is_empty()
+                && a.commandline().is_some_and(|c| {
+                    let c = c.to_string_lossy();
+                    let prog = c.split_whitespace().next().unwrap_or("");
+                    std::path::Path::new(prog).file_name() == Some(bin.as_ref())
+                })
     };
     let near = |a: &&gtk4::gio::AppInfo| !bin.is_empty() && a.id().is_some_and(|id| id.contains(bin));
     match all.iter().find(exact).or_else(|| all.iter().find(near)).and_then(|a| a.icon()) {

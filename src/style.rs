@@ -39,6 +39,8 @@ image { -gtk-icon-size: 16px; }
 window { background: transparent; }
 scrolledwindow { background: none; }
 button { background: none; border: none; box-shadow: none; outline: none; min-height: 0; min-width: 0; padding: 0; }
+/* the keyboard's focus seen (Tab through a question's password and buttons), the pointer's clicks not ringed */
+button:focus-visible, entry:focus-visible, passwordentry:focus-visible { outline: 2px solid @accent; outline-offset: 2px; }
 separator { background: @rule; margin: 4px; min-height: 1px; min-width: 1px; }
 
 /* a surface: everything that opens */

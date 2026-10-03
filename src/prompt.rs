@@ -1,7 +1,9 @@
 //! A question put to the user, in ostrov's look, for the polkit agent (a password to do something as root) and
 //! ssh's askpass (a key's passphrase, or a yes to use a key): the screen dimmed, a surface in its middle with an
 //! icon, a title, what is asked, the password (or nothing, a yes or no alone), and what went wrong last time. The
-//! keyboard is all its own while it is up. One question at a time: the next waits for the last's answer.
+//! keyboard is all its own while it is up, and works it all: Tab and Shift+Tab between the password, Cancel and
+//! OK, the focused one ringed, Enter or Space its own, Escape a no. One question at a time: the next waits for the
+//! last's answer.
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -32,6 +34,7 @@ pub struct Prompts {
     title: gtk4::Label,
     text: gtk4::Label,
     entry: gtk4::PasswordEntry,
+    ok: gtk4::Button,
     error: gtk4::Label,
     queue: RefCell<VecDeque<Ask>>,
     current: RefCell<Option<async_channel::Sender<Option<String>>>>,
@@ -88,6 +91,7 @@ impl Prompts {
             title,
             text,
             entry: entry.clone(),
+            ok: ok.clone(),
             error,
             queue: RefCell::default(),
             current: RefCell::default(),
@@ -113,11 +117,12 @@ impl Prompts {
         cancel.connect_clicked(move |_| a(false));
         let keys = gtk4::EventControllerKey::new();
         keys.connect_key_pressed(move |_, k, _, _| {
-            match k {
-                gtk4::gdk::Key::Escape => answer(false),
-                gtk4::gdk::Key::Return | gtk4::gdk::Key::KP_Enter => answer(true),
-                _ => return glib::Propagation::Proceed,
+            // Escape says no wherever the focus is; Enter and Space are the focused widget's (the password's
+            // Enter is OK, a button's its own), so Tab to Cancel and Enter says no
+            if k != gtk4::gdk::Key::Escape {
+                return glib::Propagation::Proceed;
             }
+            answer(false);
             glib::Propagation::Stop
         });
         win.add_controller(keys);
@@ -156,8 +161,11 @@ impl Prompts {
         self.error.set_visible(!a.error.is_empty());
         *self.current.borrow_mut() = Some(a.reply);
         self.win.set_visible(true);
+        // the focus where the answer is given: the password, or OK for a yes or no
         if a.secret {
             self.entry.grab_focus();
+        } else {
+            self.ok.grab_focus();
         }
     }
 }
