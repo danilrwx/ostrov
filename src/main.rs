@@ -254,31 +254,50 @@ fn activate(app: &gtk4::Application) {
     start.append(&mark);
     start.append(&dots);
     bar.set_start_widget(Some(&start));
+    // a dot a workspace, made once and kept, so the focused one's class alone changes and CSS animates it
     let draw_dots = {
         let dots = dots.clone();
+        let made: std::rc::Rc<std::cell::RefCell<Vec<(i64, gtk4::Box)>>> = Default::default();
         move || {
-            while let Some(c) = dots.first_child() {
-                dots.remove(&c);
-            }
             let ws: serde_json::Value = serde_json::from_str(&hyprctl("j/workspaces")).unwrap_or_default();
             let active: serde_json::Value = serde_json::from_str(&hyprctl("j/activeworkspace")).unwrap_or_default();
             let mut ids: Vec<i64> =
                 ws.as_array().into_iter().flatten().filter_map(|w| w["id"].as_i64()).filter(|i| *i > 0).collect();
             ids.sort();
-            for id in ids {
+            let mut made = made.borrow_mut();
+            // gone workspaces out, new ones in at their place
+            made.retain(|(id, dot)| {
+                let keep = ids.contains(id);
+                if !keep {
+                    dots.remove(dot);
+                }
+                keep
+            });
+            for (i, id) in ids.iter().enumerate() {
+                if made.iter().any(|(m, _)| m == id) {
+                    continue;
+                }
                 let dot = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
                 dot.add_css_class("dot");
-                if Some(id) == active["id"].as_i64() {
-                    dot.add_css_class("focused");
-                }
                 dot.set_valign(gtk4::Align::Center);
+                let id = *id;
                 let click = gtk4::GestureClick::new();
                 click.connect_released(move |_, _, _, _| {
                     hyprctl(&format!("dispatch workspace {id}"));
                 });
                 dot.add_controller(click);
                 dot.set_cursor_from_name(Some("pointer"));
-                dots.append(&dot);
+                let after = if i == 0 { None } else { made.iter().find(|(m, _)| *m == ids[i - 1]).map(|(_, d)| d.clone()) };
+                dots.insert_child_after(&dot, after.as_ref());
+                let at = i.min(made.len());
+                made.insert(at, (id, dot));
+            }
+            for (id, dot) in made.iter() {
+                if Some(*id) == active["id"].as_i64() {
+                    dot.add_css_class("focused");
+                } else {
+                    dot.remove_css_class("focused");
+                }
             }
         }
     };
