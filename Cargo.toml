@@ -15,7 +15,7 @@ gtk4-session-lock = { version = "0.4.1", features = ["v1_2"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 system-tray = "0.8.9"
-tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros", "time", "process", "fs", "io-util", "sync"] }
+tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros", "time", "process", "fs", "io-util", "sync", "net"] }
 ureq = "3"
 wayland-backend = { version = "0.3", features = ["client_system", "dlopen"] }
 wayland-client = "0.31"

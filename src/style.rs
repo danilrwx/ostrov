@@ -29,7 +29,8 @@ const CSS: &str = r#"
 @define-color idle #666666;                     /* a workspace not focused */
 @define-color urgent #cd0000;                   /* an error, a critical notification */
 @define-color lock #000000;                     /* the lock screen */
-@define-color ground #000000;                   /* under the wallpaper, and in its place under the dark theme */
+@define-color ground #000000;
+@define-color shade rgba(0, 0, 0, 0.4);         /* the screen under a question (polkit's, askpass's) */                   /* under the wallpaper, and in its place under the dark theme */
 
 /* the shapes: a surface rounded 10, what is on it 6 */
 * { font-family: "Iosevka"; font-size: 11pt; color: @fg; }
@@ -131,6 +132,7 @@ text.query { background: none; border: none; box-shadow: none; padding: 0; }
 .hit { padding: 0 10px; }
 
 window.wallpaper { background: @ground; }
+window.prompt { background: @shade; }
 
 /* the lock screen */
 window.lock { background: @lock; }

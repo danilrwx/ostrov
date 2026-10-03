@@ -12,7 +12,9 @@ mod launcher;
 mod lock;
 mod notes;
 mod panel;
+mod polkit;
 mod popup;
+mod prompt;
 mod services;
 mod style;
 mod wallpaper;
@@ -28,6 +30,8 @@ use hub::Hub;
 thread_local! {
     /// What `ostrov ARGS` does in the running ostrov, set once it is built.
     static COMMAND: std::cell::RefCell<Option<Box<dyn Fn(&[String]) -> Result<String, String>>>> = Default::default();
+    /// The questions ostrov puts (polkit's, askpass's), set once it is built.
+    static PROMPTS: std::cell::RefCell<Option<Rc<prompt::Prompts>>> = Default::default();
 }
 
 const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | lock | bar toggle|peek|unpeek | state | dump | \
@@ -67,6 +71,9 @@ fn activate(app: &gtk4::Application) {
     over.add_overlay(&launcher.widget);
     let lock = lock::build(app);
     idle::start(&lock);
+    let prompts = prompt::Prompts::new(app);
+    polkit::start(&prompts);
+    PROMPTS.with(|p| *p.borrow_mut() = Some(prompts));
 
     // ostrov ARGS, from a key or a script, handed over to this ostrov by GApplication
     COMMAND.with(|c| {
@@ -113,6 +120,36 @@ fn activate(app: &gtk4::Application) {
     });
 }
 
+/// ssh's askpass (bin/askpass, SSH_ASKPASS): `ostrov askpass [--confirm|--none] PROMPT`, a key's passphrase
+/// asked and printed, or a yes or no to using a key (--confirm: the exit status says it; --none: a word alone).
+/// The asking ostrov waits for the answer: the command line kept until it comes, its status set then.
+fn askpass(cl: &gtk4::gio::ApplicationCommandLine, args: &[String]) {
+    let (secret, text) = match args {
+        [flag, rest @ ..] if flag == "--confirm" || flag == "--none" => (false, rest.join(" ")),
+        rest => (true, rest.join(" ")),
+    };
+    let Some(prompts) = PROMPTS.with(|p| p.borrow().clone()) else { return };
+    let (reply, answer) = async_channel::bounded(1);
+    let (title, text) = match text.split_once('\n') {
+        Some((t, rest)) => (t.trim().to_string(), rest.trim().to_string()),
+        None => (text.trim().to_string(), String::new()),
+    };
+    prompts.ask(prompt::Ask { icon: "dialog-password-symbolic".into(), title, text, secret, error: String::new(), reply });
+    let cl = cl.clone();
+    glib::spawn_future_local(async move {
+        match answer.recv().await.ok().flatten() {
+            Some(p) => {
+                if secret {
+                    cl.print_literal(&format!("{p}\n"));
+                }
+                cl.set_exit_code(glib::ExitCode::SUCCESS);
+            }
+            None => cl.set_exit_code(glib::ExitCode::FAILURE),
+        }
+        cl.done();
+    });
+}
+
 fn main() -> glib::ExitCode {
     // one ostrov: run again, it hands its arguments to the running one and exits
     let app = gtk4::Application::builder()
@@ -127,6 +164,10 @@ fn main() -> glib::ExitCode {
         let args: Vec<String> = cl.arguments().iter().skip(1).map(|a| a.to_string_lossy().into_owned()).collect();
         if args.is_empty() {
             return glib::ExitCode::SUCCESS;
+        }
+        if args[0] == "askpass" {
+            askpass(cl, &args[1..]);
+            return glib::ExitCode::FAILURE;
         }
         match COMMAND.with(|c| c.borrow().as_ref().map(|f| f(&args))) {
             Some(Err(e)) => {
