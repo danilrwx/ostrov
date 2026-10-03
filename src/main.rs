@@ -27,13 +27,13 @@ window { background: rgba(0, 0, 0, ALPHA); }
 window.panel-window, window.catcher { background: transparent; }
 /* the panel and the bar's tab it grows out of: the bar's hover (white at 15% over black), nearly solid so the
    panel reads over whatever lies under it */
-.panel { background: rgba(38, 38, 38, 0.75); border: 1px solid #ffffff; border-radius: 10px; padding: 14px; }
+.panel { background: rgba(38, 38, 38, 0.75); border: 1px solid transparent; border-radius: 10px; padding: 14px; }
 .panel.attached { border-top: none; border-radius: 0 0 10px 10px; padding-top: 4px; }
-.edge { background: rgba(38, 38, 38, 0.75); border-top: 1px solid #ffffff; border-left: 1px solid #ffffff; border-top-left-radius: 10px; min-height: 10px; }
-.gap { background: rgba(38, 38, 38, 0.75); border-right: 1px solid #ffffff; min-height: 10px; }
+.edge { background: rgba(38, 38, 38, 0.75); border-top: 1px solid transparent; border-left: 1px solid transparent; border-top-left-radius: 10px; min-height: 10px; }
+.gap { background: rgba(38, 38, 38, 0.75); border-right: 1px solid transparent; min-height: 10px; }
 .gap-mid { background: rgba(38, 38, 38, 0.75); min-height: 10px; }
-.edge-right { background: rgba(38, 38, 38, 0.75); border-top: 1px solid #ffffff; border-right: 1px solid #ffffff; border-top-right-radius: 10px; min-height: 10px; }
-.pill.tab, .pill.tab:hover { background: rgba(38, 38, 38, 0.75); border-color: #ffffff; }
+.edge-right { background: rgba(38, 38, 38, 0.75); border-top: 1px solid transparent; border-right: 1px solid transparent; border-top-right-radius: 10px; min-height: 10px; }
+.pill.tab, .pill.tab:hover { background: rgba(38, 38, 38, 0.75); border-color: transparent; }
 .panel label { font-size: 10pt; }
 .bold { font-weight: bold; }
 .dim { color: #888888; }

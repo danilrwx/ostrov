@@ -143,15 +143,25 @@ impl Popup {
         self.catcher.set_visible(true);
         self.win.set_visible(true);
         self.tab.add_css_class("tab");
+        nudge();
     }
 
     pub fn close(&self) {
         self.win.set_visible(false);
         self.catcher.set_visible(false);
         self.tab.remove_css_class("tab");
+        nudge();
     }
 
     pub fn toggle(&self) {
         if self.is_open() { self.close() } else { self.open() }
     }
+}
+
+/// The pointer put back where it is, once the layers have mapped or gone: Hyprland hands the pointer to a surface
+/// that maps under it only on its next motion, so a click without one would go nowhere.
+fn nudge() {
+    glib::timeout_add_local_once(std::time::Duration::from_millis(30), || {
+        crate::hub::run(&["sh", "-c", "hyprctl dispatch movecursor $(hyprctl cursorpos | tr -d ,)"]);
+    });
 }
