@@ -40,7 +40,7 @@ button.arrow.open { background: #ffffff; }
 button.arrow.open image { color: #000000; -gtk-icon-transform: rotate(90deg); }
 scale { padding: 0 4px; }
 scale trough { min-height: 14px; border-radius: 6px; background: #333333; }
-scale trough highlight { border-radius: 6px; background: #ffffff; border: none; }
+scale trough highlight { border-radius: 6px; background: #ffffff; border: none; margin: 0; min-height: 14px; min-width: 0; }
 scale slider { min-width: 0; min-height: 0; margin: 0; background: none; box-shadow: none; border: none; }
 .toggle { background: #1a1a1a; border: 1px solid #333333; border-radius: 6px; min-height: 48px; }
 .toggle.on { background: #ffffff; border-color: #ffffff; }

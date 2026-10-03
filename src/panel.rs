@@ -622,6 +622,16 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>) -> Rc<Panel> {
                 format!("network-wireless-signal-{}-symbolic", bars[w["signal"].as_u64().unwrap_or(0).min(4) as usize])
             };
             wifi.set(won, &wicon, if won { s(w, &["ssid"]) } else { "" });
+            // the network asked for joined (wmd's state says so before the connect returns, iwd joining it as
+            // soon as it has the passphrase): the passphrase is done with
+            if !asking.borrow().is_empty()
+                && w["networks"].as_array().into_iter().flatten().any(|n| {
+                    n["connected"].as_bool().unwrap_or(false) && s(n, &["ssid"]) == asking.borrow().as_str()
+                })
+            {
+                asking.borrow_mut().clear();
+                wifi_error.borrow_mut().clear();
+            }
             // while a passphrase is typed the list holds still, a redraw would drop what is typed
             let wkey = if asking.borrow().is_empty() {
                 w["networks"].to_string()
