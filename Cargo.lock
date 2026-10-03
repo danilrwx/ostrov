@@ -905,6 +905,7 @@ dependencies = [
  "ureq",
  "wayland-backend",
  "wayland-client",
+ "wayland-protocols",
  "wayland-protocols-hyprland",
  "zbus",
 ]

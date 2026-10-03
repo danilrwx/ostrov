@@ -7,6 +7,7 @@
 mod bar;
 mod calendar;
 mod hub;
+mod idle;
 mod launcher;
 mod lock;
 mod notes;
@@ -65,6 +66,7 @@ fn activate(app: &gtk4::Application) {
     let _ = place.set(launcher.widget.clone());
     over.add_overlay(&launcher.widget);
     let lock = lock::build(app);
+    idle::start(&lock);
 
     // ostrov ARGS, from a key or a script, handed over to this ostrov by GApplication
     COMMAND.with(|c| {

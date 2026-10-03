@@ -146,6 +146,15 @@ pub fn events(tx: async_channel::Sender<Event>) {
     }
 }
 
+/// The screens on or off (idle.rs: off a while after the lock).
+pub fn screens(on: bool) {
+    match wm() {
+        Wm::Hyprland => drop(hyprctl(if on { "dispatch dpms on" } else { "dispatch dpms off" })),
+        Wm::Sway => drop(swaymsg(0, if on { "output * power on" } else { "output * power off" })),
+        Wm::Other => {}
+    }
+}
+
 /// The pointer put back where it is: Hyprland hands the pointer to a surface that maps or goes from under it only
 /// on its next motion, so a click on the bar right after a popup closes would go nowhere.
 pub fn nudge() {
