@@ -135,6 +135,10 @@ text.query { background: none; border: none; box-shadow: none; padding: 0; }
 .preview label { font-size: 10pt; }
 .preview picture { min-width: 0; min-height: 0; }
 
+/* the window switcher: its cards, the picked one on the accent */
+.switch.picked { background: @accent; border-color: @accent; }
+.switch.picked label { color: @ink; }
+
 window.wallpaper { background: @ground; }
 window.prompt { background: @shade; }
 

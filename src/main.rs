@@ -20,6 +20,7 @@ mod prompt;
 mod services;
 mod shot;
 mod style;
+mod switcher;
 mod wallpaper;
 mod wm;
 
@@ -87,6 +88,7 @@ fn activate(app: &gtk4::Application) {
     let lock = lock::build(app);
     idle::start(&lock, &cfg.idle);
     let shot = shot::Shot::new(app);
+    let switcher = switcher::Switcher::new(app);
     let prompts = prompt::Prompts::new(app);
     polkit::start(&prompts);
     PROMPTS.with(|p| *p.borrow_mut() = Some(prompts));
@@ -106,6 +108,7 @@ fn activate(app: &gtk4::Application) {
                 ["screenshot"] => shot.take(),
                 ["awake"] => idle::set_awake(!idle::awake()),
                 ["capture", path] => shot::capture(path.to_string()),
+                ["windows"] => switcher.open(),
                 ["bar", what @ ("toggle" | "peek" | "unpeek")] => {
                     match what {
                         "toggle" => host.docked.set(!host.docked.get()),
