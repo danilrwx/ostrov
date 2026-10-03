@@ -104,9 +104,8 @@ calendar > grid > label.day-number.other-month { color: #888888; }
 calendar > grid > label.day-number:selected { background: #ffffff; color: #000000; font-weight: bold; }
 scrolledwindow { background: none; }
 * { font-family: "Iosevka"; font-size: 11pt; color: #ffffff; }
-.dot { min-width: 8px; min-height: 8px; border-radius: 4px; background: #666666;
-       transition: min-width 100ms ease-out, background 100ms; }
-.dot.focused { min-width: 28px; background: #ffffff; }
+.dot { min-width: 8px; min-height: 8px; border-radius: 4px; background: #666666; transition: background 100ms; }
+.dot.focused { background: #ffffff; }
 .dot:hover { background: #ffffff; }
 text.query { background: none; border: none; box-shadow: none; padding: 0; }
 .hit { padding: 0 10px; }
@@ -368,6 +367,42 @@ fn activate(app: &gtk4::Application) {
     start.append(&dots);
     bar.set_start_widget(Some(&start));
     // a dot a workspace, made once and kept, so the focused one's class alone changes and CSS animates it
+    // the focused dot's growing and the last one's shrinking, Quickshell's way: every frame a step of each
+    // dot's width towards its own (28 focused, 8 not), about 100 ms in all, the frame clock let go once there
+    let growing = std::rc::Rc::new(std::cell::Cell::new(false));
+    let grow = {
+        let (dots, growing) = (dots.clone(), growing.clone());
+        move || {
+            if growing.replace(true) {
+                return;
+            }
+            let last = std::cell::Cell::new(0i64);
+            let growing = growing.clone();
+            dots.add_tick_callback(move |dots, clock| {
+                let now = clock.frame_time();
+                let dt = if last.get() == 0 { 16_000 } else { now - last.get() };
+                last.set(now);
+                let k = 1.0 - (-(dt as f64) / 30_000.0).exp();
+                let mut moving = false;
+                let mut c = dots.first_child();
+                while let Some(dot) = c {
+                    let to = if dot.has_css_class("focused") { 28.0 } else { 8.0 };
+                    let w = dot.width_request().max(8) as f64;
+                    let step = (to - w) * k;
+                    let next = if (to - w).abs() < 1.0 { to } else { w + if step.abs() < 1.0 { step.signum() } else { step } };
+                    dot.set_size_request(next.round() as i32, 8);
+                    moving |= next != to;
+                    c = dot.next_sibling();
+                }
+                if moving {
+                    glib::ControlFlow::Continue
+                } else {
+                    growing.set(false);
+                    glib::ControlFlow::Break
+                }
+            });
+        }
+    };
     let draw_dots = {
         let dots = dots.clone();
         let made: std::rc::Rc<std::cell::RefCell<Vec<(i64, gtk4::Box)>>> = Default::default();
@@ -412,6 +447,7 @@ fn activate(app: &gtk4::Application) {
                     dot.remove_css_class("focused");
                 }
             }
+            grow();
         }
     };
     draw_dots();
