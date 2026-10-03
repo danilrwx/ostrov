@@ -16,8 +16,10 @@ const CSS: &str = r#"
 @define-color accent-rule #999999;              /* a line on the accent */
 @define-color accent-pressed #d0d0d0;           /* the accent pressed (a toggle's open side) */
 @define-color bar rgba(0, 0, 0, ALPHA);         /* the bar's black over the wallpaper */
-@define-color surface rgba(56, 56, 56, 0.88);   /* the ground of everything that opens: panels, the calendar, the
-                                                   tray's menus, toasts, the OSD, a tab and a hovered block */
+@define-color surface rgba(0, 0, 0, 0.75);      /* the ground of everything that opens: panels, the calendar, the
+                                                   tray's menus, toasts, the OSD, a tab and a hovered block; the
+                                                   bar's black a shade denser, past Hyprland's ignore_alpha 0.7 so
+                                                   blurred where the bar is not */
 @define-color hover rgba(255, 255, 255, 0.15);  /* under the pointer */
 @define-color raised rgba(255, 255, 255, 0.08); /* a button, a toggle, a chip on a surface */
 @define-color card rgba(255, 255, 255, 0.06);   /* a card, a menu, the month on a surface */
