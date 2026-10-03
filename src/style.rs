@@ -144,6 +144,21 @@ text.query { background: none; border: none; box-shadow: none; padding: 0; }
 .switch.picked { background: @accent; border-color: @accent; }
 .switch.picked label { color: @ink; }
 
+/* the overview (overview.rs): the screen dimmed, in with a short fade and swell; the workspaces' small screens,
+   the current one ringed; the windows' pictures, the hovered card lit, the picked one ringed */
+window.overview { background: @shade; }
+.overview-body { opacity: 0; transform: scale(0.97); transition: opacity 150ms ease-out, transform 150ms ease-out; }
+.overview-body.shown { opacity: 1; transform: none; }
+.ov-ws { background: @card; border: 1px solid @rule; border-radius: 6px; }
+.ov-ws:hover { background: @hover; }
+.ov-ws.current { border-color: @accent; }
+.ov-mini { background: @well; }
+.ov-win { padding: 6px; border-radius: 6px; }
+.ov-win:hover { background: @hover; }
+.ov-frame { border-radius: 6px; }
+.ov-thumb { background: @card; }
+.ov-win.picked .ov-frame { outline: 2px solid @accent; outline-offset: 2px; }
+
 window.wallpaper { background: @ground; }
 window.prompt { background: @shade; }
 

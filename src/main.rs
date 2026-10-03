@@ -16,6 +16,7 @@ mod keys;
 mod launcher;
 mod lock;
 mod notes;
+mod overview;
 mod panel;
 mod polkit;
 mod popup;
@@ -42,7 +43,7 @@ thread_local! {
     static PROMPTS: std::cell::RefCell<Option<Rc<prompt::Prompts>>> = Default::default();
 }
 
-const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | ask QUESTION | clip | windows [app] | lock | key NAME | awake | screenshot | \
+const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | ask QUESTION | clip | windows [app] | overview [close] | lock | key NAME | awake | screenshot | \
 capture FILE | record [--audio] | bar toggle|peek|unpeek | state | dump | BLOCK ARGS | SERVICE ARGS]";
 
 fn activate(app: &gtk4::Application) {
@@ -93,6 +94,7 @@ fn activate(app: &gtk4::Application) {
     idle::start(&lock, &cfg.idle);
     let shot = shot::Shot::new(app);
     let switcher = switcher::Switcher::new(app);
+    let overview = overview::Overview::new(app);
     record::init(app, &shot);
     let prompts = prompt::Prompts::new(app);
     polkit::start(&prompts);
@@ -123,6 +125,8 @@ fn activate(app: &gtk4::Application) {
                 ["windows"] => switcher.open(false),
                 ["windows", "app"] => switcher.open(true),
                 ["windows", "release"] => switcher.release(),
+                ["overview"] => overview.toggle(),
+                ["overview", "close"] => overview.close(),
                 ["record"] => record::toggle(false),
                 ["record", "--audio"] => record::toggle(true),
                 ["key", name] => keys.key(name)?,

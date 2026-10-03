@@ -50,7 +50,7 @@ fn windows(clients: &str) -> Vec<Win> {
 
 /// A window's app icon: its class's desktop file ("<class>.desktop", as is or lowercased), else the app whose
 /// StartupWMClass is the class.
-fn icon(class: &str) -> Option<gio::Icon> {
+pub(crate) fn icon(class: &str) -> Option<gio::Icon> {
     let by_name = [class.to_string(), class.to_lowercase()]
         .into_iter()
         .find_map(|c| gio_unix::DesktopAppInfo::new(&format!("{c}.desktop")));
