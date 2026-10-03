@@ -41,8 +41,8 @@ thread_local! {
     static PROMPTS: std::cell::RefCell<Option<Rc<prompt::Prompts>>> = Default::default();
 }
 
-const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | lock | screenshot | awake | capture FILE | bar toggle|peek|unpeek | state | dump | \
-BLOCK ARGS | SERVICE ARGS]";
+const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | windows | lock | awake | screenshot | \
+capture FILE | record [--audio] | bar toggle|peek|unpeek | state | dump | BLOCK ARGS | SERVICE ARGS]";
 
 fn activate(app: &gtk4::Application) {
     // the bar's window, the popups laid over it (popup.rs); the bar and the launcher over it its strip
@@ -141,7 +141,8 @@ fn activate(app: &gtk4::Application) {
                     return bar.command(block, rest).unwrap_or(Ok(String::new()));
                 }
                 // the services' commands, wmd's words: their outcome said by the running ostrov
-                ["wifi" | "bt" | "headset" | "power" | "brightness" | "night" | "location" | "media" | "displays" | "calendar", ..] => {
+                ["wifi" | "bt" | "headset" | "audio" | "power" | "brightness" | "night" | "location" | "media" | "displays"
+                | "calendar", ..] => {
                     hub::service(&args)
                 }
                 _ => return Err(USAGE.into()),
