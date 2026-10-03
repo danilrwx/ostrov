@@ -21,6 +21,8 @@ pub enum Side {
 
 pub struct Popup {
     win: gtk4::ApplicationWindow,
+    /// the popup unrolling down out of its tab as it opens, rolling back up as it closes, GNOME's way and short
+    reveal: gtk4::Revealer,
     catcher: gtk4::ApplicationWindow,
     tab: gtk4::Widget,
     on_open: RefCell<Vec<Box<dyn Fn()>>>,
@@ -62,7 +64,11 @@ impl Popup {
         win.set_default_size(width, -1);
         win.add_css_class("panel-window");
 
-        let popup = Rc::new(Popup { win: win.clone(), catcher: catcher.clone(), tab: tab.clone().upcast(), on_open: RefCell::default() });
+        let reveal = gtk4::Revealer::new();
+        reveal.set_transition_type(gtk4::RevealerTransitionType::SlideDown);
+        reveal.set_transition_duration(120);
+        reveal.set_valign(Align::Start);
+        let popup = Rc::new(Popup { win: win.clone(), reveal: reveal.clone(), catcher: catcher.clone(), tab: tab.clone().upcast(), on_open: RefCell::default() });
 
         let click = gtk4::GestureClick::new();
         let p = popup.clone();
@@ -102,7 +108,22 @@ impl Popup {
         shape.append(&top);
         body.add_css_class("attached");
         shape.append(body);
-        win.set_child(Some(&shape));
+        reveal.set_child(Some(&shape));
+        win.set_child(Some(&reveal));
+        // unrolled once the window is on screen (a revealer not yet mapped would just jump); rolled up, gone
+        win.connect_map(move |w| {
+            if let Some(r) = w.child().and_downcast::<gtk4::Revealer>() {
+                r.set_reveal_child(true);
+            }
+        });
+        let p = Rc::downgrade(&popup);
+        reveal.connect_child_revealed_notify(move |r| {
+            if let Some(p) = p.upgrade().filter(|_| !r.is_child_revealed() && !r.reveals_child()) {
+                p.win.set_visible(false);
+                p.tab.remove_css_class("tab");
+                nudge();
+            }
+        });
 
         // every frame: the gap as wide as the tab's border box (width() is its content alone), the input region
         // over the popup as it grows and shrinks
@@ -131,7 +152,7 @@ impl Popup {
     }
 
     pub fn is_open(&self) -> bool {
-        self.win.is_visible()
+        self.win.is_visible() && self.reveal.reveals_child()
     }
 
     /// f on every opening (the panel folds its menus, the calendar goes back to this month).
@@ -144,16 +165,19 @@ impl Popup {
             f();
         }
         self.catcher.set_visible(true);
-        self.win.set_visible(true);
         self.tab.add_css_class("tab");
+        if self.win.is_visible() {
+            // opened again while rolling up
+            self.reveal.set_reveal_child(true);
+        } else {
+            self.win.set_visible(true);
+        }
         nudge();
     }
 
     pub fn close(&self) {
-        self.win.set_visible(false);
         self.catcher.set_visible(false);
-        self.tab.remove_css_class("tab");
-        nudge();
+        self.reveal.set_reveal_child(false);
     }
 
     pub fn toggle(&self) {
