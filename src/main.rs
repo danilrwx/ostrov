@@ -42,7 +42,7 @@ thread_local! {
     static PROMPTS: std::cell::RefCell<Option<Rc<prompt::Prompts>>> = Default::default();
 }
 
-const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | windows | lock | key NAME | awake | screenshot | \
+const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | ask QUESTION | clip | windows | lock | key NAME | awake | screenshot | \
 capture FILE | record [--audio] | bar toggle|peek|unpeek | state | dump | BLOCK ARGS | SERVICE ARGS]";
 
 fn activate(app: &gtk4::Application) {
@@ -110,6 +110,7 @@ fn activate(app: &gtk4::Application) {
                 ["calendar"] => toggle("clock")?,
                 ["menu", name] => return bar.command("status", &["menu", name]).unwrap_or(Err("no status block".into())),
                 ["run"] => launcher.toggle(false),
+                ["ask", ref question @ ..] if !question.is_empty() => launcher.ask_now(&question.join(" ")),
                 ["clip"] => launcher.toggle(true),
                 ["lock"] => lock.lock(),
                 ["screenshot"] => shot.take(),
