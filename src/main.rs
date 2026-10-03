@@ -22,19 +22,21 @@ use system_tray::menu::{MenuItem, MenuType, ToggleState, ToggleType, TrayMenu};
 const CSS: &str = r#"
 window { background: rgba(0, 0, 0, ALPHA); }
 window.panel-window, window.catcher { background: transparent; }
-.panel { background: #000000; border: 1px solid #ffffff; border-radius: 10px; padding: 14px; }
+/* the panel and the bar's tab it grows out of: the bar's hover (white at 15% over black), nearly solid so the
+   panel reads over whatever lies under it */
+.panel { background: rgba(38, 38, 38, 0.75); border: 1px solid #ffffff; border-radius: 10px; padding: 14px; }
 .panel.attached { border-top: none; border-radius: 0 0 10px 10px; padding-top: 4px; }
-.edge { background: #000000; border-top: 1px solid #ffffff; border-left: 1px solid #ffffff; border-top-left-radius: 10px; min-height: 10px; }
-.gap { background: #000000; border-right: 1px solid #ffffff; min-height: 10px; }
-.pill.tab { background: #000000; border: 1px solid #ffffff; border-bottom: none; border-radius: 6px 6px 0 0; margin: 2px 0 0 0; }
+.edge { background: rgba(38, 38, 38, 0.75); border-top: 1px solid #ffffff; border-left: 1px solid #ffffff; border-top-left-radius: 10px; min-height: 10px; }
+.gap { background: rgba(38, 38, 38, 0.75); border-right: 1px solid #ffffff; min-height: 10px; }
+.pill.tab { background: rgba(38, 38, 38, 0.75); border: 1px solid #ffffff; border-bottom: none; border-radius: 6px 6px 0 0; margin: 2px 0 0 0; }
 .panel label { font-size: 10pt; }
 .bold { font-weight: bold; }
 .dim { color: #888888; }
 .error { color: #cd0000; }
 .title { font-weight: bold; font-size: 11pt; }
-.battery { background: #1a1a1a; border-radius: 6px; padding: 0 14px; min-height: 40px; }
+.battery { background: rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 0 14px; min-height: 40px; }
 button { background: none; border: none; box-shadow: none; outline: none; min-height: 0; min-width: 0; padding: 0; }
-button.round { background: #1a1a1a; border: 1px solid #333333; border-radius: 6px; min-width: 40px; min-height: 40px; }
+button.round { background: rgba(255, 255, 255, 0.08); border: 1px solid #333333; border-radius: 6px; min-width: 40px; min-height: 40px; }
 button.round:hover, button.arrow:hover, button.flat-round:hover { background: rgba(255, 255, 255, 0.15); }
 button.round.open { background: #ffffff; }
 button.round.open image { color: #000000; }
@@ -46,7 +48,7 @@ scale { padding: 0 4px; }
 scale trough { min-height: 14px; border-radius: 6px; background: #333333; }
 scale trough highlight { border-radius: 6px; background: #ffffff; border: none; margin: 0; min-height: 14px; min-width: 0; }
 scale slider { min-width: 0; min-height: 0; margin: 0; background: none; box-shadow: none; border: none; }
-.toggle { background: #1a1a1a; border: 1px solid #333333; border-radius: 6px; min-height: 48px; }
+.toggle { background: rgba(255, 255, 255, 0.08); border: 1px solid #333333; border-radius: 6px; min-height: 48px; }
 .toggle.on { background: #ffffff; border-color: #ffffff; }
 .toggle.on label, .toggle.on image { color: #000000; }
 .toggle.on .toggle-sub { color: #333333; }
@@ -57,7 +59,7 @@ scale slider { min-width: 0; min-height: 0; margin: 0; background: none; box-sha
 button.toggle-side { min-width: 40px; border-left: 1px solid #333333; border-radius: 0 6px 6px 0; }
 .toggle.on button.toggle-side { border-left-color: #999999; }
 .toggle.on button.toggle-side.open { background: #d0d0d0; }
-.menu { background: #0d0d0d; border: 1px solid #333333; border-radius: 6px; padding: 10px; margin-top: 4px; }
+.menu { background: rgba(0, 0, 0, 0.25); border: 1px solid #333333; border-radius: 6px; padding: 10px; margin-top: 4px; }
 .menu-head { margin-bottom: 6px; }
 .badge { background: #ffffff; color: #000000; border-radius: 6px; min-width: 32px; min-height: 32px; }
 button.item { padding: 0 10px; min-height: 34px; border-radius: 6px; }
@@ -66,7 +68,7 @@ button.item.on { background: #ffffff; }
 button.item.on label, button.item.on image { color: #000000; }
 button.connect { background: #ffffff; padding: 0 10px; border-radius: 6px; min-height: 30px; }
 button.connect label { color: #000000; font-weight: bold; }
-entry, passwordentry { background: #000000; border: 1px solid #333333; border-radius: 6px; min-height: 30px; padding: 0 8px; }
+entry, passwordentry { background: rgba(0, 0, 0, 0.4); border: 1px solid #333333; border-radius: 6px; min-height: 30px; padding: 0 8px; }
 entry:focus-within, passwordentry:focus-within { border-color: #ffffff; }
 separator { background: #333333; margin: 4px 4px; min-height: 1px; }
 * { font-family: "Iosevka"; font-size: 11pt; color: #ffffff; }
