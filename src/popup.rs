@@ -2,8 +2,8 @@
 //! no bottom), and the popup sits right under the bar with its top edge running from its corners to the tab and
 //! open under it, so tab and popup are one shape. The window runs down to the screen's bottom and is never
 //! resized (a layer surface resized frame by frame while a menu slides open jerks): the popup grows inside it,
-//! taking input only over itself. A click outside it (a see-through catcher over the whole screen,
-//! the bar too: the tab clicked again closes it) or Escape closes it.
+//! a click in it beside or under the popup closing it. It has the keyboard from its opening, so a click into a
+//! window, taking the keyboard, closes it too; so do the tab clicked again and Escape.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -23,9 +23,9 @@ pub struct Popup {
     win: gtk4::ApplicationWindow,
     /// the popup unrolling down out of its tab as it opens, rolling back up as it closes, GNOME's way and short
     reveal: gtk4::Revealer,
-    catcher: gtk4::ApplicationWindow,
     tab: gtk4::Widget,
     on_open: RefCell<Vec<Box<dyn Fn()>>>,
+    closed: std::cell::Cell<Option<std::time::Instant>>,
 }
 
 impl Popup {
@@ -39,16 +39,6 @@ impl Popup {
         width: i32,
         body: &gtk4::Box,
     ) -> Rc<Popup> {
-        let catcher = gtk4::ApplicationWindow::new(app);
-        catcher.init_layer_shell();
-        catcher.set_layer(Layer::Top);
-        catcher.set_namespace(Some("ostrov-catcher"));
-        for e in [Edge::Top, Edge::Bottom, Edge::Left, Edge::Right] {
-            catcher.set_anchor(e, true);
-        }
-        catcher.set_exclusive_zone(-1);
-        catcher.add_css_class("catcher");
-
         let win = gtk4::ApplicationWindow::new(app);
         win.init_layer_shell();
         win.set_layer(Layer::Overlay);
@@ -59,7 +49,7 @@ impl Popup {
             win.set_anchor(Edge::Right, true);
             win.set_margin(Edge::Right, 6);
         }
-        // the keyboard on a click into it: a passphrase, Escape
+        // the keyboard on demand: Hyprland gives it on the opening, so a passphrase, Escape, and its loss
         win.set_keyboard_mode(KeyboardMode::OnDemand);
         win.set_default_size(width, -1);
         win.add_css_class("panel-window");
@@ -68,13 +58,8 @@ impl Popup {
         reveal.set_transition_type(gtk4::RevealerTransitionType::SlideDown);
         reveal.set_transition_duration(120);
         reveal.set_valign(Align::Start);
-        let popup = Rc::new(Popup { win: win.clone(), reveal: reveal.clone(), catcher: catcher.clone(), tab: tab.clone().upcast(), on_open: RefCell::default() });
+        let popup = Rc::new(Popup { win: win.clone(), reveal: reveal.clone(), tab: tab.clone().upcast(), on_open: RefCell::default(), closed: Default::default() });
 
-        let click = gtk4::GestureClick::new();
-        let p = popup.clone();
-        // on the release: the press and the release both the catcher's, none left for the bar to reopen it with
-        click.connect_released(move |_, _, _, _| p.close());
-        catcher.add_controller(click);
         let keys = gtk4::EventControllerKey::new();
         let p = popup.clone();
         keys.connect_key_pressed(move |_, k, _, _| {
@@ -125,28 +110,33 @@ impl Popup {
             }
         });
 
-        // every frame: the gap as wide as the tab's border box (width() is its content alone), the input region
-        // over the popup as it grows and shrinks
-        let last = Rc::new(RefCell::new((0, 0)));
-        // a surface anew on every mapping, its input region the whole of it again: set it anew
-        let l2 = last.clone();
-        win.connect_map(move |_| *l2.borrow_mut() = (0, 0));
-        let (w2, tab2) = (win.clone(), popup.tab.clone());
+        // on every opening the gap as wide as the tab's border box (width() is its content alone)
+        let tab2 = popup.tab.clone();
         let inner = if side == Side::Right { 1 } else { 2 };
-        shape.add_tick_callback(move |shape, _| {
+        win.connect_map(move |_| {
             let tw = tab2.compute_bounds(&tab2).map(|b| b.width().round() as i32).unwrap_or(0);
-            if tw > inner && gap.width_request() != tw - inner {
+            if tw > inner {
                 gap.set_size_request(tw - inner, -1);
             }
-            let (w, h) = (shape.width(), shape.height());
-            if *last.borrow() != (w, h) {
-                *last.borrow_mut() = (w, h);
-                if let Some(surface) = w2.surface() {
-                    let rect = gtk4::cairo::RectangleInt::new(0, 0, w, h);
-                    surface.set_input_region(Some(&gtk4::cairo::Region::create_rectangle(&rect)));
-                }
+        });
+        // the window runs down to the screen's bottom: a click in it under the popup, or beside it, closes it
+        let click = gtk4::GestureClick::new();
+        let p = Rc::downgrade(&popup);
+        click.connect_released(move |g, _, x, y| {
+            let (Some(p), Some(w)) = (p.upgrade(), g.widget()) else { return };
+            let hit = w.pick(x, y, gtk4::PickFlags::DEFAULT);
+            if hit.is_none_or(|h| h == w || h == p.reveal.clone().upcast::<gtk4::Widget>()) {
+                p.close();
             }
-            glib::ControlFlow::Continue
+        });
+        win.add_controller(click);
+        // a click into a window, caught by the keyboard it takes: the popup has it from its opening (on demand),
+        // and closes as it loses it
+        let p = Rc::downgrade(&popup);
+        win.connect_is_active_notify(move |w| {
+            if let Some(p) = p.upgrade().filter(|p| !w.is_active() && p.is_open()) {
+                p.close();
+            }
         });
         popup
     }
@@ -164,7 +154,6 @@ impl Popup {
         for f in self.on_open.borrow().iter() {
             f();
         }
-        self.catcher.set_visible(true);
         self.tab.add_css_class("tab");
         if self.win.is_visible() {
             // opened again while rolling up
@@ -172,16 +161,23 @@ impl Popup {
         } else {
             self.win.set_visible(true);
         }
-        nudge();
     }
 
     pub fn close(&self) {
-        self.catcher.set_visible(false);
+        if self.reveal.reveals_child() {
+            self.closed.set(Some(std::time::Instant::now()));
+        }
         self.reveal.set_reveal_child(false);
     }
 
+    /// Open or close; closed a moment ago, it stays closed: the click on its tab that toggles it is the one
+    /// that took the keyboard from it and closed it just before.
     pub fn toggle(&self) {
-        if self.is_open() { self.close() } else { self.open() }
+        if self.is_open() {
+            self.close()
+        } else if !self.closed.get().is_some_and(|t| t.elapsed() < std::time::Duration::from_millis(300)) {
+            self.open()
+        }
     }
 }
 

@@ -31,7 +31,7 @@ const CSS: &str = r#"
 @define-color panel rgba(56, 56, 56, 0.88);
 @define-color hover rgba(255, 255, 255, 0.15);
 window { background: rgba(0, 0, 0, ALPHA); }
-window.panel-window, window.catcher { background: transparent; }
+window.panel-window { background: transparent; }
 /* the panel and the bar's tab it grows out of: the bar's hover (white at 15% over black), nearly solid so the
    panel reads over whatever lies under it */
 .panel { background: @panel; border: 1px solid transparent; border-radius: 10px; padding: 14px; }
@@ -631,6 +631,20 @@ fn activate(app: &gtk4::Application) {
                 Ok(())
             }))
         });
+    }
+    // a click elsewhere in the bar closes them (the bar takes no keyboard, so they keep theirs)
+    {
+        let (panel, cal, mid_slot, status_slot) = (panel.clone(), cal.clone(), mid_slot.clone(), status_slot.clone());
+        let click = gtk4::GestureClick::new();
+        click.connect_released(move |g, _, x, y| {
+            let Some(w) = g.widget() else { return };
+            let hit = w.pick(x, y, gtk4::PickFlags::DEFAULT);
+            if !hit.is_some_and(|h| h.is_ancestor(&mid_slot) || h.is_ancestor(&status_slot)) {
+                panel.popup.close();
+                cal.close();
+            }
+        });
+        win.add_controller(click);
     }
     // a click on the status opens the quick settings
     let click = gtk4::GestureClick::new();
