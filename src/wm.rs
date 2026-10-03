@@ -44,14 +44,14 @@ pub enum Event {
     Done,
 }
 
-fn hypr_socket(name: &str) -> Option<String> {
+pub(crate) fn hypr_socket(name: &str) -> Option<String> {
     let sig = std::env::var("HYPRLAND_INSTANCE_SIGNATURE").ok()?;
     let run = std::env::var("XDG_RUNTIME_DIR").ok()?;
     Some(format!("{run}/hypr/{sig}/{name}"))
 }
 
 /// A request to Hyprland's socket ("j/workspaces"), its answer.
-fn hyprctl(req: &str) -> String {
+pub(crate) fn hyprctl(req: &str) -> String {
     let Some(Ok(mut s)) = hypr_socket(".socket.sock").map(UnixStream::connect) else { return String::new() };
     let _ = s.write_all(req.as_bytes());
     let mut out = String::new();
