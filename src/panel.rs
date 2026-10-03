@@ -270,7 +270,7 @@ impl Panel {
     }
 }
 
-pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Panel> {
+pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Panel> {
     let menus = Rc::new(Menus::default());
     // closes the panel, once the popup is made (the buttons that close it are made before it)
     let closer: Rc<RefCell<Option<Rc<Popup>>>> = Rc::default();
@@ -478,7 +478,7 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Pane
     let headset_row = grid_row(&headset.root, None);
     col.append(&headset_row);
 
-    let popup = Popup::new(app, "ostrov-panel", tab, Side::Right, 390, &col);
+    let popup = Popup::new(host, tab, Side::Right, 390, &col);
     *closer.borrow_mut() = Some(popup.clone());
     // every opening with the menus folded
     let m = menus.clone();

@@ -20,7 +20,7 @@ fn media(cmd: &str) {
     crate::hub::run(&[&wmd().to_string_lossy(), "media", cmd]);
 }
 
-pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &impl IsA<gtk4::Widget>, notes: &Rc<Notes>) -> Rc<Popup> {
+pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::Widget>, notes: &Rc<Notes>) -> Rc<Popup> {
     let body = gtk4::Box::new(Orientation::Horizontal, 14);
     body.add_css_class("surface");
 
@@ -116,7 +116,7 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &impl IsA<gtk4::Widget
     right.append(&weather);
     body.append(&right);
 
-    let popup = Popup::new(app, "ostrov-calendar", tab, Side::Center, 680, &body);
+    let popup = Popup::new(host, tab, Side::Center, 680, &body);
 
     // on every opening: today, this month
     let (wd, dt, c2) = (weekday.clone(), date.clone(), cal.clone());

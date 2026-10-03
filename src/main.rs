@@ -20,42 +20,17 @@ use hub::Hub;
 
 use gtk4::prelude::*;
 use gtk4::{gdk, glib};
-use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use system_tray::client::{ActivateRequest, Client};
 use system_tray::item::StatusNotifierItem;
 use system_tray::menu::{MenuItem, MenuType, ToggleState, ToggleType, TrayMenu};
 
 
-/// The bar's mode, i3's bar mode toggle: docked (its strip taken from the windows), or hidden and shown over
-/// the windows while Super is held (ostrov bar toggle, peek, unpeek: config/hypr's binds).
-struct Mode {
-    win: gtk4::ApplicationWindow,
-    docked: std::cell::Cell<bool>,
-    peeking: std::cell::Cell<bool>,
-    launching: std::cell::Cell<bool>,
-}
-
-impl Mode {
-    fn apply(&self) {
-        if self.docked.get() {
-            self.win.set_layer(Layer::Top);
-            self.win.auto_exclusive_zone_enable();
-        } else {
-            self.win.set_layer(Layer::Overlay);
-            self.win.set_exclusive_zone(0);
-        }
-        // the launcher in it takes the keyboard while open, and shows it hidden or not
-        self.win.set_keyboard_mode(if self.launching.get() { KeyboardMode::Exclusive } else { KeyboardMode::None });
-        self.win.set_visible(self.docked.get() || self.peeking.get() || self.launching.get());
-    }
-}
-
 thread_local! {
     /// What `ostrov ARGS` does in the running ostrov, set once it is built.
-    static COMMAND: std::cell::RefCell<Option<Box<dyn Fn(&[String]) -> Result<(), String>>>> = Default::default();
+    static COMMAND: std::cell::RefCell<Option<Box<dyn Fn(&[String]) -> Result<String, String>>>> = Default::default();
 }
 
-const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | lock | bar toggle|peek|unpeek]";
+const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | lock | bar toggle|peek|unpeek | state]";
 
 /// What the tray shows of an item: its address, its icon, its menu.
 #[derive(Clone)]
@@ -188,15 +163,10 @@ fn slot(w: &impl IsA<gtk4::Widget>) -> gtk4::Box {
 }
 
 fn activate(app: &gtk4::Application) {
-    let win = gtk4::ApplicationWindow::new(app);
-    win.init_layer_shell();
-    win.set_layer(Layer::Top);
-    win.set_namespace(Some("ostrov"));
-    for e in [Edge::Top, Edge::Left, Edge::Right] {
-        win.set_anchor(e, true);
-    }
-    win.auto_exclusive_zone_enable();
-    win.set_default_size(-1, 25);
+    // the bar's window, the popups laid over it (popup.rs); the bar and the launcher over it its strip
+    let over = gtk4::Overlay::new();
+    let host = popup::Host::new(app, &over);
+    let win = host.win.clone();
 
     style::load();
 
@@ -293,7 +263,7 @@ fn activate(app: &gtk4::Application) {
         }
     };
     draw_dots();
-    let mode = std::rc::Rc::new(Mode { win: win.clone(), docked: true.into(), peeking: false.into(), launching: false.into() });
+    let mode = host.clone();
     let (ws_tx, ws_rx) = async_channel::unbounded();
     std::thread::spawn(move || wm::events(ws_tx));
     let m = mode.clone();
@@ -361,14 +331,14 @@ fn activate(app: &gtk4::Application) {
 
     // wmd's state: Wi-Fi, the weather, the layout, the battery
     let hub = Hub::start();
-    let panel = panel::build(app, &hub, &status_slot);
+    let panel = panel::build(&host, &hub, &status_slot);
     let notes = notes::start(app);
-    let cal = calendar::build(app, &hub, &mid_slot, &notes);
+    let cal = calendar::build(&host, &hub, &mid_slot, &notes);
     // the tray's menus, a popup like the others hung from the icon clicked
     let tray_body = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     tray_body.add_css_class("surface");
     tray_body.add_css_class("tray-menu");
-    let tray_pop = popup::Popup::new(app, "ostrov-tray", &tray_box, popup::Side::Right, -1, &tray_body);
+    let tray_pop = popup::Popup::new(&host, &tray_box, popup::Side::Right, -1, &tray_body);
 
     // a click on the clock opens the calendar, one popup open at a time
     {
@@ -436,13 +406,12 @@ fn activate(app: &gtk4::Application) {
     };
     let _ = launcher_widget.set(launcher.widget.clone());
     launcher.widget.set_margin_start(0);
-    let over = gtk4::Overlay::new();
     over.add_overlay(&launcher.widget);
     let lock = lock::build(app);
 
     // ostrov ARGS, from a key or a script, handed over to this ostrov by GApplication
     {
-        let (panel, cal) = (panel.clone(), cal.clone());
+        let (panel, cal, tray_pop) = (panel.clone(), cal.clone(), tray_pop.clone());
         COMMAND.with(|c| {
             *c.borrow_mut() = Some(Box::new(move |args: &[String]| {
                 let args: Vec<&str> = args.iter().map(String::as_str).collect();
@@ -470,19 +439,32 @@ fn activate(app: &gtk4::Application) {
                         }
                         mode.apply();
                     }
+                    // what is open, and the bar's mode: for a script, a test
+                    ["state"] => {
+                        let open = [("panel", &panel.popup), ("calendar", &cal), ("tray", &tray_pop)]
+                            .into_iter()
+                            .filter(|(_, p)| p.is_open())
+                            .map(|(n, _)| n);
+                        let mut words: Vec<&str> = open.collect();
+                        words.push(if mode.docked.get() { "docked" } else { "hidden" });
+                        if launcher.is_open() {
+                            words.push("launcher");
+                        }
+                        return Ok(words.join(" "));
+                    }
                     _ => return Err(USAGE.into()),
                 }
-                Ok(())
+                Ok(String::new())
             }))
         });
     }
-    // a click elsewhere in the bar closes them (the bar takes no keyboard, so they keep theirs)
+    // a click elsewhere in the bar closes them
     {
         let (panel, cal, mid_slot, status_slot, tray_box, tray_pop) =
             (panel.clone(), cal.clone(), mid_slot.clone(), status_slot.clone(), tray_box.clone(), tray_pop.clone());
         let click = gtk4::GestureClick::new();
         click.connect_released(move |g, _, x, y| {
-            let Some(w) = g.widget() else { return };
+            let Some(w) = g.widget().filter(|_| y < popup::BAR as f64) else { return };
             let hit = w.pick(x, y, gtk4::PickFlags::DEFAULT);
             if !hit.is_some_and(|h| h.is_ancestor(&mid_slot) || h.is_ancestor(&status_slot) || h.is_ancestor(&tray_box)) {
                 panel.popup.close();
@@ -545,8 +527,6 @@ fn activate(app: &gtk4::Application) {
     });
 
     over.set_child(Some(&bar));
-    win.set_child(Some(&over));
-    win.present();
 }
 
 fn main() -> glib::ExitCode {
@@ -568,6 +548,10 @@ fn main() -> glib::ExitCode {
             Some(Err(e)) => {
                 cl.printerr_literal(&format!("{e}\n"));
                 glib::ExitCode::FAILURE
+            }
+            Some(Ok(out)) if !out.is_empty() => {
+                cl.print_literal(&format!("{out}\n"));
+                glib::ExitCode::SUCCESS
             }
             _ => glib::ExitCode::SUCCESS,
         }
