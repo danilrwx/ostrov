@@ -24,9 +24,7 @@ use system_tray::menu::{MenuItem, MenuType, ToggleState, ToggleType, TrayMenu};
 
 const CSS: &str = r#"
 window { background: rgba(0, 0, 0, ALPHA); }
-window.panel-window, window.catcher, window.frame { background: transparent; }
-/* the frame's corners: the shadow of a box rounded as the screen's inside, the frame's colour */
-.frame-in { border-radius: 10px; box-shadow: 0 0 0 10px rgba(0, 0, 0, ALPHA); }
+window.panel-window, window.catcher { background: transparent; }
 /* the panel and the bar's tab it grows out of: the bar's hover (white at 15% over black), nearly solid so the
    panel reads over whatever lies under it */
 .panel { background: rgba(38, 38, 38, 0.75); border: 1px solid #ffffff; border-radius: 10px; padding: 14px; }
@@ -507,52 +505,10 @@ fn activate(app: &gtk4::Application) {
 
     win.set_child(Some(&bar));
     win.present();
-    frame(app);
 }
 
 fn main() -> glib::ExitCode {
     let app = gtk4::Application::builder().application_id("dev.danil.rbar").build();
     app.connect_activate(activate);
     app.run()
-}
-
-/// The screen's frame, as Noctalia's: the bar's ground on down the left, right and bottom edges, a strip
-/// each that windows keep clear of, and the inside rounded at its corners over whatever lies there.
-fn frame(app: &gtk4::Application) {
-    const T: i32 = 4;
-    for (edge, others) in [
-        (Edge::Left, [Edge::Top, Edge::Bottom]),
-        (Edge::Right, [Edge::Top, Edge::Bottom]),
-        (Edge::Bottom, [Edge::Left, Edge::Right]),
-    ] {
-        let w = gtk4::ApplicationWindow::new(app);
-        w.init_layer_shell();
-        w.set_layer(Layer::Top);
-        w.set_namespace(Some("rbar-frame"));
-        w.set_anchor(edge, true);
-        for e in others {
-            w.set_anchor(e, true);
-        }
-        w.set_exclusive_zone(T);
-        w.set_default_size(T, T);
-        w.present();
-    }
-    // the corners: a see-through window over the inside, clicks passing through
-    let w = gtk4::ApplicationWindow::new(app);
-    w.init_layer_shell();
-    w.set_layer(Layer::Top);
-    w.set_namespace(Some("rbar-frame"));
-    for e in [Edge::Top, Edge::Bottom, Edge::Left, Edge::Right] {
-        w.set_anchor(e, true);
-    }
-    w.add_css_class("frame");
-    let inside = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
-    inside.add_css_class("frame-in");
-    w.set_child(Some(&inside));
-    w.connect_map(|w| {
-        if let Some(s) = w.surface() {
-            s.set_input_region(Some(&gtk4::cairo::Region::create()));
-        }
-    });
-    w.present();
 }
