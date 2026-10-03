@@ -33,7 +33,7 @@ window.panel-window, window.catcher { background: transparent; }
 .gap { background: rgba(38, 38, 38, 0.75); border-right: 1px solid #ffffff; min-height: 10px; }
 .gap-mid { background: rgba(38, 38, 38, 0.75); min-height: 10px; }
 .edge-right { background: rgba(38, 38, 38, 0.75); border-top: 1px solid #ffffff; border-right: 1px solid #ffffff; border-top-right-radius: 10px; min-height: 10px; }
-.pill.tab { background: rgba(38, 38, 38, 0.75); border-color: #ffffff; }
+.pill.tab, .pill.tab:hover { background: rgba(38, 38, 38, 0.75); border-color: #ffffff; }
 .panel label { font-size: 10pt; }
 .bold { font-weight: bold; }
 .dim { color: #888888; }

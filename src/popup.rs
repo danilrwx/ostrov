@@ -2,8 +2,8 @@
 //! no bottom), and the popup sits right under the bar with its top edge running from its corners to the tab and
 //! open under it, so tab and popup are one shape. The window runs down to the screen's bottom and is never
 //! resized (a layer surface resized frame by frame while a menu slides open jerks): the popup grows inside it,
-//! taking input only over itself. A click outside it (a see-through catcher over the screen
-//! under the bar, so the bar's blocks stay live: the tab again closes it, another block swaps) or Escape closes it.
+//! taking input only over itself. A click outside it (a see-through catcher over the whole screen,
+//! the bar too: the tab clicked again closes it) or Escape closes it.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -44,6 +44,7 @@ impl Popup {
         for e in [Edge::Top, Edge::Bottom, Edge::Left, Edge::Right] {
             catcher.set_anchor(e, true);
         }
+        catcher.set_exclusive_zone(-1);
         catcher.add_css_class("catcher");
 
         let win = gtk4::ApplicationWindow::new(app);
@@ -65,7 +66,8 @@ impl Popup {
 
         let click = gtk4::GestureClick::new();
         let p = popup.clone();
-        click.connect_pressed(move |_, _, _, _| p.close());
+        // on the release: the press and the release both the catcher's, none left for the bar to reopen it with
+        click.connect_released(move |_, _, _, _| p.close());
         catcher.add_controller(click);
         let keys = gtk4::EventControllerKey::new();
         let p = popup.clone();
