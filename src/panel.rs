@@ -301,8 +301,11 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>) -> Rc<Panel> {
     win.init_layer_shell();
     win.set_layer(Layer::Overlay);
     win.set_namespace(Some("rbar-panel"));
+    // down to the screen's bottom and never resized: the panel grows and shrinks inside it, so a menu sliding
+    // open moves no window (a layer surface resized frame by frame jerks); input only over the panel itself
     win.set_anchor(Edge::Top, true);
     win.set_anchor(Edge::Right, true);
+    win.set_anchor(Edge::Bottom, true);
     win.set_margin(Edge::Top, 29);
     win.set_margin(Edge::Right, 6);
     // the keyboard on a click into it: a passphrase, Escape
@@ -523,7 +526,22 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>) -> Rc<Panel> {
     let headset_row = grid_row(&headset.root, None);
     col.append(&headset_row);
 
+    col.set_valign(Align::Start);
     win.set_child(Some(&col));
+    // the input region follows the panel as it grows and shrinks, frame by frame while a menu slides
+    let last = RefCell::new((0, 0));
+    let w2 = win.clone();
+    col.add_tick_callback(move |col, _| {
+        let (w, h) = (col.width(), col.height());
+        if *last.borrow() != (w, h) {
+            *last.borrow_mut() = (w, h);
+            if let Some(surface) = w2.surface() {
+                let rect = gtk4::cairo::RectangleInt::new(0, 0, w, h);
+                surface.set_input_region(Some(&gtk4::cairo::Region::create_rectangle(&rect)));
+            }
+        }
+        glib::ControlFlow::Continue
+    });
 
     // Wi-Fi's passphrase asked for, and Bluetooth's pairing, kept across redraws
     let asking: Rc<RefCell<String>> = Rc::default();
