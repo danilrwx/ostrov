@@ -3,9 +3,15 @@
 //! picked one inverted. Left, Right, Tab and Ctrl+N, Ctrl+P move, Enter launches (or copies back), Delete drops a
 //! clipboard entry, Escape closes. ostrov run ($mod+d), ostrov clip
 //! ($mod+Shift+v).
+//!
+//! What is typed picks the run's mode, named by the prompt: arithmetic is calculated (calc.rs), its result copied;
+//! :name finds emoji, copied; g words and y words search Google in the browser; /name finds files under
+//! the home with fd, opened in their default app.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::sync::OnceLock;
+use std::time::Duration;
 
 use gtk4::gdk::Key;
 use gtk4::gio::prelude::*;
@@ -15,10 +21,15 @@ use gtk4::{gio, glib, Orientation};
 use crate::hub::run;
 
 /// A hit: what the row shows, and what picking it does.
+#[derive(Clone)]
 enum Hit {
     App(gio::AppInfo),
     /// an entry of the clipboard's history: its id, whether a picture, what is shown of it
     Clip(u64, bool, String),
+    /// a result or an emoji: what is shown, what goes on the clipboard
+    Copy(String, String),
+    /// a search or a file: what is shown, the URI opened in its default app
+    Open(String, String),
 }
 
 impl Hit {
@@ -26,6 +37,7 @@ impl Hit {
         match self {
             Hit::App(a) => a.name().to_string(),
             Hit::Clip(_, _, shown) => shown.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(60).collect(),
+            Hit::Copy(shown, _) | Hit::Open(shown, _) => shown.clone(),
         }
     }
 }
@@ -36,7 +48,9 @@ pub struct Launcher {
     query: gtk4::Text,
     clip: Cell<bool>,
     all: RefCell<Vec<Hit>>,
-    hits: RefCell<Vec<usize>>,
+    hits: RefCell<Vec<Hit>>,
+    /// bumped by every key typed: a file search's late answer to an older query is dropped
+    typed: Cell<u64>,
     picked: Cell<usize>,
     row: gtk4::Box,
     scroll: gtk4::ScrolledWindow,
@@ -99,6 +113,7 @@ impl Launcher {
             clip: Cell::new(false),
             all: RefCell::default(),
             hits: RefCell::default(),
+            typed: Cell::new(0),
             picked: Cell::new(0),
             row,
             scroll,
@@ -144,7 +159,6 @@ impl Launcher {
             return self.close();
         }
         self.clip.set(clip);
-        self.prompt.set_text(if clip { "clip" } else { "run" });
         *self.all.borrow_mut() = if clip {
             crate::clip::list().into_iter().map(|(id, picture, shown)| Hit::Clip(id, picture, shown)).collect()
         } else {
@@ -164,32 +178,86 @@ impl Launcher {
         (self.on_toggle)(false);
     }
 
-    /// The hits for what is typed: apps by name, a name starting with it first; clips newest first.
+    /// The hits for what is typed, and the mode it puts the run in.
     fn filter(self: &Rc<Self>) {
-        let q = self.query.text().to_lowercase();
+        let q = self.query.text().to_string();
+        self.typed.set(self.typed.get() + 1);
+        let (mode, hits) = if self.clip.get() {
+            ("clip", self.matching(&q))
+        } else if let Some(name) = q.strip_prefix(':') {
+            ("emoji", emoji(name))
+        } else if let Some((engine, url)) = web(&q) {
+            let words = q[2..].trim();
+            let uri = format!("{url}{}", glib::Uri::escape_string(words, None, false));
+            let hit = Hit::Open(format!("Search {engine} for {words}"), uri);
+            ("web", if words.is_empty() { vec![] } else { vec![hit] })
+        } else if let Some(name) = q.strip_prefix('/') {
+            self.files(name.trim());
+            ("files", vec![])
+        } else if let Some(r) = crate::calc::eval(&q) {
+            ("calc", [vec![Hit::Copy(format!("= {r}"), r)], self.matching(&q)].concat())
+        } else {
+            ("run", self.matching(&q))
+        };
+        self.prompt.set_text(mode);
+        *self.hits.borrow_mut() = hits;
+        self.draw();
+    }
+
+    /// Apps by name, a name starting with what is typed first; clips newest first.
+    fn matching(&self, q: &str) -> Vec<Hit> {
+        let q = q.to_lowercase();
         let all = self.all.borrow();
-        let mut hits: Vec<usize> = (0..all.len()).filter(|&i| all[i].name().to_lowercase().contains(&q)).collect();
+        let mut hits: Vec<&Hit> = all.iter().filter(|h| h.name().to_lowercase().contains(&q)).collect();
         if !self.clip.get() {
-            hits.sort_by_key(|&i| {
-                let n = all[i].name();
-                (!n.to_lowercase().starts_with(&q), n.to_lowercase())
+            hits.sort_by_cached_key(|h| {
+                let n = h.name().to_lowercase();
+                (!n.starts_with(&q), n)
             });
         }
-        *self.hits.borrow_mut() = hits;
-        drop(all);
-        self.draw();
+        hits.into_iter().cloned().collect()
+    }
+
+    /// Files named so under the home, found by fd off GTK's thread once typing pauses; they arrive as the hits
+    /// unless something else has been typed by then.
+    fn files(self: &Rc<Self>, name: &str) {
+        if name.is_empty() {
+            return;
+        }
+        let (me, name, typed) = (Rc::downgrade(self), name.to_string(), self.typed.get());
+        glib::spawn_future_local(async move {
+            glib::timeout_future(Duration::from_millis(150)).await;
+            if me.upgrade().is_none_or(|me| me.typed.get() != typed) {
+                return;
+            }
+            let (tx, rx) = async_channel::bounded(1);
+            std::thread::spawn(move || {
+                let _ = tx.send_blocking(fd(&name));
+            });
+            let Ok(paths) = rx.recv().await else { return };
+            let Some(me) = me.upgrade().filter(|me| me.typed.get() == typed && me.is_open()) else { return };
+            let home = std::env::var("HOME").unwrap_or_default();
+            *me.hits.borrow_mut() = paths
+                .into_iter()
+                .map(|p| {
+                    let shown = p.strip_prefix(&home).map_or(p.clone(), |rest| format!("~{rest}"));
+                    Hit::Open(shown, gio::File::for_path(&p).uri().into())
+                })
+                .collect();
+            me.picked.set(0);
+            me.draw();
+        });
     }
 
     fn draw(self: &Rc<Self>) {
         crate::style::clear(&self.row);
-        let all = self.all.borrow();
         // the first hundred: past that no one tabs
-        for (n, &i) in self.hits.borrow().iter().take(100).enumerate() {
+        for (n, hit) in self.hits.borrow().iter().take(100).enumerate() {
             let l = gtk4::Box::new(Orientation::Horizontal, 6);
-            if let Hit::Clip(_, true, _) = all[i] {
+            if let Hit::Clip(_, true, _) = hit {
                 l.append(&gtk4::Image::from_icon_name("image-x-generic-symbolic"));
             }
-            l.append(&gtk4::Label::new(Some(&all[i].name())));
+            l.append(&gtk4::Label::new(Some(&hit.name())));
             l.add_css_class("hit");
             if n == self.picked.get() {
                 l.add_css_class("picked");
@@ -205,15 +273,14 @@ impl Launcher {
             l.add_controller(click);
             self.row.append(&l);
         }
-        drop(all);
         self.show_preview();
     }
 
     /// The picked clipboard entry whole under the bar; nothing over the apps.
     fn show_preview(&self) {
-        let id = self.hits.borrow().get(self.picked.get()).and_then(|&i| match self.all.borrow()[i] {
-            Hit::Clip(id, ..) => Some(id),
-            Hit::App(_) => None,
+        let id = self.hits.borrow().get(self.picked.get()).and_then(|h| match h {
+            Hit::Clip(id, ..) => Some(*id),
+            _ => None,
         });
         let Some((picture, data)) = id.and_then(crate::clip::content) else {
             self.preview.set_visible(false);
@@ -254,13 +321,15 @@ impl Launcher {
         }
     }
 
-    /// An app launched (a terminal one in alacritty), a clip copied back; with none, what was typed run.
+    /// An app launched (a terminal one in alacritty), a clip copied back, a result or an emoji copied, a search or
+    /// a file opened; with none, what was typed run, when it is a run.
     fn pick(&self, n: usize) {
         let typed = self.query.text().to_string();
-        let i = self.hits.borrow().get(n).copied();
+        let run_mode = self.prompt.text() == "run";
+        let hit = self.hits.borrow().get(n).cloned();
         self.close();
-        let all = self.all.borrow();
-        match i.map(|i| &all[i]) {
+        let ctx = gtk4::gdk::Display::default().map(|d| d.app_launch_context());
+        match &hit {
             Some(Hit::App(a)) => {
                 let term = a.downcast_ref::<gio_unix::DesktopAppInfo>().is_some_and(|d| d.boolean("Terminal"));
                 if term {
@@ -268,25 +337,91 @@ impl Launcher {
                     let cmd: Vec<&str> = cmd.split_whitespace().filter(|w| !w.starts_with('%')).collect();
                     run(&[&["alacritty", "-e"], &cmd[..]].concat());
                 } else {
-                    let ctx = gtk4::gdk::Display::default().map(|d| d.app_launch_context());
                     let _ = a.launch(&[], ctx.as_ref());
                 }
             }
             Some(Hit::Clip(id, ..)) => crate::clip::copy(*id),
-            None if !typed.trim().is_empty() => run(&["sh", "-c", &typed]),
+            Some(Hit::Copy(_, text)) => crate::clip::put(text.clone().into_bytes(), "text"),
+            Some(Hit::Open(_, uri)) => {
+                if let Err(e) = gio::AppInfo::launch_default_for_uri(uri, ctx.as_ref()) {
+                    eprintln!("ostrov: open {uri}: {e}");
+                }
+            }
+            None if run_mode && !typed.trim().is_empty() => run(&["sh", "-c", &typed]),
             None => {}
         }
     }
 
     /// The picked clip out of the history.
     fn delete(self: &Rc<Self>) {
-        let Some(i) = self.hits.borrow().get(self.picked.get()).copied() else { return };
-        if let Hit::Clip(id, ..) = &self.all.borrow()[i] {
-            crate::clip::delete(*id);
-        }
-        self.all.borrow_mut().remove(i);
+        let Some(Hit::Clip(id, ..)) = self.hits.borrow().get(self.picked.get()).cloned() else { return };
+        crate::clip::delete(id);
+        self.all.borrow_mut().retain(|h| !matches!(h, Hit::Clip(i, ..) if *i == id));
         let n = self.picked.get();
         self.filter();
         self.set_picked(n.min(self.hits.borrow().len().saturating_sub(1)));
+    }
+}
+
+/// "g words" searches Google, "y words" Example: the engine's name and its query's URL.
+fn web(q: &str) -> Option<(&'static str, &'static str)> {
+    match q.get(..2)? {
+        "g " => Some(("Google", "https://www.google.com/search?q=")),
+        "y " => Some(("Example", "https://example.com/search/?text=")),
+        _ => None,
+    }
+}
+
+/// Emoji whose name has what is typed, a name starting with it first.
+fn emoji(q: &str) -> Vec<Hit> {
+    static ALL: OnceLock<Vec<(String, String)>> = OnceLock::new();
+    let all = ALL.get_or_init(|| {
+        parse_emoji(&std::fs::read_to_string("/usr/share/unicode/emoji/emoji-test.txt").unwrap_or_default())
+    });
+    let q = q.trim().to_lowercase();
+    let mut hits: Vec<_> = all.iter().filter(|(_, name)| name.contains(&q)).collect();
+    hits.sort_by_key(|(_, name)| !name.starts_with(&q));
+    hits.into_iter().map(|(e, name)| Hit::Copy(format!("{e} {name}"), e.clone())).collect()
+}
+
+/// emoji-test.txt's fully-qualified emoji and their names:
+/// `1F600 ; fully-qualified # 😀 E1.0 grinning face`, the name past the version it came in.
+fn parse_emoji(text: &str) -> Vec<(String, String)> {
+    text.lines()
+        .filter(|l| l.contains("; fully-qualified"))
+        .filter_map(|l| {
+            let (_, rest) = l.split_once("# ")?;
+            let (e, rest) = rest.split_once(' ')?;
+            let (_, name) = rest.split_once(' ')?;
+            Some((e.to_string(), name.to_string()))
+        })
+        .collect()
+}
+
+/// Up to fifty paths under the home whose name has name in it, by fd (fdfind on Debian's); none without it.
+fn fd(name: &str) -> Vec<String> {
+    let home = std::env::var("HOME").unwrap_or_default();
+    let args = ["--fixed-strings", "--absolute-path", "--max-results", "50", "--", name, &home];
+    let Some(out) = ["fd", "fdfind"].iter().find_map(|fd| std::process::Command::new(fd).args(args).output().ok())
+    else {
+        return vec![];
+    };
+    String::from_utf8_lossy(&out.stdout).lines().map(str::to_string).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn parse_emoji() {
+        let text = "# group: Smileys\n1F600 ; fully-qualified # 😀 E1.0 grinning face\n\
+                    263A ; unqualified # ☺ E0.6 smiling face\n";
+        assert_eq!(super::parse_emoji(text), [("😀".to_string(), "grinning face".to_string())]);
+    }
+
+    #[test]
+    fn web() {
+        assert_eq!(super::web("g rust gtk").map(|w| w.0), Some("Google"));
+        assert_eq!(super::web("y погода").map(|w| w.0), Some("Example"));
+        assert_eq!(super::web("gimp"), None);
     }
 }

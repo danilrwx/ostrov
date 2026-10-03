@@ -5,6 +5,7 @@
 //! through wm.rs, how it all looks in style.rs. One ostrov runs: `ostrov ARGS` hands ARGS to it.
 
 mod bar;
+mod calc;
 mod calendar;
 mod clip;
 mod config;
