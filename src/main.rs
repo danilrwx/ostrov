@@ -27,12 +27,12 @@ window { background: rgba(0, 0, 0, ALPHA); }
 window.panel-window, window.catcher { background: transparent; }
 /* the panel and the bar's tab it grows out of: the bar's hover (white at 15% over black), nearly solid so the
    panel reads over whatever lies under it */
-.panel { background: rgba(38, 38, 38, 0.75); border: 1px solid transparent; border-radius: 10px; padding: 14px; }
+.panel { background: rgba(38, 38, 38, 0.88); border: 1px solid transparent; border-radius: 10px; padding: 14px; }
 .panel.attached { border-top: none; border-radius: 0 0 10px 10px; padding-top: 4px; }
-.edge { background: rgba(38, 38, 38, 0.75); border-top: 1px solid transparent; border-left: 1px solid transparent; border-top-left-radius: 10px; min-height: 10px; }
-.gap { background: rgba(38, 38, 38, 0.75); border-right: 1px solid transparent; min-height: 10px; }
-.gap-mid { background: rgba(38, 38, 38, 0.75); min-height: 10px; }
-.edge-right { background: rgba(38, 38, 38, 0.75); border-top: 1px solid transparent; border-right: 1px solid transparent; border-top-right-radius: 10px; min-height: 10px; }
+.edge { background: rgba(38, 38, 38, 0.88); border-top: 1px solid transparent; border-left: 1px solid transparent; border-top-left-radius: 10px; min-height: 10px; }
+.gap { background: rgba(38, 38, 38, 0.88); border-right: 1px solid transparent; min-height: 10px; }
+.gap-mid { background: rgba(38, 38, 38, 0.88); min-height: 10px; }
+.edge-right { background: rgba(38, 38, 38, 0.88); border-top: 1px solid transparent; border-right: 1px solid transparent; border-top-right-radius: 10px; min-height: 10px; }
 .panel label { font-size: 10pt; }
 .bold { font-weight: bold; }
 .dim { color: #888888; }
@@ -77,8 +77,8 @@ entry:focus-within, passwordentry:focus-within { border-color: #ffffff; }
 separator { background: #333333; margin: 4px 4px; min-height: 1px; min-width: 1px; }
 .card { background: rgba(255, 255, 255, 0.06); border: 1px solid #333333; border-radius: 6px; padding: 10px; }
 .card.critical { border-color: #cd0000; }
-.toasts > .card { background: rgba(38, 38, 38, 0.75); border-color: #ffffff; border-radius: 10px; }
-.osd { background: rgba(38, 38, 38, 0.75); border: 1px solid #ffffff; border-radius: 10px; padding: 12px 16px; }
+.toasts > .card { background: rgba(38, 38, 38, 0.88); border-color: #ffffff; border-radius: 10px; }
+.osd { background: rgba(38, 38, 38, 0.88); border: 1px solid #ffffff; border-radius: 10px; padding: 12px 16px; }
 .art { border-radius: 6px; }
 .date { font-size: 14pt; font-weight: bold; }
 button.chip, togglebutton.chip, button.chip:checked { background: rgba(255, 255, 255, 0.08); border: 1px solid #333333; border-radius: 6px; padding: 4px 10px; min-height: 0; }
@@ -93,7 +93,7 @@ calendar > header > button { min-width: 28px; min-height: 28px; border-radius: 6
 calendar > header > button:hover { background: rgba(255, 255, 255, 0.15); }
 calendar > grid > label.day-name { color: #888888; font-weight: bold; font-size: 8.5pt; }
 calendar > grid > label.day-number { padding: 6px; border-radius: 6px; }
-calendar > grid > label.day-number.other-month { color: #444444; }
+calendar > grid > label.day-number.other-month { color: #888888; }
 calendar > grid > label.day-number:selected { background: #ffffff; color: #000000; font-weight: bold; }
 scrolledwindow { background: none; }
 * { font-family: "Iosevka"; font-size: 11pt; color: #ffffff; }
@@ -112,7 +112,7 @@ scrolledwindow { background: none; }
 window.bar { background: transparent; }
 .bar-bg, .slot { background: rgba(0, 0, 0, ALPHA); }
 .slot:hover, .slot.tab { background: transparent; }
-.slot:hover > .pill, .slot.tab > .pill { background: rgba(38, 38, 38, 0.75); box-shadow: 0 0 0 30px rgba(0, 0, 0, ALPHA); }
+.slot:hover > .pill, .slot.tab > .pill { background: rgba(38, 38, 38, 0.88); box-shadow: 0 0 0 30px rgba(0, 0, 0, ALPHA); }
 .tray-item { padding: 0 5px; }
 image { -gtk-icon-size: 16px; }
 popover > contents { background: #000000; border: 1px solid #ffffff; border-radius: 10px; padding: 4px; }
