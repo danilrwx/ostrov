@@ -719,6 +719,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ostrov"
+version = "0.1.0"
+dependencies = [
+ "async-channel",
+ "glib-unix",
+ "gtk4",
+ "gtk4-layer-shell",
+ "serde_json",
+ "system-tray",
+ "tokio",
+ "zbus",
+]
+
+[[package]]
 name = "pango"
 version = "0.22.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -791,20 +805,6 @@ name = "r-efi"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
-
-[[package]]
-name = "rbar"
-version = "0.1.0"
-dependencies = [
- "async-channel",
- "glib-unix",
- "gtk4",
- "gtk4-layer-shell",
- "serde_json",
- "system-tray",
- "tokio",
- "zbus",
-]
 
 [[package]]
 name = "rustc_version"

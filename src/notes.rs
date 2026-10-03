@@ -1,4 +1,4 @@
-//! Notifications, rbar being the notification server (org.freedesktop.Notifications over zbus, in its own Tokio
+//! Notifications, ostrov being the notification server (org.freedesktop.Notifications over zbus, in its own Tokio
 //! thread). Toasts at the top right under the bar: the app, the summary, the body, the actions as buttons; a
 //! click runs the default action, a right click dismisses; gone after their timeout (5 s unless they say), a
 //! critical one stays. What bin/wm-fnkeys sends (app "fnkeys": a level in its "value" hint, or a word, its icon
@@ -95,7 +95,7 @@ impl Server {
     }
 
     fn get_server_information(&self) -> (String, String, String, String) {
-        ("rbar".into(), "dotfiles".into(), "0.1".into(), "1.2".into())
+        ("ostrov".into(), "dotfiles".into(), "0.1".into(), "1.2".into())
     }
 
     #[zbus(signal)]
@@ -117,12 +117,12 @@ fn serve(tx: async_channel::Sender<In>, mut rx: tokio::sync::mpsc::UnboundedRece
             Ok(b) => match b.build().await {
                 Ok(c) => c,
                 Err(e) => {
-                    eprintln!("rbar: notifications: {e}");
+                    eprintln!("ostrov: notifications: {e}");
                     return;
                 }
             },
             Err(e) => {
-                eprintln!("rbar: notifications: {e}");
+                eprintln!("ostrov: notifications: {e}");
                 return;
             }
         };
@@ -256,7 +256,7 @@ pub fn start(app: &gtk4::Application) -> Rc<Notes> {
     let toast_win = gtk4::ApplicationWindow::new(app);
     toast_win.init_layer_shell();
     toast_win.set_layer(Layer::Overlay);
-    toast_win.set_namespace(Some("rbar-toast"));
+    toast_win.set_namespace(Some("ostrov-toast"));
     toast_win.set_anchor(Edge::Top, true);
     toast_win.set_anchor(Edge::Right, true);
     toast_win.set_margin(Edge::Top, 4);
@@ -271,7 +271,7 @@ pub fn start(app: &gtk4::Application) -> Rc<Notes> {
     let osd = gtk4::ApplicationWindow::new(app);
     osd.init_layer_shell();
     osd.set_layer(Layer::Overlay);
-    osd.set_namespace(Some("rbar-osd"));
+    osd.set_namespace(Some("ostrov-osd"));
     osd.set_anchor(Edge::Bottom, true);
     osd.set_margin(Edge::Bottom, 80);
     osd.set_default_size(300, -1);

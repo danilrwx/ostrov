@@ -40,7 +40,7 @@ impl Popup {
         let catcher = gtk4::ApplicationWindow::new(app);
         catcher.init_layer_shell();
         catcher.set_layer(Layer::Top);
-        catcher.set_namespace(Some("rbar-catcher"));
+        catcher.set_namespace(Some("ostrov-catcher"));
         for e in [Edge::Top, Edge::Bottom, Edge::Left, Edge::Right] {
             catcher.set_anchor(e, true);
         }

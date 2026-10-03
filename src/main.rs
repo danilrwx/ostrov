@@ -1,8 +1,9 @@
-//! rbar: a prototype of the Quickshell bar (~/dotfiles/config/quickshell) in Rust on GTK4 and
-//! gtk4-layer-shell, to weigh against it: Hyprland's workspaces as dots, the clock and the weather in the
-//! middle, at the right the layout, the tray (StatusNotifierItem with its DBusMenu) and the status (Wi-Fi,
-//! volume, battery). Wi-Fi, the weather and the layout from wmd watch, the volume from wpctl, the battery
-//! from sysfs, the workspaces from Hyprland's sockets, the tray from the system-tray crate.
+//! ostrov ("island" in Russian): the desktop's shell, everything in one place, in Rust on GTK4 and
+//! gtk4-layer-shell, in place of the Quickshell bar (~/dotfiles/config/quickshell). The bar: Hyprland's
+//! workspaces as dots, the clock and the weather in the middle, at the right the layout, the tray
+//! (StatusNotifierItem with its DBusMenu) and the status (Wi-Fi, volume, battery); out of its blocks the quick
+//! settings and the calendar; the notifications. The state from wmd watch, the workspaces from Hyprland's
+//! sockets, the tray from the system-tray crate.
 
 mod calendar;
 mod hub;
@@ -285,7 +286,7 @@ fn activate(app: &gtk4::Application) {
     let win = gtk4::ApplicationWindow::new(app);
     win.init_layer_shell();
     win.set_layer(Layer::Top);
-    win.set_namespace(Some("rbar"));
+    win.set_namespace(Some("ostrov"));
     win.add_css_class("bar");
     for e in [Edge::Top, Edge::Left, Edge::Right] {
         win.set_anchor(e, true);
@@ -322,7 +323,7 @@ fn activate(app: &gtk4::Application) {
     let start = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
     start.add_css_class("bar-bg");
     start.set_hexpand(true);
-    let mark = gtk4::Label::new(Some("rbar"));
+    let mark = gtk4::Label::new(Some("ostrov"));
     mark.set_margin_start(12);
     mark.add_css_class("mark");
     start.append(&mark);
@@ -477,7 +478,7 @@ fn activate(app: &gtk4::Application) {
             if t.is_empty() { t } else { format!(", {t}") }
         })));
     });
-    // a click on the status opens the quick settings, and so does SIGUSR1 (pkill -USR1 rbar: a key)
+    // a click on the status opens the quick settings, and so does SIGUSR1 (pkill -USR1 ostrov: a key)
     let p = panel.clone();
     glib_unix::unix_signal_add_local(10, move || {
         p.toggle();
@@ -535,7 +536,7 @@ fn activate(app: &gtk4::Application) {
 }
 
 fn main() -> glib::ExitCode {
-    let app = gtk4::Application::builder().application_id("dev.danil.rbar").build();
+    let app = gtk4::Application::builder().application_id("dev.danil.ostrov").build();
     app.connect_activate(activate);
     app.run()
 }

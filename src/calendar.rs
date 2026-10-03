@@ -1,7 +1,7 @@
 //! The calendar grown out of the bar's clock, as the Quickshell bar's date menu: at the left the player (MPRIS:
 //! art, track, artist, previous/play/next, how far in) over the notifications' history with Do Not Disturb and
 //! Clear; at the right today's weekday and date, the month (GTK's calendar, today inverted), the weather where
-//! wmd location put the machine. Everything from wmd's state but the history, rbar's own notifications.
+//! wmd location put the machine. Everything from wmd's state but the history, ostrov's own notifications.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -123,7 +123,7 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &impl IsA<gtk4::Widget
     right.append(&weather);
     body.append(&right);
 
-    let popup = Popup::new(app, "rbar-calendar", tab, Side::Center, 680, &body);
+    let popup = Popup::new(app, "ostrov-calendar", tab, Side::Center, 680, &body);
 
     // on every opening: today, this month
     let (wd, dt, c2) = (weekday.clone(), date.clone(), cal.clone());

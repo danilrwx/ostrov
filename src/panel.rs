@@ -483,11 +483,11 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Pane
     let headset_row = grid_row(&headset.root, None);
     col.append(&headset_row);
 
-    let popup = Popup::new(app, "rbar-panel", tab, Side::Right, 390, &col);
+    let popup = Popup::new(app, "ostrov-panel", tab, Side::Right, 390, &col);
     *closer.borrow_mut() = Some(popup.clone());
-    // RBAR_MENU=wifi opens with that menu unfolded: a look at one without a click
+    // OSTROV_MENU=wifi opens with that menu unfolded: a look at one without a click
     let m = menus.clone();
-    popup.on_open(move || m.set(&std::env::var("RBAR_MENU").unwrap_or_default()));
+    popup.on_open(move || m.set(&std::env::var("OSTROV_MENU").unwrap_or_default()));
 
     // Wi-Fi's passphrase asked for, and Bluetooth's pairing, kept across redraws
     let asking: Rc<RefCell<String>> = Rc::default();
