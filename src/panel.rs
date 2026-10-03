@@ -16,6 +16,7 @@ use gtk4::prelude::*;
 use gtk4::{glib, Align, Orientation};
 use serde_json::Value;
 
+use crate::style::{clear, label};
 use crate::hub::{bin, run, run_then, s, wmd, Hub};
 use crate::popup::{Popup, Side};
 
@@ -26,20 +27,7 @@ fn wmdc(args: &[&str]) {
     run(&v);
 }
 
-fn label(text: &str, class: &str) -> gtk4::Label {
-    let l = gtk4::Label::new(Some(text));
-    l.set_xalign(0.0);
-    if !class.is_empty() {
-        l.add_css_class(class);
-    }
-    l
-}
 
-fn clear(b: &gtk4::Box) {
-    while let Some(c) = b.first_child() {
-        b.remove(&c);
-    }
-}
 
 /// A menu row: an icon, its text, a note, a tick while on (the row inverted); a click picks it.
 fn row(icon: &str, text: &str, note: &str, on: bool, pick: impl Fn() + 'static) -> gtk4::Button {
@@ -296,7 +284,7 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Pane
     };
 
     let col = gtk4::Box::new(Orientation::Vertical, 10);
-    col.add_css_class("panel");
+    col.add_css_class("surface");
 
     // the header: the battery, then a screenshot, the lock, the power menu
     let head = gtk4::Box::new(Orientation::Horizontal, 8);

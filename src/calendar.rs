@@ -10,18 +10,11 @@ use std::time::Instant;
 use gtk4::prelude::*;
 use gtk4::{glib, Align, Orientation};
 
+use crate::style::label;
 use crate::hub::{s, wmd, Hub};
 use crate::notes::Notes;
 use crate::popup::{Popup, Side};
 
-fn label(text: &str, class: &str) -> gtk4::Label {
-    let l = gtk4::Label::new(Some(text));
-    l.set_xalign(0.0);
-    if !class.is_empty() {
-        l.add_css_class(class);
-    }
-    l
-}
 
 fn media(cmd: &str) {
     crate::hub::run(&[&wmd().to_string_lossy(), "media", cmd]);
@@ -29,7 +22,7 @@ fn media(cmd: &str) {
 
 pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &impl IsA<gtk4::Widget>, notes: &Rc<Notes>) -> Rc<Popup> {
     let body = gtk4::Box::new(Orientation::Horizontal, 14);
-    body.add_css_class("panel");
+    body.add_css_class("surface");
 
     // the left: the player, the notifications
     let left = gtk4::Box::new(Orientation::Vertical, 8);
@@ -141,9 +134,7 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &impl IsA<gtk4::Widget
     {
         let (list, n2) = (list.clone(), notes.clone());
         let draw = move || {
-            while let Some(c) = list.first_child() {
-                list.remove(&c);
-            }
+            crate::style::clear(&list);
             let hist = n2.history();
             if hist.is_empty() {
                 let l = label("No notifications", "dim");
@@ -213,9 +204,7 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &impl IsA<gtk4::Widget
             wicon.set_icon_name(w["icon"].as_str());
             wtemp.set_text(&format!("{}°  {}", w["temp"], s(w, &["text"])));
             wplace.set_text(&format!("{}   ↑{}° ↓{}°", s(w, &["place"]), w["high"], w["low"]));
-            while let Some(c) = hours.first_child() {
-                hours.remove(&c);
-            }
+            crate::style::clear(&hours);
             for h in w["hours"].as_array().into_iter().flatten() {
                 let col = gtk4::Box::new(Orientation::Vertical, 2);
                 let t = label(s(h, &["time"]), "dim");

@@ -193,7 +193,11 @@ impl Notes {
     /// click runs the default action, a right click (or any click, in the history) dismisses it.
     pub fn card(self: &Rc<Self>, n: &Note, history: bool) -> gtk4::Box {
         let card = gtk4::Box::new(Orientation::Vertical, 2);
-        card.add_css_class("card");
+        // in the history a card on the calendar, as a toast a surface of its own
+        card.add_css_class(if history { "card" } else { "surface" });
+        if !history {
+            card.add_css_class("toast");
+        }
         if n.critical {
             card.add_css_class("critical");
         }
@@ -262,9 +266,7 @@ pub fn start(app: &gtk4::Application) -> Rc<Notes> {
     toast_win.set_margin(Edge::Top, 4);
     toast_win.set_margin(Edge::Right, 6);
     toast_win.set_default_size(360, -1);
-    toast_win.add_css_class("panel-window");
     let toasts = gtk4::Box::new(Orientation::Vertical, 6);
-    toasts.add_css_class("toasts");
     toast_win.set_child(Some(&toasts));
 
     // the OSD, bottom centre: the icon, the words, the level as a bar
@@ -275,8 +277,8 @@ pub fn start(app: &gtk4::Application) -> Rc<Notes> {
     osd.set_anchor(Edge::Bottom, true);
     osd.set_margin(Edge::Bottom, 80);
     osd.set_default_size(300, -1);
-    osd.add_css_class("panel-window");
     let obox = gtk4::Box::new(Orientation::Horizontal, 14);
+    obox.add_css_class("surface");
     obox.add_css_class("osd");
     let oicon = gtk4::Image::new();
     oicon.set_pixel_size(22);

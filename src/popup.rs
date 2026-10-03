@@ -23,7 +23,10 @@ pub struct Popup {
     win: gtk4::ApplicationWindow,
     /// the popup unrolling down out of its tab as it opens, rolling back up as it closes, GNOME's way and short
     reveal: gtk4::Revealer,
-    tab: gtk4::Widget,
+    /// the bar's block it grows out of; the tray's menu changes it to the icon clicked
+    tab: RefCell<gtk4::Widget>,
+    side: Side,
+    gap: gtk4::Box,
     on_open: RefCell<Vec<Box<dyn Fn()>>>,
     closed: std::cell::Cell<Option<std::time::Instant>>,
     /// Hyprland's focus grab while it is open: a click outside it and the bar closes it
@@ -49,18 +52,26 @@ impl Popup {
         win.set_anchor(Edge::Bottom, true);
         if side == Side::Right {
             win.set_anchor(Edge::Right, true);
-            win.set_margin(Edge::Right, 6);
         }
         // the keyboard on demand: Hyprland gives it on the opening, so a passphrase, Escape, and its loss
         win.set_keyboard_mode(KeyboardMode::OnDemand);
         win.set_default_size(width, -1);
-        win.add_css_class("panel-window");
 
         let reveal = gtk4::Revealer::new();
         reveal.set_transition_type(gtk4::RevealerTransitionType::SlideDown);
         reveal.set_transition_duration(120);
         reveal.set_valign(Align::Start);
-        let popup = Rc::new(Popup { win: win.clone(), reveal: reveal.clone(), tab: tab.clone().upcast(), on_open: RefCell::default(), closed: Default::default(), grab: Default::default() });
+        let gap = gtk4::Box::new(Orientation::Horizontal, 0);
+        let popup = Rc::new(Popup {
+            win: win.clone(),
+            reveal: reveal.clone(),
+            tab: RefCell::new(tab.clone().upcast()),
+            side,
+            gap: gap.clone(),
+            on_open: RefCell::default(),
+            closed: Default::default(),
+            grab: Default::default(),
+        });
 
         let keys = gtk4::EventControllerKey::new();
         let p = popup.clone();
@@ -80,7 +91,6 @@ impl Popup {
         let left = gtk4::Box::new(Orientation::Horizontal, 0);
         left.add_css_class("edge");
         left.set_hexpand(true);
-        let gap = gtk4::Box::new(Orientation::Horizontal, 0);
         top.append(&left);
         top.append(&gap);
         if side == Side::Right {
@@ -105,7 +115,7 @@ impl Popup {
             }
             let Some(p) = p.upgrade() else { return };
             let mut grab = vec![w.clone().upcast::<gtk4::Window>()];
-            grab.extend(p.tab.root().and_downcast::<gtk4::Window>());
+            grab.extend(p.tab.borrow().root().and_downcast::<gtk4::Window>());
             let p2 = Rc::downgrade(&p);
             *p.grab.borrow_mut() = crate::wm::grab(&grab, move || {
                 if let Some(p) = p2.upgrade() {
@@ -117,20 +127,11 @@ impl Popup {
         reveal.connect_child_revealed_notify(move |r| {
             if let Some(p) = p.upgrade().filter(|_| !r.is_child_revealed() && !r.reveals_child()) {
                 p.win.set_visible(false);
-                p.tab.remove_css_class("tab");
+                p.tab.borrow().remove_css_class("tab");
                 crate::wm::nudge();
             }
         });
 
-        // on every opening the gap as wide as the tab's border box (width() is its content alone)
-        let tab2 = popup.tab.clone();
-        let inner = if side == Side::Right { 1 } else { 2 };
-        win.connect_map(move |_| {
-            let tw = tab2.compute_bounds(&tab2).map(|b| b.width().round() as i32).unwrap_or(0);
-            if tw > inner {
-                gap.set_size_request(tw - inner, -1);
-            }
-        });
         // the window runs down to the screen's bottom: a click in it under the popup, or beside it, closes it
         let click = gtk4::GestureClick::new();
         let p = Rc::downgrade(&popup);
@@ -166,12 +167,45 @@ impl Popup {
         for f in self.on_open.borrow().iter() {
             f();
         }
-        self.tab.add_css_class("tab");
+        self.place();
+        self.tab.borrow().add_css_class("tab");
         if self.win.is_visible() {
             // opened again while rolling up
             self.reveal.set_reveal_child(true);
         } else {
             self.win.set_visible(true);
+        }
+    }
+
+    /// Hung from another block (the tray's icons share one popup); closed, it hangs there from its next opening.
+    pub fn set_tab(&self, tab: &impl IsA<gtk4::Widget>) {
+        if self.is_open() {
+            self.tab.borrow().remove_css_class("tab");
+            *self.tab.borrow_mut() = tab.clone().upcast();
+            self.place();
+            self.tab.borrow().add_css_class("tab");
+        } else {
+            *self.tab.borrow_mut() = tab.clone().upcast();
+        }
+    }
+
+    pub fn tab(&self) -> gtk4::Widget {
+        self.tab.borrow().clone()
+    }
+
+    /// The gap as wide as the tab's border box (width() is its content alone); at the right, the popup's right
+    /// edge under the tab's.
+    fn place(&self) {
+        let tab = self.tab.borrow();
+        let Some(root) = tab.root() else { return };
+        let Some(b) = tab.compute_bounds(&root) else { return };
+        let inner = if self.side == Side::Right { 1 } else { 2 };
+        let tw = b.width().round() as i32;
+        if tw > inner {
+            self.gap.set_size_request(tw - inner, -1);
+        }
+        if self.side == Side::Right {
+            self.win.set_margin(Edge::Right, root.width() - (b.x() + b.width()).round() as i32);
         }
     }
 

@@ -12,10 +12,11 @@ mod lock;
 mod notes;
 mod panel;
 mod popup;
+mod style;
 mod wm;
 
 
-use hub::{home, Hub};
+use hub::Hub;
 
 use gtk4::prelude::*;
 use gtk4::{gdk, glib};
@@ -24,115 +25,6 @@ use system_tray::client::{ActivateRequest, Client};
 use system_tray::item::StatusNotifierItem;
 use system_tray::menu::{MenuItem, MenuType, ToggleState, ToggleType, TrayMenu};
 
-const CSS: &str = r#"
-/* the colours, set here alone: the panels' ground (the panels, the calendar, the tab, the tray's menus, toasts,
-   the OSD) and a hovered thing's */
-@define-color panel rgba(56, 56, 56, 0.88);
-@define-color hover rgba(255, 255, 255, 0.15);
-window { background: rgba(0, 0, 0, ALPHA); }
-window.panel-window { background: transparent; }
-/* the panel and the bar's tab it grows out of: the bar's hover (white at 15% over black), nearly solid so the
-   panel reads over whatever lies under it */
-.panel { background: @panel; border: 1px solid transparent; border-radius: 10px; padding: 14px; }
-.panel.attached { border-top: none; border-radius: 0 0 10px 10px; padding-top: 4px; }
-.edge { background: @panel; border-top: 1px solid transparent; border-left: 1px solid transparent; border-top-left-radius: 10px; min-height: 10px; }
-.gap { background: @panel; border-right: 1px solid transparent; min-height: 10px; }
-.gap-mid { background: @panel; min-height: 10px; }
-.edge-right { background: @panel; border-top: 1px solid transparent; border-right: 1px solid transparent; border-top-right-radius: 10px; min-height: 10px; }
-.panel label { font-size: 10pt; }
-.bold { font-weight: bold; }
-.dim { color: #888888; }
-.error { color: #cd0000; }
-.title { font-weight: bold; font-size: 11pt; }
-.battery { background: rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 0 14px; min-height: 40px; }
-button { background: none; border: none; box-shadow: none; outline: none; min-height: 0; min-width: 0; padding: 0; }
-button.round { background: rgba(255, 255, 255, 0.08); border: 1px solid #333333; border-radius: 6px; min-width: 40px; min-height: 40px; }
-button.round:hover, button.arrow:hover, button.flat-round:hover { background: @hover; }
-button.round.open { background: #ffffff; }
-button.round.open image { color: #000000; }
-button.arrow, button.flat-round { border-radius: 6px; min-width: 32px; min-height: 32px; }
-button.arrow image { transition: -gtk-icon-transform 100ms; }
-button.arrow.open { background: #ffffff; }
-button.arrow.open image { color: #000000; -gtk-icon-transform: rotate(90deg); }
-scale { padding: 0 4px; }
-scale trough { min-height: 14px; border-radius: 6px; background: rgba(255, 255, 255, 0.1); }
-scale trough highlight { border-radius: 6px; background: #ffffff; border: none; margin: 0; min-height: 14px; min-width: 0; }
-scale slider { min-width: 0; min-height: 0; margin: 0; background: none; box-shadow: none; border: none; }
-.toggle { background: rgba(255, 255, 255, 0.08); border: 1px solid #333333; border-radius: 6px; min-height: 48px; }
-.toggle.on { background: #ffffff; border-color: #ffffff; }
-.toggle.on label, .toggle.on image { color: #000000; }
-.toggle.on .toggle-sub { color: #333333; }
-.toggle-main { padding: 0 6px 0 14px; border-radius: 6px; }
-.toggle-main:hover { background: rgba(255, 255, 255, 0.08); }
-.toggle-title { font-weight: bold; }
-.toggle-sub { color: #888888; font-size: 8.5pt; }
-button.toggle-side { min-width: 40px; border-left: 1px solid #333333; border-radius: 0 6px 6px 0; }
-.toggle.on button.toggle-side { border-left-color: #999999; }
-.toggle.on button.toggle-side.open { background: #d0d0d0; }
-.menu { background: rgba(255, 255, 255, 0.06); border: 1px solid #333333; border-radius: 6px; padding: 10px; margin-top: 4px; }
-.menu-head { margin-bottom: 6px; }
-.badge { background: #ffffff; color: #000000; border-radius: 6px; min-width: 32px; min-height: 32px; }
-button.item { padding: 0 10px; min-height: 34px; border-radius: 6px; }
-button.item:hover { background: @hover; }
-button.item.on { background: #ffffff; }
-button.item.on label, button.item.on image { color: #000000; }
-button.connect { background: #ffffff; padding: 0 10px; border-radius: 6px; min-height: 30px; }
-button.connect label { color: #000000; font-weight: bold; }
-entry, passwordentry { background: rgba(0, 0, 0, 0.2); border: 1px solid #333333; border-radius: 6px; min-height: 30px; padding: 0 8px; }
-entry:focus-within, passwordentry:focus-within { border-color: #ffffff; }
-separator { background: #333333; margin: 4px 4px; min-height: 1px; min-width: 1px; }
-.card { background: rgba(255, 255, 255, 0.06); border: 1px solid #333333; border-radius: 6px; padding: 10px; }
-.card.critical { border-color: #cd0000; }
-.toasts > .card { background: @panel; border-color: #ffffff; border-radius: 10px; }
-.osd { background: @panel; border: 1px solid #ffffff; border-radius: 10px; padding: 12px 16px; }
-.art { border-radius: 6px; }
-.date { font-size: 14pt; font-weight: bold; }
-button.chip, togglebutton.chip, button.chip:checked { background: rgba(255, 255, 255, 0.08); border: 1px solid #333333; border-radius: 6px; padding: 4px 10px; min-height: 0; }
-button.chip:hover { background: @hover; }
-button.chip:checked { background: #ffffff; }
-button.chip:checked label { color: #000000; }
-progressbar.progress trough { min-height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); }
-progressbar.progress progress { min-height: 3px; border-radius: 2px; background: #ffffff; }
-calendar { background: rgba(255, 255, 255, 0.06); border: 1px solid #333333; border-radius: 6px; padding: 6px; }
-calendar > header { border: none; }
-calendar > header > button { min-width: 28px; min-height: 28px; border-radius: 6px; }
-calendar > header > button:hover { background: @hover; }
-calendar > grid > label.day-name { color: #888888; font-weight: bold; font-size: 8.5pt; }
-calendar > grid > label.day-number { padding: 6px; border-radius: 6px; }
-calendar > grid > label.day-number.other-month { color: #888888; }
-calendar > grid > label.day-number:selected { background: #ffffff; color: #000000; font-weight: bold; }
-scrolledwindow { background: none; }
-* { font-family: "Iosevka"; font-size: 11pt; color: #ffffff; }
-.dot { min-width: 8px; min-height: 8px; border-radius: 4px; background: #666666; transition: background 100ms; }
-.dot.focused { background: #ffffff; }
-.dot:hover { background: #ffffff; }
-text.query { background: none; border: none; box-shadow: none; padding: 0; }
-.hit { padding: 0 10px; }
-.hit:hover { background: @hover; }
-.hit.picked { background: #ffffff; color: #000000; }
-window.lock { background: #000000; }
-.lock-time { font-size: 64pt; }
-passwordentry.lock-entry { background: #000000; border: 1px solid #ffffff; border-radius: 6px; min-width: 320px; min-height: 40px; }
-passwordentry.lock-entry:disabled { border-color: #888888; }
-/* a block of the bar: as a tab (.tab) it changes colours alone, the same border (transparent here) and margins
-   either way, so nothing in the bar moves as a panel opens */
-.pill { padding: 0 8px; margin: 2px 0 0 0; border: 1px solid transparent; border-bottom-width: 0;
-        border-radius: 6px 6px 0 0; transition: background 100ms; }
-/* the bar's black laid by its parts, not under the whole window: a block's slot is black but for the block
-   hovered or a tab, then its ground is the panel's straight over the wallpaper (the same grey, the same blur) and
-   the black left round its corners its shadow, clipped to the slot */
-window.bar { background: transparent; }
-.bar-bg, .slot { background: rgba(0, 0, 0, ALPHA); }
-.slot:hover, .slot.tab { background: transparent; }
-.slot:hover > .pill, .slot.tab > .pill { background: @panel; box-shadow: 0 0 0 30px rgba(0, 0, 0, ALPHA); }
-.tray-item { padding: 0 5px; }
-image { -gtk-icon-size: 16px; }
-/* the tray's menus in the panels' look, no outline */
-popover > contents { background: @panel; border: none; border-radius: 10px; padding: 6px; box-shadow: none; }
-popover button { background: none; border: none; box-shadow: none; padding: 6px 12px; border-radius: 6px; }
-popover button:hover { background: @hover; }
-popover separator { background: rgba(255, 255, 255, 0.1); margin: 4px 6px; }
-"#;
 
 /// The bar's mode, i3's bar mode toggle: docked (its strip taken from the windows), or hidden and shown over
 /// the windows while Super is held (ostrov bar toggle, peek, unpeek: config/hypr's binds).
@@ -232,7 +124,7 @@ fn fill_menu(
     depth: i32,
     at: (&str, &str),
     act: &tokio::sync::mpsc::UnboundedSender<ActivateRequest>,
-    pop: &gtk4::Popover,
+    pop: &std::rc::Rc<popup::Popup>,
 ) {
     for it in items.iter().filter(|i| i.visible) {
         if matches!(it.menu_type, MenuType::Separator) {
@@ -247,6 +139,7 @@ fn fill_menu(
         };
         let label = it.label.clone().unwrap_or_default().replace("__", "\u{0}").replace('_', "").replace('\u{0}', "_");
         let b = gtk4::Button::with_label(&format!("{mark}{label}"));
+        b.add_css_class("item");
         b.set_sensitive(it.enabled);
         b.set_margin_start(depth * 12);
         if let Some(l) = b.child().and_downcast::<gtk4::Label>() {
@@ -256,7 +149,7 @@ fn fill_menu(
             let (act, address, path, id, pop) = (act.clone(), at.0.to_string(), at.1.to_string(), it.id, pop.clone());
             b.connect_clicked(move |_| {
                 let _ = act.send(ActivateRequest::MenuItem { address: address.clone(), menu_path: path.clone(), submenu_id: id });
-                pop.popdown();
+                pop.close();
             });
             bx.append(&b);
         } else {
@@ -299,32 +192,13 @@ fn activate(app: &gtk4::Application) {
     win.init_layer_shell();
     win.set_layer(Layer::Top);
     win.set_namespace(Some("ostrov"));
-    win.add_css_class("bar");
     for e in [Edge::Top, Edge::Left, Edge::Right] {
         win.set_anchor(e, true);
     }
     win.auto_exclusive_zone_enable();
     win.set_default_size(-1, 25);
 
-    let display = gdk::Display::default().unwrap();
-    // the bar's see-through, bin/theme's alpha (1 under dark), followed as bin/theme rewrites it
-    let css = gtk4::CssProvider::new();
-    let alpha_file = home().join(".cache/theme/alpha");
-    let load = {
-        let (css, f) = (css.clone(), alpha_file.clone());
-        move || {
-            let alpha = std::fs::read_to_string(&f).unwrap_or("1".into());
-            css.load_from_string(&CSS.replace("ALPHA", alpha.trim()));
-        }
-    };
-    load();
-    gtk4::style_context_add_provider_for_display(&display, &css, 900);
-    if let Ok(mon) = gtk4::gio::File::for_path(&alpha_file).monitor_file(gtk4::gio::FileMonitorFlags::NONE, gtk4::gio::Cancellable::NONE) {
-        mon.connect_changed(move |_, _, _, _| load());
-        // kept for the program's life
-        std::mem::forget(mon);
-    }
-    gtk4::IconTheme::for_display(&display).set_theme_name(Some("Adwaita"));
+    style::load();
 
     let bar = gtk4::CenterBox::new();
 
@@ -490,12 +364,19 @@ fn activate(app: &gtk4::Application) {
     let panel = panel::build(app, &hub, &status_slot);
     let notes = notes::start(app);
     let cal = calendar::build(app, &hub, &mid_slot, &notes);
+    // the tray's menus, a popup like the others hung from the icon clicked
+    let tray_body = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    tray_body.add_css_class("surface");
+    tray_body.add_css_class("tray-menu");
+    let tray_pop = popup::Popup::new(app, "ostrov-tray", &tray_box, popup::Side::Right, -1, &tray_body);
+
     // a click on the clock opens the calendar, one popup open at a time
     {
-        let (cal, pp) = (cal.clone(), panel.popup.clone());
+        let (cal, pp, tp) = (cal.clone(), panel.popup.clone(), tray_pop.clone());
         let click = gtk4::GestureClick::new();
         click.connect_released(move |_, _, _, _| {
             pp.close();
+            tp.close();
             cal.toggle();
         });
         mid.add_controller(click);
@@ -597,23 +478,27 @@ fn activate(app: &gtk4::Application) {
     }
     // a click elsewhere in the bar closes them (the bar takes no keyboard, so they keep theirs)
     {
-        let (panel, cal, mid_slot, status_slot) = (panel.clone(), cal.clone(), mid_slot.clone(), status_slot.clone());
+        let (panel, cal, mid_slot, status_slot, tray_box, tray_pop) =
+            (panel.clone(), cal.clone(), mid_slot.clone(), status_slot.clone(), tray_box.clone(), tray_pop.clone());
         let click = gtk4::GestureClick::new();
         click.connect_released(move |g, _, x, y| {
             let Some(w) = g.widget() else { return };
             let hit = w.pick(x, y, gtk4::PickFlags::DEFAULT);
-            if !hit.is_some_and(|h| h.is_ancestor(&mid_slot) || h.is_ancestor(&status_slot)) {
+            if !hit.is_some_and(|h| h.is_ancestor(&mid_slot) || h.is_ancestor(&status_slot) || h.is_ancestor(&tray_box)) {
                 panel.popup.close();
                 cal.close();
+                tray_pop.close();
             }
         });
         win.add_controller(click);
     }
     // a click on the status opens the quick settings
     let click = gtk4::GestureClick::new();
+    let (tp, c2, p2) = (tray_pop.clone(), cal.clone(), panel.clone());
     click.connect_released(move |_, _, _, _| {
-        cal.close();
-        panel.toggle();
+        c2.close();
+        tp.close();
+        p2.toggle();
     });
     status.add_controller(click);
     status.set_cursor_from_name(Some("pointer"));
@@ -624,9 +509,7 @@ fn activate(app: &gtk4::Application) {
     std::thread::spawn(move || tray(tray_tx, act_rx));
     glib::spawn_future_local(async move {
         while let Ok(items) = tray_rx.recv().await {
-            while let Some(c) = tray_box.first_child() {
-                tray_box.remove(&c);
-            }
+            crate::style::clear(&tray_box);
             for e in items {
                 let cell = pill();
                 cell.add_css_class("tray-item");
@@ -634,25 +517,29 @@ fn activate(app: &gtk4::Application) {
                 cell.set_cursor_from_name(Some("pointer"));
                 let click = gtk4::GestureClick::new();
                 click.set_button(0);
-                let (act, cell2) = (act_tx.clone(), cell.clone());
+                let cell_slot = slot(&cell);
+                let (act, cell_slot2, pop, body, panel, cal) =
+                    (act_tx.clone(), cell_slot.clone(), tray_pop.clone(), tray_body.clone(), panel.clone(), cal.clone());
                 click.connect_released(move |g, _, _, _| {
                     if g.current_button() == 3 || e.item.item_is_menu {
                         let Some(menu) = &e.menu else { return };
-                        let pop = gtk4::Popover::new();
-                        pop.set_has_arrow(false);
-                        pop.set_parent(&cell2);
-                        let bx = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+                        // the same icon again closes it
+                        if pop.is_open() && pop.tab() == cell_slot2.clone().upcast::<gtk4::Widget>() {
+                            return pop.close();
+                        }
+                        crate::style::clear(&body);
                         let path = e.item.menu.clone().unwrap_or_default();
-                        fill_menu(&bx, &menu.submenus, 0, (&e.address, &path), &act, &pop);
-                        pop.set_child(Some(&bx));
-                        pop.connect_closed(|p| p.unparent());
-                        pop.popup();
+                        fill_menu(&body, &menu.submenus, 0, (&e.address, &path), &act, &pop);
+                        panel.popup.close();
+                        cal.close();
+                        pop.set_tab(&cell_slot2);
+                        pop.open();
                     } else {
                         let _ = act.send(ActivateRequest::Default { address: e.address.clone(), x: 0, y: 0 });
                     }
                 });
                 cell.add_controller(click);
-                tray_box.append(&slot(&cell));
+                tray_box.append(&cell_slot);
             }
         }
     });

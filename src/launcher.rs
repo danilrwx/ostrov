@@ -150,9 +150,7 @@ impl Launcher {
     }
 
     fn draw(self: &Rc<Self>) {
-        while let Some(c) = self.row.first_child() {
-            self.row.remove(&c);
-        }
+        crate::style::clear(&self.row);
         let all = self.all.borrow();
         // the first hundred: past that no one tabs
         for (n, &i) in self.hits.borrow().iter().take(100).enumerate() {
