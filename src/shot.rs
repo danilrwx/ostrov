@@ -117,16 +117,15 @@ fn take() -> Result<Frame, String> {
     Ok(Frame { width, height, stride, format: gformat, flipped: t.flipped, data })
 }
 
-/// The region (x, y, w, h, in the frame's pixels) of a frame, as a PNG.
-fn png(f: &Frame, (x, y, w, h): (u32, u32, u32, u32)) -> Option<Vec<u8>> {
+/// The region (x, y, w, h, in the frame's pixels) of a frame: its rows, top first.
+fn crop(f: &Frame, (x, y, w, h): (u32, u32, u32, u32)) -> Option<Vec<u8>> {
     let mut rows = Vec::with_capacity((w * h * 4) as usize);
     for r in y..y + h {
         let src = if f.flipped { f.height - 1 - r } else { r };
         let at = (src * f.stride + x * 4) as usize;
         rows.extend_from_slice(f.data.get(at..at + (w * 4) as usize)?);
     }
-    let tex = gdk::MemoryTexture::new(w as i32, h as i32, f.format, &glib::Bytes::from_owned(rows), (w * 4) as usize);
-    Some(tex.save_to_png_bytes().to_vec())
+    Some(rows)
 }
 
 pub struct Shot {
@@ -224,9 +223,19 @@ impl Shot {
                 let px = |v: f64| (v * k).round() as u32;
                 let (x, y) = (px(x).min(frame.width - 1), px(y).min(frame.height - 1));
                 let (w, h) = (px(w).clamp(1, frame.width - x), px(h).clamp(1, frame.height - y));
-                if let Some(png) = png(&frame, (x, y, w, h)) {
-                    crate::clip::put(png, "png");
-                }
+                let Some(rows) = crop(&frame, (x, y, w, h)) else { return };
+                // a PNG of the whole screen takes a while: made off GTK's thread
+                let format = frame.format;
+                let (tx, rx) = async_channel::bounded(1);
+                std::thread::spawn(move || {
+                    let tex = gdk::MemoryTexture::new(w as i32, h as i32, format, &glib::Bytes::from_owned(rows), (w * 4) as usize);
+                    let _ = tx.send_blocking(tex.save_to_png_bytes().to_vec());
+                });
+                glib::spawn_future_local(async move {
+                    if let Ok(png) = rx.recv().await {
+                        crate::clip::put(png, "png");
+                    }
+                });
             })
         };
 
@@ -263,5 +272,8 @@ impl Shot {
         });
         win.add_controller(keys);
         win.present();
+        // the pointer to the frozen screen at once: Hyprland hands it over only on a motion, the first click
+        // lost without one
+        crate::wm::nudge();
     }
 }
