@@ -13,8 +13,8 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 
-mod audio;
-mod backlight;
+pub mod audio;
+pub mod backlight;
 mod battery;
 mod bt;
 mod calendar;

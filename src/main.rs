@@ -12,6 +12,7 @@ mod config;
 mod greet;
 mod hub;
 mod idle;
+mod keys;
 mod launcher;
 mod lock;
 mod notes;
@@ -41,7 +42,7 @@ thread_local! {
     static PROMPTS: std::cell::RefCell<Option<Rc<prompt::Prompts>>> = Default::default();
 }
 
-const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | windows | lock | awake | screenshot | \
+const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | windows | lock | key NAME | awake | screenshot | \
 capture FILE | record [--audio] | bar toggle|peek|unpeek | state | dump | BLOCK ARGS | SERVICE ARGS]";
 
 fn activate(app: &gtk4::Application) {
@@ -95,6 +96,8 @@ fn activate(app: &gtk4::Application) {
     record::init(app, &shot);
     let prompts = prompt::Prompts::new(app);
     polkit::start(&prompts);
+    keys::battery(&hub, &notes, &prompts);
+    let keys = keys::Keys::new(&hub, &notes);
     PROMPTS.with(|p| *p.borrow_mut() = Some(prompts));
 
     // ostrov ARGS, from a key or a script, handed over to this ostrov by GApplication
@@ -115,6 +118,7 @@ fn activate(app: &gtk4::Application) {
                 ["windows"] => switcher.open(),
                 ["record"] => record::toggle(false),
                 ["record", "--audio"] => record::toggle(true),
+                ["key", name] => keys.key(name)?,
                 ["bar", what @ ("toggle" | "peek" | "unpeek")] => {
                     match what {
                         "toggle" => host.docked.set(!host.docked.get()),

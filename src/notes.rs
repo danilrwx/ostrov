@@ -2,8 +2,9 @@
 //! thread). Toasts at the top right under the bar: the app, the summary, the body, the actions as buttons; a
 //! click runs the default action, a right click dismisses; gone after their timeout (5 s unless they say), a
 //! critical one stays. What bin/wm-fnkeys sends (app "fnkeys": a level in its "value" hint, or a word, its icon
-//! as the image) is the OSD instead, at the bottom centre. The rest stays in the history (the calendar's) until
-//! dismissed; Do Not Disturb keeps the toasts back, not the history.
+//! as the image) is the OSD instead, at the bottom centre; ostrov's own keys (keys.rs) show it directly (osd), its
+//! own warnings (the battery's) are posted directly too (post). The rest stays in the history (the calendar's)
+//! until dismissed; Do Not Disturb keeps the toasts back, not the history.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -43,7 +44,13 @@ enum Out {
 
 struct Server {
     tx: async_channel::Sender<In>,
-    next: std::sync::atomic::AtomicU32,
+}
+
+/// The next notification's id, the D-Bus clients' and ostrov's own drawn from the same count.
+static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+
+fn next_id() -> u32 {
+    NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
 fn hint_i32(h: &HashMap<String, OwnedValue>, k: &str) -> Option<i32> {
@@ -73,7 +80,7 @@ impl Server {
         hints: HashMap<String, OwnedValue>,
         expire_timeout: i32,
     ) -> u32 {
-        let id = if replaces_id != 0 { replaces_id } else { self.next.fetch_add(1, std::sync::atomic::Ordering::Relaxed) };
+        let id = if replaces_id != 0 { replaces_id } else { next_id() };
         let icon = if app_icon.is_empty() { hint_str(&hints, "image-path").unwrap_or_default() } else { app_icon };
         let note = Note {
             id,
@@ -109,7 +116,7 @@ impl Server {
 fn serve(tx: async_channel::Sender<In>, mut rx: tokio::sync::mpsc::UnboundedReceiver<Out>) {
     let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap();
     rt.block_on(async move {
-        let server = Server { tx, next: std::sync::atomic::AtomicU32::new(1) };
+        let server = Server { tx };
         let conn = match zbus::connection::Builder::session()
             .and_then(|b| b.name("org.freedesktop.Notifications"))
             .and_then(|b| b.serve_at("/org/freedesktop/Notifications", server))
@@ -145,6 +152,16 @@ pub struct Notes {
     toasts: gtk4::Box,
     toast_win: gtk4::ApplicationWindow,
     shown: RefCell<Vec<(u32, gtk4::Widget)>>,
+    osd: Osd,
+}
+
+/// The OSD's window and what it shows: the icon, the words, the level as a bar; hidden again by its timer.
+struct Osd {
+    win: gtk4::ApplicationWindow,
+    icon: gtk4::Image,
+    text: gtk4::Label,
+    level: gtk4::ProgressBar,
+    hide: Rc<RefCell<Option<glib::SourceId>>>,
 }
 
 impl Notes {
@@ -184,6 +201,64 @@ impl Notes {
         });
         self.toast_win.set_visible(!self.shown.borrow().is_empty());
     }
+    /// The OSD up for ms: an icon (a name), the words, a level 0 to 100 as a bar under them, or none.
+    pub fn osd(&self, icon: &str, text: &str, level: Option<i32>, ms: u64) {
+        let o = &self.osd;
+        o.icon.set_icon_name(Some(icon));
+        o.text.set_text(text);
+        o.level.set_visible(level.is_some());
+        o.level.set_fraction(level.unwrap_or(0).clamp(0, 100) as f64 / 100.0);
+        o.win.set_visible(true);
+        if let Some(id) = o.hide.borrow_mut().take() {
+            id.remove();
+        }
+        let (win, hide) = (o.win.clone(), o.hide.clone());
+        *o.hide.borrow_mut() = Some(glib::timeout_add_local_once(Duration::from_millis(ms), move || {
+            hide.borrow_mut().take();
+            win.set_visible(false);
+        }));
+    }
+
+    /// One of ostrov's own notifications, a toast and in the history as one over D-Bus would be: an icon, the
+    /// summary, the body; critical ones stay until dismissed.
+    pub fn post(self: &Rc<Self>, icon: &str, summary: &str, body: &str, critical: bool) {
+        let note = Note {
+            id: next_id(),
+            app: "ostrov".into(),
+            summary: summary.into(),
+            body: body.into(),
+            icon: icon.into(),
+            actions: Vec::new(),
+            critical,
+            timeout: 0,
+            level: None,
+        };
+        self.show(note);
+    }
+
+    /// A notification into the history, and up as a toast unless Do Not Disturb.
+    fn show(self: &Rc<Self>, note: Note) {
+        let id = note.id;
+        {
+            let mut h = self.history.borrow_mut();
+            h.retain(|x| x.id != id);
+            h.push(note.clone());
+        }
+        self.unshow(id);
+        if !*self.dnd.borrow() {
+            let card = self.card(&note, false);
+            self.toasts.append(&card);
+            self.shown.borrow_mut().push((id, card.upcast()));
+            self.toast_win.set_visible(true);
+            if !note.critical {
+                let ms = if note.timeout > 0 { note.timeout as u64 } else { 5000 };
+                let me = self.clone();
+                glib::timeout_add_local_once(Duration::from_millis(ms), move || me.unshow(id));
+            }
+        }
+        self.changed();
+    }
+
     fn invoke(&self, id: u32, key: &str) {
         let _ = self.out.send(Out::Invoke(id, key.to_string()));
         self.dismiss(id);
@@ -294,7 +369,6 @@ pub fn start(app: &gtk4::Application) -> Rc<Notes> {
     obox.append(&oicon);
     obox.append(&ocol);
     osd.set_child(Some(&obox));
-    let osd_hide: Rc<RefCell<Option<glib::SourceId>>> = Rc::default();
 
     let notes = Rc::new(Notes {
         history: RefCell::default(),
@@ -304,6 +378,7 @@ pub fn start(app: &gtk4::Application) -> Rc<Notes> {
         toasts,
         toast_win,
         shown: RefCell::default(),
+        osd: Osd { win: osd, icon: oicon, text: otext, level: olevel, hide: Rc::default() },
     });
 
     let n = notes.clone();
@@ -318,42 +393,12 @@ pub fn start(app: &gtk4::Application) -> Rc<Notes> {
                 }
                 In::Notify(note) if note.app == "fnkeys" => {
                     // the OSD: notify-send -i hands an icon name over as image-path
-                    oicon.set_icon_name(Some(note.icon.trim_start_matches("image://icon/")));
-                    otext.set_text(&if note.body.is_empty() { note.summary.clone() } else { format!("{}  {}", note.summary, note.body) });
-                    olevel.set_visible(note.level.is_some());
-                    olevel.set_fraction(note.level.unwrap_or(0) as f64 / 100.0);
-                    osd.set_visible(true);
-                    if let Some(id) = osd_hide.borrow_mut().take() {
-                        id.remove();
-                    }
-                    let (o2, h2) = (osd.clone(), osd_hide.clone());
+                    let (s, b) = (&note.summary, &note.body);
+                    let text = if b.is_empty() { s.clone() } else { format!("{s}  {b}") };
                     let ms = if note.timeout > 0 { note.timeout as u64 } else { 1500 };
-                    *osd_hide.borrow_mut() = Some(glib::timeout_add_local_once(Duration::from_millis(ms), move || {
-                        h2.borrow_mut().take();
-                        o2.set_visible(false);
-                    }));
+                    n.osd(note.icon.trim_start_matches("image://icon/"), &text, note.level, ms);
                 }
-                In::Notify(note) => {
-                    let id = note.id;
-                    {
-                        let mut h = n.history.borrow_mut();
-                        h.retain(|x| x.id != id);
-                        h.push(note.clone());
-                    }
-                    n.unshow(id);
-                    if !*n.dnd.borrow() {
-                        let card = n.card(&note, false);
-                        n.toasts.append(&card);
-                        n.shown.borrow_mut().push((id, card.upcast()));
-                        n.toast_win.set_visible(true);
-                        if !note.critical {
-                            let ms = if note.timeout > 0 { note.timeout as u64 } else { 5000 };
-                            let n2 = n.clone();
-                            glib::timeout_add_local_once(Duration::from_millis(ms), move || n2.unshow(id));
-                        }
-                    }
-                    n.changed();
-                }
+                In::Notify(note) => n.show(note),
             }
         }
     });

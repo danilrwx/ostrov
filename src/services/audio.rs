@@ -86,7 +86,7 @@ fn params<'a>(o: &'a Value, name: &str) -> impl Iterator<Item = &'a Value> {
 }
 
 /// A Props param's level as wpctl puts it: the cube root of the first channel's volume, to two places.
-fn volume(pr: &Value) -> f64 {
+fn cube_level(pr: &Value) -> f64 {
     pr["channelVolumes"][0].as_f64().map_or(0.0, |v| (v.cbrt() * 100.0).round() / 100.0)
 }
 
@@ -162,7 +162,7 @@ fn parse(objs: &[Value]) -> Audio {
                     name: app_name(p),
                     icon: str(p, &["application.icon_name"]).into(),
                     bin: str(p, &["application.process.binary"]).into(),
-                    volume: volume(param(o, "Props")),
+                    volume: cube_level(param(o, "Props")),
                 });
                 continue;
             }
@@ -191,7 +191,7 @@ fn parse(objs: &[Value]) -> Audio {
         // the default's level
         let pr = param(o, "Props");
         if def && !pr.is_null() {
-            let level = volume(pr);
+            let level = cube_level(pr);
             let mute = pr["mute"].as_bool().unwrap_or(false);
             if sink {
                 (a.volume, a.muted) = (level, mute);
@@ -377,6 +377,46 @@ pub async fn headset() -> Res {
     if status.success() { Ok(()) } else { Err(status.to_string()) }
 }
 
+/// The default output (sink) or input (source) as wpctl names it.
+fn default(sink: bool) -> &'static str {
+    if sink { "@DEFAULT_AUDIO_SINK@" } else { "@DEFAULT_AUDIO_SOURCE@" }
+}
+
+/// wpctl ARGS run to its end, blocking: the keys (keys.rs) want the level it leaves at once, before PipeWire's
+/// monitor has the state read again.
+fn wpctl(args: &[&str]) -> Result<String, String> {
+    let out = std::process::Command::new("wpctl").args(args).output().map_err(|e| e.to_string())?;
+    if !out.status.success() {
+        return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// wpctl get-volume's "Volume: 0.45 [MUTED]" as a level 0 to 100 and whether muted.
+fn parse_volume(s: &str) -> Option<(i32, bool)> {
+    let v: f64 = s.split_whitespace().nth(1)?.parse().ok()?;
+    Some(((v * 100.0).round() as i32, s.contains("[MUTED]")))
+}
+
+/// The default sink's or source's level 0 to 100 and whether muted.
+pub fn volume(sink: bool) -> Result<(i32, bool), String> {
+    let out = wpctl(&["get-volume", default(sink)])?;
+    parse_volume(&out).ok_or_else(|| format!("wpctl: {}", out.trim()))
+}
+
+/// The default sink's or source's volume changed by a step as wpctl takes it (2%+, 2%-), never past 100%; then
+/// its level and whether muted.
+pub fn step(sink: bool, by: &str) -> Result<(i32, bool), String> {
+    wpctl(&["set-volume", "-l", "1.0", default(sink), by])?;
+    volume(sink)
+}
+
+/// The default sink's or source's mute flipped; then its level and whether muted.
+pub fn mute(sink: bool) -> Result<(i32, bool), String> {
+    wpctl(&["set-mute", default(sink), "toggle"])?;
+    volume(sink)
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -394,6 +434,13 @@ mod tests {
                 {"id": 120, "name": "mpv", "icon": "mpv", "bin": "mpv", "volume": 0.5},
             ])
         );
+    }
+
+    #[test]
+    fn parse_volume() {
+        assert_eq!(super::parse_volume("Volume: 0.45\n"), Some((45, false)));
+        assert_eq!(super::parse_volume("Volume: 1.00 [MUTED]\n"), Some((100, true)));
+        assert_eq!(super::parse_volume("nothing"), None);
     }
 
     #[tokio::test]
