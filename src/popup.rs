@@ -24,6 +24,8 @@ pub struct Host {
     pub docked: Cell<bool>,
     pub peeking: Cell<bool>,
     pub launching: Cell<bool>,
+    /// the screen's size, the window's from the start (its own known only once laid out)
+    screen: (i32, i32),
     open: RefCell<Option<Weak<Popup>>>,
     grab: RefCell<Option<crate::wm::Grab>>,
 }
@@ -38,16 +40,16 @@ impl Host {
         for e in [Edge::Top, Edge::Left, Edge::Right] {
             win.set_anchor(e, true);
         }
-        let height = gtk4::gdk::Display::default()
+        let screen = gtk4::gdk::Display::default()
             .and_then(|d| d.monitors().item(0))
             .and_downcast::<gtk4::gdk::Monitor>()
-            .map_or(1080, |m| m.geometry().height());
+            .map_or((1920, 1080), |m| (m.geometry().width(), m.geometry().height()));
         let col = gtk4::Box::new(Orientation::Vertical, 0);
         strip.set_size_request(-1, BAR);
         col.append(strip);
         let layer = gtk4::Overlay::new();
         layer.set_child(Some(&col));
-        layer.set_size_request(-1, height);
+        layer.set_size_request(-1, screen.1);
         win.set_child(Some(&layer));
 
         let host = Rc::new(Host {
@@ -56,6 +58,7 @@ impl Host {
             docked: Cell::new(true),
             peeking: Cell::new(false),
             launching: Cell::new(false),
+            screen,
             open: RefCell::default(),
             grab: RefCell::default(),
         });
@@ -87,6 +90,13 @@ impl Host {
                 if let Some(p) = h.popup() {
                     p.close();
                 }
+            }
+        });
+        // the input set once there is a surface to set it on
+        let h = Rc::downgrade(&host);
+        win.connect_map(move |_| {
+            if let Some(h) = h.upgrade() {
+                h.apply();
             }
         });
         host.apply();
@@ -124,9 +134,10 @@ impl Host {
     /// Input over the strip and a popup's column (x, width) down to the screen's bottom.
     fn region(&self, column: Option<(i32, i32)>) {
         let Some(surface) = self.win.surface() else { return };
-        let r = gtk4::cairo::Region::create_rectangle(&gtk4::cairo::RectangleInt::new(0, 0, self.win.width().max(1), BAR));
+        let (sw, sh) = self.screen;
+        let r = gtk4::cairo::Region::create_rectangle(&gtk4::cairo::RectangleInt::new(0, 0, sw, BAR));
         if let Some((x, w)) = column {
-            let _ = r.union_rectangle(&gtk4::cairo::RectangleInt::new(x, BAR, w, self.win.height() - BAR));
+            let _ = r.union_rectangle(&gtk4::cairo::RectangleInt::new(x, BAR, w, sh - BAR));
         }
         surface.set_input_region(Some(&r));
     }
