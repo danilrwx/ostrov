@@ -81,8 +81,8 @@ fn keep(data: &[u8], kind: &str) {
     }
 }
 
-/// The history, newest first: each entry's id and what the launcher shows of it.
-pub fn list() -> Vec<(u64, String)> {
+/// The history, newest first: each entry's id, whether a picture, and what the launcher shows of it.
+pub fn list() -> Vec<(u64, bool, String)> {
     let _l = FILES.lock();
     entries()
         .into_iter()
@@ -95,9 +95,16 @@ pub fn list() -> Vec<(u64, String)> {
                 let kib = std::fs::metadata(&e.path).map_or(0, |m| m.len() / 1024);
                 format!("[{} picture, {kib} KiB]", e.kind)
             };
-            (e.id, shown)
+            (e.id, e.kind != "text", shown)
         })
         .collect()
+}
+
+/// An entry's data, and whether a picture.
+pub fn content(id: u64) -> Option<(bool, Vec<u8>)> {
+    let _l = FILES.lock();
+    let e = entries().into_iter().find(|e| e.id == id)?;
+    Some((e.kind != "text", std::fs::read(&e.path).ok()?))
 }
 
 pub fn delete(id: u64) {

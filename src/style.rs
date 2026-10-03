@@ -74,7 +74,7 @@ button.round:hover, button.arrow:hover, button.flat-round:hover, button.item:hov
 calendar > header > button:hover, .hit:hover { background: @hover; }
 button.round.open, button.arrow.open, button.item.on, button.chip:checked, .hit.picked { background: @accent; }
 button.round.open image, button.arrow.open image, button.item.on label, button.item.on image,
-button.chip:checked label, .hit.picked { color: @ink; }
+button.chip:checked label, .hit.picked label, .hit.picked image { color: @ink; }
 button.arrow image { transition: -gtk-icon-transform 100ms; }
 button.arrow.open image { -gtk-icon-transform: rotate(90deg); }
 button.item { padding: 0 10px; min-height: 34px; border-radius: 6px; }
@@ -130,6 +130,10 @@ calendar > grid > label.day-number:selected { background: @accent; color: @ink; 
 /* the launcher in it */
 text.query { background: none; border: none; box-shadow: none; padding: 0; }
 .hit { padding: 0 10px; }
+/* the clipboard entry picked, whole: its text in the terminal's font, its picture at most so big */
+.preview { padding: 10px; }
+.preview label { font-size: 10pt; }
+.preview picture { min-width: 0; min-height: 0; }
 
 window.wallpaper { background: @ground; }
 window.prompt { background: @shade; }

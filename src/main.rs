@@ -57,15 +57,22 @@ fn activate(app: &gtk4::Application) {
     let bar = bar::Bar::build(&host, &hub, &notes, [&l, &c, &r]);
     over.set_child(Some(&bar.strip));
 
-    // the launcher, over the bar between the left's blocks and the right's, the middle's hidden under it
+    // the launcher, over the bar between the left's blocks and the right's, the middle's hidden under it; the
+    // clipboard entry picked shown under it
+    let preview = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    preview.set_halign(gtk4::Align::Start);
+    preview.set_valign(gtk4::Align::Start);
+    preview.set_can_target(false);
     let place: Rc<std::cell::OnceCell<gtk4::Box>> = Rc::default();
     let launcher = {
         let (h, b, place) = (host.clone(), bar.clone(), place.clone());
+        let pv = preview.clone();
         launcher::Launcher::new(move |open| {
             if let Some(w) = place.get().filter(|_| open) {
                 let (start, end) = b.middle();
                 w.set_margin_start(start + 12);
                 w.set_margin_end(end + 12);
+                pv.set_margin_start(start + 12);
             }
             b.hide_middle(open);
             h.launching.set(open);
@@ -73,6 +80,8 @@ fn activate(app: &gtk4::Application) {
         })
     };
     let _ = place.set(launcher.widget.clone());
+    preview.append(&launcher.preview);
+    host.overlay(&preview);
     over.add_overlay(&launcher.widget);
     let lock = lock::build(app);
     idle::start(&lock, &cfg.idle);

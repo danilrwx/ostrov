@@ -1,6 +1,7 @@
 //! The launcher in the bar, dmenu's way: in place of the clock a prompt, what is typed, the apps it matches in a
-//! row (or the clipboard's history, clip.rs), the picked one inverted. Left, Right and Tab move, Enter
-//! launches (or copies back), Delete drops a clipboard entry, Escape closes. ostrov run ($mod+d), ostrov clip
+//! row (or the clipboard's history, clip.rs, a picture marked so, the picked entry shown whole under the bar), the
+//! picked one inverted. Left, Right, Tab and Ctrl+N, Ctrl+P move, Enter launches (or copies back), Delete drops a
+//! clipboard entry, Escape closes. ostrov run ($mod+d), ostrov clip
 //! ($mod+Shift+v).
 
 use std::cell::{Cell, RefCell};
@@ -16,15 +17,15 @@ use crate::hub::run;
 /// A hit: what the row shows, and what picking it does.
 enum Hit {
     App(gio::AppInfo),
-    /// an entry of the clipboard's history: its id, what is shown of it
-    Clip(u64, String),
+    /// an entry of the clipboard's history: its id, whether a picture, what is shown of it
+    Clip(u64, bool, String),
 }
 
 impl Hit {
     fn name(&self) -> String {
         match self {
             Hit::App(a) => a.name().to_string(),
-            Hit::Clip(_, shown) => shown.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(60).collect(),
+            Hit::Clip(_, _, shown) => shown.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(60).collect(),
         }
     }
 }
@@ -40,6 +41,10 @@ pub struct Launcher {
     row: gtk4::Box,
     scroll: gtk4::ScrolledWindow,
     on_toggle: Box<dyn Fn(bool)>,
+    /// the picked clipboard entry whole, under the bar: its text, or its picture
+    pub preview: gtk4::Box,
+    preview_text: gtk4::Label,
+    preview_picture: gtk4::Picture,
 }
 
 impl Launcher {
@@ -64,6 +69,29 @@ impl Launcher {
         widget.append(&query);
         widget.append(&scroll);
 
+        let preview = gtk4::Box::new(Orientation::Vertical, 0);
+        preview.add_css_class("surface");
+        preview.add_css_class("preview");
+        preview.set_halign(gtk4::Align::Start);
+        preview.set_valign(gtk4::Align::Start);
+        preview.set_margin_top(crate::popup::BAR + 6);
+        preview.set_visible(false);
+        preview.set_can_target(false);
+        let preview_text = gtk4::Label::new(None);
+        preview_text.set_xalign(0.0);
+        preview_text.set_wrap(true);
+        preview_text.set_wrap_mode(gtk4::pango::WrapMode::WordChar);
+        preview_text.set_max_width_chars(90);
+        preview_text.set_lines(24);
+        preview_text.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+        preview_text.set_selectable(false);
+        let preview_picture = gtk4::Picture::new();
+        preview_picture.set_content_fit(gtk4::ContentFit::ScaleDown);
+        preview_picture.set_size_request(-1, -1);
+        preview_picture.set_can_shrink(true);
+        preview.append(&preview_text);
+        preview.append(&preview_picture);
+
         let l = Rc::new(Launcher {
             widget,
             prompt,
@@ -75,6 +103,9 @@ impl Launcher {
             row,
             scroll,
             on_toggle: Box::new(on_toggle),
+            preview,
+            preview_text,
+            preview_picture,
         });
         let l2 = l.clone();
         l.query.connect_changed(move |_| {
@@ -86,7 +117,10 @@ impl Launcher {
         keys.connect_key_pressed(move |_, k, _, m| {
             let n = l2.hits.borrow().len();
             let back = m.contains(gtk4::gdk::ModifierType::SHIFT_MASK);
+            let ctrl = m.contains(gtk4::gdk::ModifierType::CONTROL_MASK);
             match k {
+                Key::n if ctrl && n > 0 => l2.set_picked((l2.picked.get() + 1) % n),
+                Key::p if ctrl && n > 0 => l2.set_picked((l2.picked.get() + n - 1) % n),
                 Key::Escape => l2.close(),
                 Key::Return | Key::KP_Enter => l2.pick(l2.picked.get()),
                 Key::Delete if l2.clip.get() => l2.delete(),
@@ -112,7 +146,7 @@ impl Launcher {
         self.clip.set(clip);
         self.prompt.set_text(if clip { "clip" } else { "run" });
         *self.all.borrow_mut() = if clip {
-            crate::clip::list().into_iter().map(|(id, shown)| Hit::Clip(id, shown)).collect()
+            crate::clip::list().into_iter().map(|(id, picture, shown)| Hit::Clip(id, picture, shown)).collect()
         } else {
             gio::AppInfo::all().into_iter().filter(|a| a.should_show()).map(Hit::App).collect()
         };
@@ -126,6 +160,7 @@ impl Launcher {
 
     pub fn close(&self) {
         self.widget.set_visible(false);
+        self.preview.set_visible(false);
         (self.on_toggle)(false);
     }
 
@@ -150,7 +185,11 @@ impl Launcher {
         let all = self.all.borrow();
         // the first hundred: past that no one tabs
         for (n, &i) in self.hits.borrow().iter().take(100).enumerate() {
-            let l = gtk4::Label::new(Some(&all[i].name()));
+            let l = gtk4::Box::new(Orientation::Horizontal, 6);
+            if let Hit::Clip(_, true, _) = all[i] {
+                l.append(&gtk4::Image::from_icon_name("image-x-generic-symbolic"));
+            }
+            l.append(&gtk4::Label::new(Some(&all[i].name())));
             l.add_css_class("hit");
             if n == self.picked.get() {
                 l.add_css_class("picked");
@@ -166,6 +205,34 @@ impl Launcher {
             l.add_controller(click);
             self.row.append(&l);
         }
+        drop(all);
+        self.show_preview();
+    }
+
+    /// The picked clipboard entry whole under the bar; nothing over the apps.
+    fn show_preview(&self) {
+        let id = self.hits.borrow().get(self.picked.get()).and_then(|&i| match self.all.borrow()[i] {
+            Hit::Clip(id, ..) => Some(id),
+            Hit::App(_) => None,
+        });
+        let Some((picture, data)) = id.and_then(crate::clip::content) else {
+            self.preview.set_visible(false);
+            return;
+        };
+        if picture {
+            // read at most 640 by 400: a full screen's picture would take its own size in the layout
+            let stream = gio::MemoryInputStream::from_bytes(&glib::Bytes::from_owned(data));
+            let pix = gtk4::gdk_pixbuf::Pixbuf::from_stream_at_scale(&stream, 640, 400, true, gio::Cancellable::NONE).ok();
+            #[allow(deprecated)]
+            let tex = pix.map(|p| gtk4::gdk::Texture::for_pixbuf(&p));
+            self.preview_picture.set_paintable(tex.as_ref());
+        } else {
+            let text: String = String::from_utf8_lossy(&data).chars().take(4000).collect();
+            self.preview_text.set_text(&text);
+        }
+        self.preview_text.set_visible(!picture);
+        self.preview_picture.set_visible(picture);
+        self.preview.set_visible(true);
     }
 
     /// The picked one inverted and scrolled into the row's view.
@@ -174,6 +241,7 @@ impl Launcher {
             old.downcast::<gtk4::Widget>().unwrap().remove_css_class("picked");
         }
         self.picked.set(n);
+        self.show_preview();
         let Some(w) = self.row.observe_children().item(n as u32).and_then(|o| o.downcast::<gtk4::Widget>().ok()) else { return };
         w.add_css_class("picked");
         let Some(b) = w.compute_bounds(&self.row) else { return };
@@ -204,7 +272,7 @@ impl Launcher {
                     let _ = a.launch(&[], ctx.as_ref());
                 }
             }
-            Some(Hit::Clip(id, _)) => crate::clip::copy(*id),
+            Some(Hit::Clip(id, ..)) => crate::clip::copy(*id),
             None if !typed.trim().is_empty() => run(&["sh", "-c", &typed]),
             None => {}
         }
@@ -213,7 +281,7 @@ impl Launcher {
     /// The picked clip out of the history.
     fn delete(self: &Rc<Self>) {
         let Some(i) = self.hits.borrow().get(self.picked.get()).copied() else { return };
-        if let Hit::Clip(id, _) = &self.all.borrow()[i] {
+        if let Hit::Clip(id, ..) = &self.all.borrow()[i] {
             crate::clip::delete(*id);
         }
         self.all.borrow_mut().remove(i);

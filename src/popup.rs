@@ -104,6 +104,11 @@ impl Host {
         host
     }
 
+    /// A widget laid over the window, drawn but taking no input (the launcher's preview).
+    pub fn overlay(&self, w: &impl IsA<gtk4::Widget>) {
+        self.layer.add_overlay(w);
+    }
+
     /// The popup open, if one is.
     pub fn popup(&self) -> Option<Rc<Popup>> {
         self.open.borrow().as_ref().and_then(Weak::upgrade).filter(|p| p.is_open())
