@@ -87,7 +87,7 @@ button.chip:checked { background: #ffffff; }
 button.chip:checked label { color: #000000; }
 progressbar.progress trough { min-height: 3px; border-radius: 2px; background: #333333; }
 progressbar.progress progress { min-height: 3px; border-radius: 2px; background: #ffffff; }
-calendar { background: none; border: 1px solid #333333; border-radius: 6px; padding: 6px; }
+calendar { background: rgba(255, 255, 255, 0.06); border: 1px solid #333333; border-radius: 6px; padding: 6px; }
 calendar > header { border: none; }
 calendar > header > button { min-width: 28px; min-height: 28px; border-radius: 6px; }
 calendar > header > button:hover { background: rgba(255, 255, 255, 0.15); }
