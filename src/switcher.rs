@@ -1,8 +1,10 @@
 //! The window switcher, held like Alt+Tab: `ostrov windows` (Super+Tab) opens it over the screen's middle with
 //! Hyprland's windows as cards, the last focused first, the one before the current picked; Super+Tab again, Tab,
 //! Right or Ctrl+N move on, Shift+Tab, Left or Ctrl+P back; Super let go, Enter or a click focuses the picked
-//! window, Escape leaves things as they were. Super let go before the switcher took the keyboard (a quick tap)
-//! goes straight to the window before.
+//! window, Escape leaves things as they were. Super's release is Hyprland's to tell (ostrov windows release, a
+//! transparent release bind: GTK has no word of Super held before the switcher had the keyboard). Shown only
+//! once Super has been held a moment: a quick tap goes straight to the window before, nothing flashing up,
+//! GNOME's way.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -65,6 +67,8 @@ pub struct Switcher {
     grid: gtk4::Grid,
     wins: RefCell<Vec<Win>>,
     picked: Cell<usize>,
+    /// Super let go with the switcher not up yet: its tap's release come before its opening
+    released: Cell<Option<std::time::Instant>>,
 }
 
 impl Switcher {
@@ -79,7 +83,7 @@ impl Switcher {
         grid.set_row_spacing(8);
         grid.set_column_spacing(8);
         win.set_child(Some(&grid));
-        let s = Rc::new(Switcher { win: win.clone(), grid, wins: RefCell::default(), picked: Cell::new(0) });
+        let s = Rc::new(Switcher { win: win.clone(), grid, wins: RefCell::default(), picked: Cell::new(0), released: Cell::new(None) });
 
         // in the capture phase: Tab would move GTK's focus first
         let keys = gtk4::EventControllerKey::new();
@@ -107,22 +111,6 @@ impl Switcher {
         });
         win.add_controller(keys);
 
-        // a quick tap: Super up before the keyboard came here, its release never seen. The modifiers arrive just
-        // after the keyboard does, so looked at a moment later
-        let me = Rc::downgrade(&s);
-        win.connect_is_active_notify(move |w| {
-            if !w.is_active() {
-                return;
-            }
-            let me = me.clone();
-            glib::timeout_add_local_once(std::time::Duration::from_millis(40), move || {
-                let Some(me) = me.upgrade().filter(|me| me.win.is_visible()) else { return };
-                let kb = gtk4::gdk::Display::default().and_then(|d| d.default_seat()).and_then(|s| s.keyboard());
-                if kb.is_some_and(|k| !k.modifier_state().contains(ModifierType::SUPER_MASK)) {
-                    me.pick(me.picked.get());
-                }
-            });
-        });
         s
     }
 
@@ -171,9 +159,32 @@ impl Switcher {
         *self.wins.borrow_mut() = wins;
         self.picked.set(0);
         self.set_picked(first);
+        // a tap whose release came first: the window before, nothing shown
+        if self.released.take().is_some_and(|at| at.elapsed() < std::time::Duration::from_millis(400)) {
+            self.win.set_visible(true);
+            return self.pick(first);
+        }
+        // up unseen, for the keyboard; seen once Super has been held 150 ms, unless let go before
+        self.grid.set_opacity(0.0);
         self.win.present();
+        let me = Rc::downgrade(self);
+        glib::timeout_add_local_once(std::time::Duration::from_millis(150), move || {
+            if let Some(me) = me.upgrade() {
+                me.grid.set_opacity(1.0);
+            }
+        });
         // the cards clickable at once: Hyprland hands the pointer to a new surface only on a motion
         crate::wm::nudge();
+    }
+
+    /// Super let go (Hyprland's release bind): the picked window, or, the switcher not up yet, kept for its
+    /// opening.
+    pub fn release(&self) {
+        if self.win.is_visible() {
+            self.pick(self.picked.get());
+        } else {
+            self.released.set(Some(std::time::Instant::now()));
+        }
     }
 
     fn card(&self, n: usize) -> Option<gtk4::Widget> {
@@ -198,13 +209,13 @@ impl Switcher {
         }
     }
 
+    /// Gone, the pointer left alone: moved, it would focus the window under it (follow_mouse), not the picked.
     fn close(&self) {
         self.win.set_visible(false);
-        crate::wm::nudge();
     }
 
-    /// The window focused, once the switcher is gone: Hyprland gives the keyboard back as it unmaps, which would
-    /// undo a focus asked before.
+    /// The window focused, once the switcher is gone: Hyprland gives the keyboard back to the window it had as
+    /// the layer goes, which would undo a focus asked before; asked again once that is surely over.
     fn pick(&self, n: usize) {
         if !self.win.is_visible() {
             return;
@@ -212,9 +223,12 @@ impl Switcher {
         let address = self.wins.borrow().get(n).map(|w| w.address.clone());
         self.close();
         if let Some(a) = address {
-            glib::timeout_add_local_once(std::time::Duration::from_millis(30), move || {
-                drop(crate::wm::hyprctl(&format!("dispatch focuswindow address:{a}")));
-            });
+            for ms in [30, 200] {
+                let a = a.clone();
+                glib::timeout_add_local_once(std::time::Duration::from_millis(ms), move || {
+                    drop(crate::wm::hyprctl(&format!("dispatch focuswindow address:{a}")));
+                });
+            }
         }
     }
 }

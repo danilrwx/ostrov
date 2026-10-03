@@ -121,6 +121,7 @@ fn activate(app: &gtk4::Application) {
                 ["awake"] => idle::set_awake(!idle::awake()),
                 ["capture", path] => shot::capture(path.to_string()),
                 ["windows"] => switcher.open(),
+                ["windows", "release"] => switcher.release(),
                 ["record"] => record::toggle(false),
                 ["record", "--audio"] => record::toggle(true),
                 ["key", name] => keys.key(name)?,
