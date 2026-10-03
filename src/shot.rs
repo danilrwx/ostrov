@@ -128,6 +128,20 @@ fn crop(f: &Frame, (x, y, w, h): (u32, u32, u32, u32)) -> Option<Vec<u8>> {
     Some(rows)
 }
 
+/// The whole screen as a PNG into a file, no region asked (ostrov capture FILE: for scripts).
+pub fn capture(path: String) {
+    std::thread::spawn(move || {
+        let r = take().and_then(|f| {
+            let rows = crop(&f, (0, 0, f.width, f.height)).ok_or("the frame came short")?;
+            let tex = gdk::MemoryTexture::new(f.width as i32, f.height as i32, f.format, &glib::Bytes::from_owned(rows), (f.width * 4) as usize);
+            tex.save_to_png(&path).map_err(|e| e.to_string())
+        });
+        if let Err(e) = r {
+            eprintln!("ostrov: capture: {e}");
+        }
+    });
+}
+
 pub struct Shot {
     app: gtk4::Application,
     busy: Cell<bool>,

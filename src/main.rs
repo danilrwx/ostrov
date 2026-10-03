@@ -37,7 +37,7 @@ thread_local! {
     static PROMPTS: std::cell::RefCell<Option<Rc<prompt::Prompts>>> = Default::default();
 }
 
-const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | lock | screenshot | bar toggle|peek|unpeek | state | dump | \
+const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | lock | screenshot | awake | capture FILE | bar toggle|peek|unpeek | state | dump | \
 BLOCK ARGS | SERVICE ARGS]";
 
 fn activate(app: &gtk4::Application) {
@@ -104,6 +104,8 @@ fn activate(app: &gtk4::Application) {
                 ["clip"] => launcher.toggle(true),
                 ["lock"] => lock.lock(),
                 ["screenshot"] => shot.take(),
+                ["awake"] => idle::set_awake(!idle::awake()),
+                ["capture", path] => shot::capture(path.to_string()),
                 ["bar", what @ ("toggle" | "peek" | "unpeek")] => {
                     match what {
                         "toggle" => host.docked.set(!host.docked.get()),
@@ -120,6 +122,9 @@ fn activate(app: &gtk4::Application) {
                     words.push(if host.docked.get() { "docked" } else { "hidden" });
                     if launcher.is_open() {
                         words.push("launcher");
+                    }
+                    if idle::awake() {
+                        words.push("awake");
                     }
                     return Ok(words.join(" "));
                 }

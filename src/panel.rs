@@ -470,14 +470,30 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
     col.append(&vless_menu);
 
     let headset = Toggle::new(&menus, "audio-headphones-symbolic", "Headset", None, || service(&["headset"]));
-    let headset_row = grid_row(&headset.root, None);
-    col.append(&headset_row);
+    // Keep Awake: idle neither locks nor turns the screens off while it is on (idle.rs)
+    let awake: Rc<RefCell<Option<Toggle>>> = Rc::default();
+    let a2 = awake.clone();
+    let keep = Toggle::new(&menus, "weather-clear-symbolic", "Keep Awake", None, move || {
+        crate::idle::set_awake(!crate::idle::awake());
+        if let Some(t) = a2.borrow().as_ref() {
+            t.set(crate::idle::awake(), "", if crate::idle::awake() { "the screen stays on" } else { "" });
+        }
+    });
+    col.append(&grid_row(&keep.root, Some(&headset.root)));
+    *awake.borrow_mut() = Some(keep);
 
     let popup = Popup::new(host, tab, Side::Right, 390, &col);
     *closer.borrow_mut() = Some(popup.clone());
     // every opening with the menus folded
     let m = menus.clone();
     popup.on_open(move || m.set(""));
+    // Keep Awake as it is now: ostrov awake flips it from outside too
+    let a3 = awake.clone();
+    popup.on_open(move || {
+        if let Some(t) = a3.borrow().as_ref() {
+            t.set(crate::idle::awake(), "", if crate::idle::awake() { "the screen stays on" } else { "" });
+        }
+    });
 
     // Wi-Fi's passphrase asked for, and Bluetooth's pairing, kept across redraws
     let asking: Rc<RefCell<String>> = Rc::default();
@@ -810,7 +826,10 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
 
             // the headset
             let hs = s(&st["audio"], &["headset"]);
-            headset_row.set_visible(!hs.is_empty());
+            headset.root.set_visible(!hs.is_empty());
+            if let Some(t) = awake.borrow().as_ref() {
+                t.set(crate::idle::awake(), "", if crate::idle::awake() { "the screen stays on" } else { "" });
+            }
             headset.set(hs == "handsfree", "", if hs == "handsfree" { "Handsfree, with the mic" } else { "Headphones" });
         }
     };

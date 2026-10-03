@@ -16,6 +16,18 @@ use wayland_protocols::ext::idle_notify::v1::client::ext_idle_notifier_v1::ExtId
 
 use crate::lock::Lock;
 
+/// Kept awake (the quick settings' Keep Awake, ostrov awake): idle neither locks nor turns the screens off; the
+/// lock before sleep and on lock-session stay.
+static AWAKE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn awake() -> bool {
+    AWAKE.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub fn set_awake(on: bool) {
+    AWAKE.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
 /// What the threads ask of GTK's.
 enum Ask {
     Lock,
@@ -62,6 +74,7 @@ impl Dispatch<ExtIdleNotifierV1, ()> for Idle {
 impl Dispatch<ExtIdleNotificationV1, Which> for Idle {
     fn event(s: &mut Self, _: &ExtIdleNotificationV1, e: ext_idle_notification_v1::Event, w: &Which, _: &Connection, _: &QueueHandle<Self>) {
         let ask = match (e, w) {
+            (ext_idle_notification_v1::Event::Idled, _) if awake() => return,
             (ext_idle_notification_v1::Event::Idled, Which::Lock) => Ask::Lock,
             (ext_idle_notification_v1::Event::Idled, Which::Off) => Ask::Screens(false),
             (ext_idle_notification_v1::Event::Resumed, Which::Off) => Ask::Screens(true),
