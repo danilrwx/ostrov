@@ -11,13 +11,13 @@ use gtk4::prelude::*;
 use gtk4::{glib, Align, Orientation};
 
 use crate::style::label;
-use crate::hub::{s, wmd, Hub};
+use crate::hub::{s, Hub};
 use crate::notes::Notes;
 use crate::popup::{Popup, Side};
 
 
 fn media(cmd: &str) {
-    crate::hub::run(&[&wmd().to_string_lossy(), "media", cmd]);
+    crate::hub::service(&["media", cmd]);
 }
 
 pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::Widget>, notes: &Rc<Notes>) -> Rc<Popup> {

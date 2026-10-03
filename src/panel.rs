@@ -17,15 +17,8 @@ use gtk4::{glib, Align, Orientation};
 use serde_json::Value;
 
 use crate::style::{clear, label};
-use crate::hub::{bin, run, run_then, s, wmd, Hub};
+use crate::hub::{bin, run, s, service, service_then, Hub};
 use crate::popup::{Popup, Side};
-
-fn wmdc(args: &[&str]) {
-    let w = wmd().to_string_lossy().into_owned();
-    let mut v = vec![w.as_str()];
-    v.extend_from_slice(args);
-    run(&v);
-}
 
 
 
@@ -352,7 +345,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
     col.append(&mic.root);
     let (ins, ins_items) = menus.menu("ins", "audio-input-microphone-symbolic", "Sound Input");
     col.append(&ins);
-    let bri = Slider::new("display-brightness-symbolic", |v| wmdc(&["brightness", &format!("{}", (v * 100.0).round() as i64)]));
+    let bri = Slider::new("display-brightness-symbolic", |v| service(&["brightness", &format!("{}", (v * 100.0).round() as i64)]));
     bri.root.append(&menus.arrow("night"));
     col.append(&bri.root);
 
@@ -371,7 +364,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
         hours.append(e);
     }
     let (f2, t2) = (from.clone(), to.clone());
-    let set_hours = move || wmdc(&["night", "time", &f2.text(), &t2.text()]);
+    let set_hours = move || service(&["night", "time", &f2.text(), &t2.text()]);
     let sh = Rc::new(set_hours);
     let s1 = sh.clone();
     from.connect_activate(move |_| s1());
@@ -391,7 +384,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
     let warm = Slider::new("night-light-symbolic", move |v| {
         let k = (6500.0 - v * 4000.0).round() as i64;
         k2.set_text(&format!("{k} K"));
-        wmdc(&["night", "preview", &k.to_string()]);
+        service(&["night", "preview", &k.to_string()]);
         // kept once the slider rests
         if let Some(id) = ws.borrow_mut().take() {
             id.remove();
@@ -399,7 +392,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
         let ws2 = ws.clone();
         *ws.borrow_mut() = Some(glib::timeout_add_local_once(Duration::from_millis(500), move || {
             ws2.borrow_mut().take();
-            wmdc(&["night", "temp", &k.to_string()]);
+            service(&["night", "temp", &k.to_string()]);
         }));
     });
     night_items.append(&warm.root);
@@ -421,12 +414,12 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
     let st = state.clone();
     let wifi = Toggle::new(&menus, "network-wireless-symbolic", "Wi-Fi", Some("wifi"), move || {
         let on = st.borrow()["wifi"]["on"].as_bool().unwrap_or(false);
-        wmdc(&["wifi", if on { "off" } else { "on" }]);
+        service(&["wifi", if on { "off" } else { "on" }]);
     });
     let st = state.clone();
     let bt = Toggle::new(&menus, "bluetooth-active-symbolic", "Bluetooth", Some("bt"), move || {
         let on = st.borrow()["bt"]["on"].as_bool().unwrap_or(false);
-        wmdc(&["bt", if on { "off" } else { "on" }]);
+        service(&["bt", if on { "off" } else { "on" }]);
     });
     col.append(&grid_row(&wifi.root, Some(&bt.root)));
     let (wifi_menu, wifi_items) = menus.menu("wifi", "network-wireless-symbolic", "Wi-Fi");
@@ -439,7 +432,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
         let order = ["power-saver", "balanced", "performance"];
         let cur = st.borrow()["power"]["active"].as_str().unwrap_or("balanced").to_string();
         let i = order.iter().position(|p| *p == cur).unwrap_or(1);
-        wmdc(&["power", "set", order[(i + 1) % 3]]);
+        service(&["power", "set", order[(i + 1) % 3]]);
     });
     let st = state.clone();
     let wall = Toggle::new(&menus, "preferences-desktop-wallpaper-symbolic", "Wallpaper", Some("theme"), move || {
@@ -474,7 +467,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
     let (vless_menu, vless_items) = menus.menu("vless", "network-vpn-symbolic", "VLESS");
     col.append(&vless_menu);
 
-    let headset = Toggle::new(&menus, "audio-headphones-symbolic", "Headset", None, || wmdc(&["headset"]));
+    let headset = Toggle::new(&menus, "audio-headphones-symbolic", "Headset", None, || service(&["headset"]));
     let headset_row = grid_row(&headset.root, None);
     col.append(&headset_row);
 
@@ -559,7 +552,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
                     ("time", "Scheduled", format!("{} – {}", s(n, &["from"]), s(n, &["to"]))),
                     ("sun", "Sunset to sunrise", sun),
                 ] {
-                    night_modes.append(&row("", text, &note, mode == m, move || wmdc(&["night", "mode", m])));
+                    night_modes.append(&row("", text, &note, mode == m, move || service(&["night", "mode", m])));
                 }
                 hours.set_visible(mode == "time");
                 from.set_text(s(n, &["from"]));
@@ -606,7 +599,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
                     let (ask, err, again2, ssid2) = (asking.clone(), wifi_error.clone(), again.clone(), ssid.clone());
                     let r = row(&icon, &ssid, if known { "" } else { "🔒" }, net["connected"].as_bool().unwrap_or(false), move || {
                         if known {
-                            wmdc(&["wifi", "connect", &ssid2]);
+                            service(&["wifi", "connect", &ssid2]);
                         } else {
                             let now = if *ask.borrow() == ssid2 { String::new() } else { ssid2.clone() };
                             *ask.borrow_mut() = now;
@@ -616,7 +609,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
                     });
                     if net["known"].as_bool().unwrap_or(false) {
                         let ssid3 = ssid.clone();
-                        on_right_click(&r, move || wmdc(&["wifi", "forget", &ssid3]));
+                        on_right_click(&r, move || service(&["wifi", "forget", &ssid3]));
                     }
                     wifi_items.append(&r);
                     // the passphrase right under the network asked for: Enter or Connect joins
@@ -647,8 +640,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
                                 go.set_label("Joining…");
                                 go.set_sensitive(false);
                                 let (ask, err, again) = (ask.clone(), err.clone(), again.clone());
-                                let w = wmd().to_string_lossy().into_owned();
-                                run_then(vec![w, "wifi".into(), "connect".into(), ssid.clone()], Some(p), move |r| {
+                                service_then(vec!["wifi".into(), "connect".into(), ssid.clone()], Some(p), move |r| {
                                     match r {
                                         Ok(()) => ask.borrow_mut().clear(),
                                         Err(e) => *err.borrow_mut() = e,
@@ -667,7 +659,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
                     }
                 }
                 wifi_items.append(&gtk4::Separator::new(Orientation::Horizontal));
-                wifi_items.append(&row("", "Scan", "", false, || wmdc(&["wifi", "scan"])));
+                wifi_items.append(&row("", "Scan", "", false, || service(&["wifi", "scan"])));
             }
 
             // Bluetooth
@@ -682,8 +674,8 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
                     let (addr, on) = (s(d, &["address"]).to_string(), d["connected"].as_bool().unwrap_or(false));
                     let icon = format!("{}-symbolic", if s(d, &["icon"]).is_empty() { "bluetooth" } else { s(d, &["icon"]) });
                     let a2 = addr.clone();
-                    let r = row(&icon, s(d, &["name"]), "", on, move || wmdc(&["bt", if on { "disconnect" } else { "connect" }, &a2]));
-                    on_right_click(&r, move || wmdc(&["bt", "forget", &addr]));
+                    let r = row(&icon, s(d, &["name"]), "", on, move || service(&["bt", if on { "disconnect" } else { "connect" }, &a2]));
+                    on_right_click(&r, move || service(&["bt", "forget", &addr]));
                     bt_items.append(&r);
                 }
                 bt_items.append(&gtk4::Separator::new(Orientation::Horizontal));
@@ -695,8 +687,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
                     }
                     *sc.borrow_mut() = true;
                     let (sc, again) = (sc.clone(), again2.clone());
-                    let w = wmd().to_string_lossy().into_owned();
-                    run_then(vec![w, "bt".into(), "scan".into()], None, move |_| {
+                    service_then(vec!["bt".into(), "scan".into()], None, move |_| {
                         *sc.borrow_mut() = false;
                         again();
                     });
@@ -714,8 +705,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
                         *pa.borrow_mut() = addr.clone();
                         err.borrow_mut().clear();
                         let (pa, err, again) = (pa.clone(), err.clone(), again2.clone());
-                        let w = wmd().to_string_lossy().into_owned();
-                        run_then(vec![w, "bt".into(), "pair".into(), addr.clone()], None, move |r| {
+                        service_then(vec!["bt".into(), "pair".into(), addr.clone()], None, move |r| {
                             pa.borrow_mut().clear();
                             if let Err(e) = r {
                                 *err.borrow_mut() = e;
@@ -741,7 +731,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
             if changed("power", pw.to_string()) {
                 clear(&power_items);
                 for p in ["performance", "balanced", "power-saver"] {
-                    power_items.append(&row(&format!("power-profile-{p}-symbolic"), names(p), "", pw == p, move || wmdc(&["power", "set", p])));
+                    power_items.append(&row(&format!("power-profile-{p}-symbolic"), names(p), "", pw == p, move || service(&["power", "set", p])));
                 }
             }
 

@@ -1,8 +1,8 @@
-//! The state wmd watch reports, shared by the bar and its panels: every new line replaces it and is handed to
-//! each part that asked, which redraws what it shows of it. And the little helpers they all use.
+//! The desktop's state, from ostrov's services (services/, wmd's port), shared by the bar and its panels: every
+//! new one replaces it and is handed to each part that asked, which redraws what it shows of it. The services'
+//! commands, and the little helpers they all use.
 
 use std::cell::RefCell;
-use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::rc::Rc;
@@ -16,23 +16,13 @@ pub struct Hub {
 }
 
 impl Hub {
-    /// The hub, fed from wmd watch for as long as the program runs.
+    /// The hub, fed from the services for as long as the program runs.
     pub fn start() -> Rc<Hub> {
         let hub = Rc::new(Hub { state: RefCell::new(Value::Null), subs: RefCell::new(Vec::new()) });
         let (tx, rx) = async_channel::unbounded::<Value>();
-        std::thread::spawn(move || {
-            loop {
-                if let Ok(child) = Command::new(wmd()).arg("watch").stdout(Stdio::piped()).spawn() {
-                    for line in BufReader::new(child.stdout.unwrap()).lines().map_while(Result::ok) {
-                        if let Ok(v) = serde_json::from_str(&line) {
-                            let _ = tx.send_blocking(v);
-                        }
-                    }
-                }
-                // back in a second should it ever exit
-                std::thread::sleep(std::time::Duration::from_secs(1));
-            }
-        });
+        let (cmd_tx, cmd_rx) = async_channel::unbounded();
+        crate::services::start(tx, cmd_rx);
+        COMMANDS.with(|c| *c.borrow_mut() = Some(cmd_tx));
         let h = hub.clone();
         glib::spawn_future_local(async move {
             while let Ok(v) = rx.recv().await {
@@ -61,10 +51,6 @@ pub fn home() -> PathBuf {
     PathBuf::from(std::env::var("HOME").unwrap_or_default())
 }
 
-pub fn wmd() -> PathBuf {
-    home().join("go/bin/wmd")
-}
-
 /// A script of ~/dotfiles/bin.
 pub fn bin(name: &str) -> String {
     home().join("dotfiles/bin").join(name).to_string_lossy().into_owned()
@@ -82,35 +68,34 @@ pub fn run(args: &[&str]) {
     }
 }
 
-/// Run a command with input on its stdin, and hand its outcome (Ok, or its stderr) to done on GTK's thread.
-pub fn run_then(args: Vec<String>, input: Option<String>, done: impl Fn(Result<(), String>) + 'static) {
-    let (tx, rx) = async_channel::bounded::<Result<(), String>>(1);
-    std::thread::spawn(move || {
-        let child = Command::new(&args[0])
-            .args(&args[1..])
-            .stdin(if input.is_some() { Stdio::piped() } else { Stdio::null() })
-            .stdout(Stdio::null())
-            .stderr(Stdio::piped())
-            .spawn();
-        let res = match child {
-            Err(e) => Err(e.to_string()),
-            Ok(mut c) => {
-                if let (Some(i), Some(mut sin)) = (input, c.stdin.take()) {
-                    use std::io::Write;
-                    let _ = writeln!(sin, "{i}");
-                }
-                match c.wait_with_output() {
-                    Ok(o) if o.status.success() => Ok(()),
-                    Ok(o) => Err(String::from_utf8_lossy(&o.stderr).trim().trim_start_matches("wmd: ").to_string()),
-                    Err(e) => Err(e.to_string()),
-                }
-            }
-        };
-        let _ = tx.send_blocking(res);
-    });
+type Request = (Vec<String>, Option<String>, async_channel::Sender<crate::services::Res>);
+
+thread_local! {
+    /// The way to the services' commands, set as the hub starts.
+    static COMMANDS: RefCell<Option<async_channel::Sender<Request>>> = const { RefCell::new(None) };
+}
+
+/// A service's command (wmd's words: wifi connect SSID, night mode sun), input what wmd read from its stdin, its
+/// outcome (Ok, or what went wrong) handed to done on GTK's thread.
+pub fn service_then(args: Vec<String>, input: Option<String>, done: impl Fn(crate::services::Res) + 'static) {
+    let (tx, rx) = async_channel::bounded(1);
+    let sent = COMMANDS.with(|c| c.borrow().as_ref().map(|c| c.send_blocking((args, input, tx)).is_ok()));
+    if sent != Some(true) {
+        return done(Err("no services".into()));
+    }
     glib::spawn_future_local(async move {
         if let Ok(r) = rx.recv().await {
             done(r);
+        }
+    });
+}
+
+/// A service's command, its failure said on stderr.
+pub fn service(args: &[&str]) {
+    let what = args.join(" ");
+    service_then(args.iter().map(|a| a.to_string()).collect(), None, move |r| {
+        if let Err(e) = r {
+            eprintln!("ostrov: {what}: {e}");
         }
     });
 }
