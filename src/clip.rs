@@ -114,13 +114,10 @@ pub fn delete(id: u64) {
     }
 }
 
-/// An entry back on the clipboard, ostrov its owner till another selection is made.
-pub fn copy(id: u64) {
-    let found = {
-        let _l = FILES.lock();
-        entries().into_iter().find(|e| e.id == id).and_then(|e| Some((std::fs::read(&e.path).ok()?, e.kind)))
-    };
-    let (Some((data, kind)), Some(w)) = (found, WATCH.get()) else { return };
+/// Data of a kind (text, png, jpeg) on the clipboard, ostrov its owner till another selection is made; the
+/// watcher keeps it in the history as any selection.
+pub fn put(data: Vec<u8>, kind: &str) {
+    let Some(w) = WATCH.get() else { return };
     let mimes: Vec<&str> = if kind == "text" {
         TEXT.to_vec()
     } else {
@@ -132,6 +129,17 @@ pub fn copy(id: u64) {
     }
     w.device.set_selection(Some(&source));
     let _ = w.conn.flush();
+}
+
+/// An entry back on the clipboard.
+pub fn copy(id: u64) {
+    let found = {
+        let _l = FILES.lock();
+        entries().into_iter().find(|e| e.id == id).and_then(|e| Some((std::fs::read(&e.path).ok()?, e.kind)))
+    };
+    if let Some((data, kind)) = found {
+        put(data, &kind);
+    }
 }
 
 /// What GTK's thread needs of the watcher's to put an entry back.

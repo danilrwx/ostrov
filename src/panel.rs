@@ -303,7 +303,9 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
     let p = panel.clone();
     head.append(&round("applets-screenshooter-symbolic", Box::new(move || {
         p();
-        run(&[&bin("screenshot-select")]);
+        // once the panel has rolled up out of the picture
+        let me = std::env::current_exe().unwrap_or_default();
+        run(&["sh", "-c", "sleep 0.2; exec \"$0\" screenshot", &me.to_string_lossy()]);
     })));
     let p = panel.clone();
     head.append(&round("system-lock-screen-symbolic", Box::new(move || {

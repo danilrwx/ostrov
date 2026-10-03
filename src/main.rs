@@ -18,6 +18,7 @@ mod polkit;
 mod popup;
 mod prompt;
 mod services;
+mod shot;
 mod style;
 mod wallpaper;
 mod wm;
@@ -36,7 +37,7 @@ thread_local! {
     static PROMPTS: std::cell::RefCell<Option<Rc<prompt::Prompts>>> = Default::default();
 }
 
-const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | lock | bar toggle|peek|unpeek | state | dump | \
+const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | lock | screenshot | bar toggle|peek|unpeek | state | dump | \
 BLOCK ARGS | SERVICE ARGS]";
 
 fn activate(app: &gtk4::Application) {
@@ -85,6 +86,7 @@ fn activate(app: &gtk4::Application) {
     over.add_overlay(&launcher.widget);
     let lock = lock::build(app);
     idle::start(&lock, &cfg.idle);
+    let shot = shot::Shot::new(app);
     let prompts = prompt::Prompts::new(app);
     polkit::start(&prompts);
     PROMPTS.with(|p| *p.borrow_mut() = Some(prompts));
@@ -101,6 +103,7 @@ fn activate(app: &gtk4::Application) {
                 ["run"] => launcher.toggle(false),
                 ["clip"] => launcher.toggle(true),
                 ["lock"] => lock.lock(),
+                ["screenshot"] => shot.take(),
                 ["bar", what @ ("toggle" | "peek" | "unpeek")] => {
                     match what {
                         "toggle" => host.docked.set(!host.docked.get()),
