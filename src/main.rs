@@ -12,6 +12,7 @@ mod lock;
 mod notes;
 mod panel;
 mod popup;
+mod services;
 mod style;
 mod wm;
 
