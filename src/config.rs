@@ -19,6 +19,10 @@
 //!     user = "login@example.com"                                    # https://caldav.icloud.com, Fastmail's,
 //!     password_command = "secret-tool lookup service caldav"      # Nextcloud's...; prints the app password
 //!     ics = ["https://example.org/calendar.ics"]                  # and/or calendars' shared links
+//!
+//!     [games]             # their windows focused, the power profile theirs (services/games.rs)
+//!     classes = ["dota2", "cs2", "steam_app_*"]
+//!     profile = "performance"
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -53,6 +57,20 @@ impl Default for Idle {
     }
 }
 
+/// The games (window classes; a trailing * a prefix) played in a power profile of their own (services/games.rs).
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct Games {
+    pub classes: Vec<String>,
+    pub profile: String,
+}
+
+impl Default for Games {
+    fn default() -> Games {
+        Games { classes: ["dota2", "cs2", "steam_app_*"].map(String::from).to_vec(), profile: "performance".into() }
+    }
+}
+
 /// The calendars: a CalDAV account (its password never here: a command prints it) and .ics links.
 #[derive(Deserialize)]
 #[serde(default)]
@@ -81,6 +99,7 @@ pub struct Config {
     pub idle: Idle,
     pub colors: BTreeMap<String, String>,
     pub calendar: Calendar,
+    pub games: Games,
 }
 
 pub fn path() -> PathBuf {

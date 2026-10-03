@@ -19,6 +19,7 @@ mod battery;
 mod bt;
 mod calendar;
 mod dbus;
+mod games;
 mod displays;
 mod keymap;
 mod location;
@@ -114,6 +115,7 @@ pub async fn watch(c: Arc<Ctx>, out: async_channel::Sender<Value>) {
     tokio::spawn(media::events(c.clone(), kick.clone()));
     tokio::spawn(audio::events(kick.clone()));
     tokio::spawn(displays::events(kick.clone()));
+    tokio::spawn(games::run(c.clone()));
 
     let mut last = Value::Null;
     let mut emit = async |c: &Ctx| {
