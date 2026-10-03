@@ -269,6 +269,8 @@ pub struct Panel {
     win: gtk4::ApplicationWindow,
     catcher: gtk4::ApplicationWindow,
     menus: Rc<Menus>,
+    // the bar's block the panel grows out of, a tab of it while open
+    tab: gtk4::Box,
 }
 
 impl Panel {
@@ -278,14 +280,23 @@ impl Panel {
         self.menus.set(&std::env::var("RBAR_MENU").unwrap_or_default());
         self.catcher.set_visible(open);
         self.win.set_visible(open);
+        self.mark(open);
     }
     pub fn close(&self) {
         self.win.set_visible(false);
         self.catcher.set_visible(false);
+        self.mark(false);
+    }
+    fn mark(&self, open: bool) {
+        if open {
+            self.tab.add_css_class("tab");
+        } else {
+            self.tab.remove_css_class("tab");
+        }
     }
 }
 
-pub fn build(app: &gtk4::Application, hub: &Rc<Hub>) -> Rc<Panel> {
+pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Panel> {
     // the catcher: the whole screen, see-through, under the panel; a click on it closes the panel
     let catcher = gtk4::ApplicationWindow::new(app);
     catcher.init_layer_shell();
@@ -306,7 +317,8 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>) -> Rc<Panel> {
     win.set_anchor(Edge::Top, true);
     win.set_anchor(Edge::Right, true);
     win.set_anchor(Edge::Bottom, true);
-    win.set_margin(Edge::Top, 29);
+    // right under the bar, against its tab
+    win.set_margin(Edge::Top, 0);
     win.set_margin(Edge::Right, 6);
     // the keyboard on a click into it: a passphrase, Escape
     win.set_keyboard_mode(KeyboardMode::OnDemand);
@@ -314,7 +326,7 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>) -> Rc<Panel> {
     win.add_css_class("panel-window");
 
     let menus = Rc::new(Menus::default());
-    let panel = Rc::new(Panel { win: win.clone(), catcher: catcher.clone(), menus: menus.clone() });
+    let panel = Rc::new(Panel { win: win.clone(), catcher: catcher.clone(), menus: menus.clone(), tab: tab.clone() });
 
     let click = gtk4::GestureClick::new();
     let p = panel.clone();
@@ -526,12 +538,33 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>) -> Rc<Panel> {
     let headset_row = grid_row(&headset.root, None);
     col.append(&headset_row);
 
-    col.set_valign(Align::Start);
-    win.set_child(Some(&col));
-    // the input region follows the panel as it grows and shrinks, frame by frame while a menu slides
+    // the panel grown out of the bar's tab: a top edge from its left corner to the tab, open under the tab
+    // (whose sides run on down as the panel's), then the panel with no top edge of its own
+    let shape = gtk4::Box::new(Orientation::Vertical, 0);
+    shape.set_valign(Align::Start);
+    let top = gtk4::Box::new(Orientation::Horizontal, 0);
+    let edge = gtk4::Box::new(Orientation::Horizontal, 0);
+    edge.add_css_class("edge");
+    edge.set_hexpand(true);
+    let gap = gtk4::Box::new(Orientation::Horizontal, 0);
+    gap.add_css_class("gap");
+    top.append(&edge);
+    top.append(&gap);
+    shape.append(&top);
+    col.add_css_class("attached");
+    shape.append(&col);
+    win.set_child(Some(&shape));
+    // the gap as wide as the tab; the input region over the panel as it grows and shrinks, frame by frame
+    // while a menu slides
     let last = RefCell::new((0, 0));
     let w2 = win.clone();
-    col.add_tick_callback(move |col, _| {
+    let tab2 = tab.clone();
+    shape.add_tick_callback(move |col, _| {
+        // the tab's border box (width() is its content alone, without its padding and border)
+        let tw = tab2.compute_bounds(&tab2).map(|b| b.width().round() as i32).unwrap_or(0);
+        if tw > 0 && gap.width_request() != tw - 1 {
+            gap.set_size_request(tw - 1, -1);
+        }
         let (w, h) = (col.width(), col.height());
         if *last.borrow() != (w, h) {
             *last.borrow_mut() = (w, h);

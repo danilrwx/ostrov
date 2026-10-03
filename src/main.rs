@@ -23,6 +23,10 @@ const CSS: &str = r#"
 window { background: rgba(0, 0, 0, ALPHA); }
 window.panel-window, window.catcher { background: transparent; }
 .panel { background: #000000; border: 1px solid #ffffff; border-radius: 10px; padding: 14px; }
+.panel.attached { border-top: none; border-radius: 0 0 10px 10px; padding-top: 4px; }
+.edge { background: #000000; border-top: 1px solid #ffffff; border-left: 1px solid #ffffff; border-top-left-radius: 10px; min-height: 10px; }
+.gap { background: #000000; border-right: 1px solid #ffffff; min-height: 10px; }
+.pill.tab { background: #000000; border: 1px solid #ffffff; border-bottom: none; border-radius: 6px 6px 0 0; margin: 2px 0 0 0; }
 .panel label { font-size: 10pt; }
 .bold { font-weight: bold; }
 .dim { color: #888888; }
@@ -359,7 +363,7 @@ fn activate(app: &gtk4::Application) {
 
     // wmd's state: Wi-Fi, the weather, the layout, the battery
     let hub = Hub::start();
-    let panel = panel::build(app, &hub);
+    let panel = panel::build(app, &hub, &status);
     hub.on(move |s| {
         let w = &s["wifi"];
         let icon = if !w["on"].as_bool().unwrap_or(false) {
