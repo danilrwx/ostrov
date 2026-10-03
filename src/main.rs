@@ -125,11 +125,11 @@ window.bar { background: transparent; }
 .slot:hover > .pill, .slot.tab > .pill { background: rgba(56, 56, 56, 0.88); box-shadow: 0 0 0 30px rgba(0, 0, 0, ALPHA); }
 .tray-item { padding: 0 5px; }
 image { -gtk-icon-size: 16px; }
-popover > contents { background: #000000; border: 1px solid #ffffff; border-radius: 10px; padding: 4px; }
-popover button { background: none; border: none; box-shadow: none; padding: 4px 12px; border-radius: 6px; }
-popover button:hover { background: #ffffff; }
-popover button:hover label { color: #000000; }
-popover separator { background: #333333; margin: 4px 6px; }
+/* the tray's menus in the panels' look: their grey (nearly solid, a popover gets no blur), no outline */
+popover > contents { background: rgba(56, 56, 56, 0.97); border: none; border-radius: 10px; padding: 6px; box-shadow: none; }
+popover button { background: none; border: none; box-shadow: none; padding: 6px 12px; border-radius: 6px; }
+popover button:hover { background: rgba(255, 255, 255, 0.15); }
+popover separator { background: rgba(255, 255, 255, 0.1); margin: 4px 6px; }
 "#;
 
 fn hypr_socket(name: &str) -> Option<String> {
