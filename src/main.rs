@@ -4,10 +4,13 @@
 //! volume, battery). Wi-Fi, the weather and the layout from wmd watch, the volume from wpctl, the battery
 //! from sysfs, the workspaces from Hyprland's sockets, the tray from the system-tray crate.
 
+mod hub;
+mod panel;
+
 use std::io::{BufRead, BufReader, Read, Write};
 use std::os::unix::net::UnixStream;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
+
+use hub::{home, Hub};
 
 use gtk4::prelude::*;
 use gtk4::{gdk, glib};
@@ -18,6 +21,50 @@ use system_tray::menu::{MenuItem, MenuType, ToggleState, ToggleType, TrayMenu};
 
 const CSS: &str = r#"
 window { background: rgba(0, 0, 0, ALPHA); }
+window.panel-window, window.catcher { background: transparent; }
+.panel { background: #000000; border: 1px solid #ffffff; border-radius: 10px; padding: 14px; }
+.panel label { font-size: 10pt; }
+.bold { font-weight: bold; }
+.dim { color: #888888; }
+.error { color: #cd0000; }
+.title { font-weight: bold; font-size: 11pt; }
+.battery { background: #1a1a1a; border-radius: 6px; padding: 0 14px; min-height: 40px; }
+button { background: none; border: none; box-shadow: none; outline: none; min-height: 0; min-width: 0; padding: 0; }
+button.round { background: #1a1a1a; border: 1px solid #333333; border-radius: 6px; min-width: 40px; min-height: 40px; }
+button.round:hover, button.arrow:hover, button.flat-round:hover { background: rgba(255, 255, 255, 0.15); }
+button.round.open { background: #ffffff; }
+button.round.open image { color: #000000; }
+button.arrow, button.flat-round { border-radius: 6px; min-width: 32px; min-height: 32px; }
+button.arrow image { transition: -gtk-icon-transform 100ms; }
+button.arrow.open { background: #ffffff; }
+button.arrow.open image { color: #000000; -gtk-icon-transform: rotate(90deg); }
+scale { padding: 0 4px; }
+scale trough { min-height: 14px; border-radius: 6px; background: #333333; }
+scale trough highlight { border-radius: 6px; background: #ffffff; border: none; }
+scale slider { min-width: 0; min-height: 0; margin: 0; background: none; box-shadow: none; border: none; }
+.toggle { background: #1a1a1a; border: 1px solid #333333; border-radius: 6px; min-height: 48px; }
+.toggle.on { background: #ffffff; border-color: #ffffff; }
+.toggle.on label, .toggle.on image { color: #000000; }
+.toggle.on .toggle-sub { color: #333333; }
+.toggle-main { padding: 0 6px 0 14px; border-radius: 6px; }
+.toggle-main:hover { background: rgba(255, 255, 255, 0.08); }
+.toggle-title { font-weight: bold; }
+.toggle-sub { color: #888888; font-size: 8.5pt; }
+button.toggle-side { min-width: 40px; border-left: 1px solid #333333; border-radius: 0 6px 6px 0; }
+.toggle.on button.toggle-side { border-left-color: #999999; }
+.toggle.on button.toggle-side.open { background: #d0d0d0; }
+.menu { background: #0d0d0d; border: 1px solid #333333; border-radius: 6px; padding: 10px; margin-top: 4px; }
+.menu-head { margin-bottom: 6px; }
+.badge { background: #ffffff; color: #000000; border-radius: 6px; min-width: 32px; min-height: 32px; }
+button.item { padding: 0 10px; min-height: 34px; border-radius: 6px; }
+button.item:hover { background: rgba(255, 255, 255, 0.15); }
+button.item.on { background: #ffffff; }
+button.item.on label, button.item.on image { color: #000000; }
+button.connect { background: #ffffff; padding: 0 10px; border-radius: 6px; min-height: 30px; }
+button.connect label { color: #000000; font-weight: bold; }
+entry, passwordentry { background: #000000; border: 1px solid #333333; border-radius: 6px; min-height: 30px; padding: 0 8px; }
+entry:focus-within, passwordentry:focus-within { border-color: #ffffff; }
+separator { background: #333333; margin: 4px 4px; min-height: 1px; }
 * { font-family: "Iosevka"; font-size: 11pt; color: #ffffff; }
 .dot { min-width: 8px; min-height: 8px; border-radius: 4px; background: #666666;
        transition: min-width 100ms ease-out, background 100ms; }
@@ -34,10 +81,6 @@ popover button:hover { background: #ffffff; }
 popover button:hover label { color: #000000; }
 popover separator { background: #333333; margin: 4px 6px; }
 "#;
-
-fn home() -> PathBuf {
-    PathBuf::from(std::env::var("HOME").unwrap_or_default())
-}
 
 fn hypr_socket(name: &str) -> Option<String> {
     let sig = std::env::var("HYPRLAND_INSTANCE_SIGNATURE").ok()?;
@@ -65,18 +108,6 @@ fn hypr_events(tx: async_channel::Sender<()>) {
             .any(|e| line.starts_with(&format!("{e}>>")))
         {
             let _ = tx.send_blocking(());
-        }
-    }
-}
-
-/// wmd watch's lines, parsed.
-fn wmd_watch(tx: async_channel::Sender<serde_json::Value>) {
-    let Ok(child) = Command::new(home().join("go/bin/wmd")).arg("watch").stdout(Stdio::piped()).spawn() else {
-        return;
-    };
-    for line in BufReader::new(child.stdout.unwrap()).lines().map_while(Result::ok) {
-        if let Ok(v) = serde_json::from_str(&line) {
-            let _ = tx.send_blocking(v);
         }
     }
 }
@@ -183,13 +214,6 @@ fn fill_menu(
     }
 }
 
-fn volume() -> (f64, bool) {
-    let out = Command::new("wpctl").args(["get-volume", "@DEFAULT_AUDIO_SINK@"]).output();
-    let s = out.map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
-    let v = s.split_whitespace().nth(1).and_then(|x| x.parse().ok()).unwrap_or(0.0);
-    (v, s.contains("MUTED"))
-}
-
 fn volume_icon((v, muted): (f64, bool)) -> &'static str {
     if muted || v == 0.0 {
         "audio-volume-muted-symbolic"
@@ -200,20 +224,6 @@ fn volume_icon((v, muted): (f64, bool)) -> &'static str {
     } else {
         "audio-volume-high-symbolic"
     }
-}
-
-fn battery_icon() -> String {
-    let read = |p: &str| std::fs::read_to_string(p).unwrap_or_default().trim().to_string();
-    let cap: i32 = read("/sys/class/power_supply/BAT0/capacity").parse().unwrap_or(0);
-    let level = (cap + 5) / 10 * 10;
-    let suffix = if read("/sys/class/power_supply/BAT0/status") == "Full" {
-        "-charged"
-    } else if read("/sys/class/power_supply/ADP1/online") == "1" {
-        "-charging"
-    } else {
-        ""
-    };
-    format!("battery-level-{level}{suffix}-symbolic")
 }
 
 fn pill() -> gtk4::Box {
@@ -337,43 +347,58 @@ fn activate(app: &gtk4::Application) {
     right.append(&status);
     bar.set_end_widget(Some(&right));
 
-    // once a second: the clock, the volume, the battery
+    // once a second: the clock
     let tick = move || {
         if let Ok(now) = glib::DateTime::now_local() {
             clock.set_text(&now.format("%a %b %-d  %H:%M").unwrap_or_default());
         }
-        vol.set_icon_name(Some(volume_icon(volume())));
-        bat.set_icon_name(Some(&battery_icon()));
         glib::ControlFlow::Continue
     };
     let _ = tick.clone()();
     glib::timeout_add_seconds_local(1, tick);
 
-    // wmd: Wi-Fi, the weather, the layout
-    let (wmd_tx, wmd_rx) = async_channel::unbounded::<serde_json::Value>();
-    std::thread::spawn(move || wmd_watch(wmd_tx));
-    glib::spawn_future_local(async move {
-        while let Ok(s) = wmd_rx.recv().await {
-            let w = &s["wifi"];
-            let icon = if !w["on"].as_bool().unwrap_or(false) {
-                "network-wireless-disabled-symbolic".to_string()
-            } else if w["ssid"].as_str().unwrap_or("").is_empty() {
-                "network-wireless-offline-symbolic".to_string()
-            } else {
-                let bars = ["none", "weak", "ok", "good", "excellent"];
-                format!("network-wireless-signal-{}-symbolic", bars[w["signal"].as_u64().unwrap_or(0).min(4) as usize])
-            };
-            wifi.set_icon_name(Some(&icon));
-            layout.set_text(if s["keymap"].as_str().unwrap_or("").contains("Russian") { "RU" } else { "US" });
-            let wt = s["weather"].as_object();
-            weather_icon.set_visible(wt.is_some());
-            weather.set_visible(wt.is_some());
-            if let Some(wt) = wt {
-                weather_icon.set_icon_name(wt["icon"].as_str());
-                weather.set_text(&format!("{}°", wt["temp"]));
-            }
+    // wmd's state: Wi-Fi, the weather, the layout, the battery
+    let hub = Hub::start();
+    let panel = panel::build(app, &hub);
+    hub.on(move |s| {
+        let w = &s["wifi"];
+        let icon = if !w["on"].as_bool().unwrap_or(false) {
+            "network-wireless-disabled-symbolic".to_string()
+        } else if w["ssid"].as_str().unwrap_or("").is_empty() {
+            "network-wireless-offline-symbolic".to_string()
+        } else {
+            let bars = ["none", "weak", "ok", "good", "excellent"];
+            format!("network-wireless-signal-{}-symbolic", bars[w["signal"].as_u64().unwrap_or(0).min(4) as usize])
+        };
+        wifi.set_icon_name(Some(&icon));
+        layout.set_text(if s["keymap"].as_str().unwrap_or("").contains("Russian") { "RU" } else { "US" });
+        let wt = s["weather"].as_object();
+        weather_icon.set_visible(wt.is_some());
+        weather.set_visible(wt.is_some());
+        if let Some(wt) = wt {
+            weather_icon.set_icon_name(wt["icon"].as_str());
+            weather.set_text(&format!("{}°", wt["temp"]));
         }
+        let a = &s["audio"];
+        vol.set_icon_name(Some(volume_icon((a["volume"].as_f64().unwrap_or(0.0), a["muted"].as_bool().unwrap_or(false)))));
+        let b = &s["battery"];
+        bat.set_visible(b["present"].as_bool().unwrap_or(false));
+        bat.set_icon_name(b["icon"].as_str());
+        bat.set_tooltip_text(Some(&format!("{}%{}", b["percent"].as_f64().unwrap_or(0.0).round(), {
+            let t = panel::battery_time(b);
+            if t.is_empty() { t } else { format!(", {t}") }
+        })));
     });
+    // a click on the status opens the quick settings, and so does SIGUSR1 (pkill -USR1 rbar: a key)
+    let p = panel.clone();
+    glib_unix::unix_signal_add_local(10, move || {
+        p.toggle();
+        glib::ControlFlow::Continue
+    });
+    let click = gtk4::GestureClick::new();
+    click.connect_released(move |_, _, _, _| panel.toggle());
+    status.add_controller(click);
+    status.set_cursor_from_name(Some("pointer"));
 
     // the tray: a click activates, a right click opens its menu in a popover
     let (tray_tx, tray_rx) = async_channel::unbounded::<Vec<TrayEntry>>();
