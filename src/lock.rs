@@ -1,6 +1,6 @@
 //! The lock screen, in the bar's look: black, the time large in the middle, the date under it, the password in a
 //! white-ruled box, a wrong one said in red. Through Wayland's session lock (the compositor shows nothing else
-//! until it lets go, gtk4-session-lock) and PAM's swaylock profile (login's auth). ostrov lock: $mod+Shift+x,
+//! until it lets go, gtk4-session-lock) and ostrov's PAM profile (login's auth). ostrov lock: $mod+Shift+x,
 //! the quick settings' button (loginctl lock-session), swayidle on idle and before sleep (bin/wl-autostart).
 
 use std::ffi::{c_char, c_int, c_void, CString};
@@ -151,7 +151,9 @@ extern "C" fn converse(n: c_int, msgs: *mut *const PamMessage, out: *mut *mut Pa
     0
 }
 
-/// The user's password right, by PAM's swaylock profile.
+/// The user's password right, by ostrov's PAM profile (/etc/pam.d/ostrov, the login's auth: dotfiles' install
+/// puts it), by the login's itself where it is not there yet: a profile missing would leave PAM's "other", which
+/// takes no password, and the screen locked for good.
 fn authenticate(password: &str) -> bool {
     let (Ok(user), Ok(pw)) = (CString::new(std::env::var("USER").unwrap_or_default()), CString::new(password)) else {
         return false;
@@ -159,7 +161,8 @@ fn authenticate(password: &str) -> bool {
     let conv = PamConv { conv: converse, data: pw.as_ptr() as *mut c_void };
     let mut h = std::ptr::null_mut();
     unsafe {
-        if pam_start(c"swaylock".as_ptr(), user.as_ptr(), &conv, &mut h) != 0 {
+        let service = if std::path::Path::new("/etc/pam.d/ostrov").exists() { c"ostrov" } else { c"login" };
+        if pam_start(service.as_ptr(), user.as_ptr(), &conv, &mut h) != 0 {
             return false;
         }
         let r = pam_authenticate(h, 0);

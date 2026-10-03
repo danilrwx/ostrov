@@ -150,15 +150,21 @@ pub fn load() {
         let (css, f) = (css.clone(), alpha_file.clone());
         move || {
             let alpha = std::fs::read_to_string(&f).unwrap_or("1".into());
-            css.load_from_string(&CSS.replace("ALPHA", alpha.trim()));
+            // the config's colours over the palette's, before the rules that take them
+            let own: String = crate::config::load().colors.iter().map(|(k, v)| format!("@define-color {k} {v};\n")).collect();
+            let (palette, rules) = CSS.split_at(CSS.find("/* the shapes").unwrap_or(0));
+            css.load_from_string(&format!("{palette}{own}{rules}").replace("ALPHA", alpha.trim()));
         }
     };
     load();
     gtk4::style_context_add_provider_for_display(&display, &css, 900);
-    if let Ok(mon) = gio::File::for_path(&alpha_file).monitor_file(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE) {
-        mon.connect_changed(move |_, _, _, _| load());
-        // kept for the program's life
-        std::mem::forget(mon);
+    for f in [alpha_file, crate::config::path()] {
+        if let Ok(mon) = gio::File::for_path(&f).monitor_file(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE) {
+            let load = load.clone();
+            mon.connect_changed(move |_, _, _, _| load());
+            // kept for the program's life
+            std::mem::forget(mon);
+        }
     }
     gtk4::IconTheme::for_display(&display).set_theme_name(Some("Adwaita"));
 }

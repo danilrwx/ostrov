@@ -7,6 +7,7 @@
 mod bar;
 mod calendar;
 mod clip;
+mod config;
 mod hub;
 mod idle;
 mod launcher;
@@ -38,9 +39,6 @@ thread_local! {
 const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | lock | bar toggle|peek|unpeek | state | dump | \
 BLOCK ARGS | SERVICE ARGS]";
 
-/// The bar's blocks, left, middle and right.
-const LAYOUT: [&[&str]; 3] = [&["workspaces"], &["clock"], &["layout", "tray", "status"]];
-
 fn activate(app: &gtk4::Application) {
     // the bar's window, the popups laid over it (popup.rs); the bar and the launcher over it its strip
     let over = gtk4::Overlay::new();
@@ -51,7 +49,12 @@ fn activate(app: &gtk4::Application) {
 
     let hub = Hub::start();
     let notes = notes::start(app);
-    let bar = bar::Bar::build(&host, &hub, &notes, LAYOUT);
+    let cfg = config::load();
+    fn names(v: &[String]) -> Vec<&str> {
+        v.iter().map(String::as_str).collect()
+    }
+    let (l, c, r) = (names(&cfg.bar.left), names(&cfg.bar.center), names(&cfg.bar.right));
+    let bar = bar::Bar::build(&host, &hub, &notes, [&l, &c, &r]);
     over.set_child(Some(&bar.strip));
 
     // the launcher, over the bar between the left's blocks and the right's, the middle's hidden under it
@@ -72,7 +75,7 @@ fn activate(app: &gtk4::Application) {
     let _ = place.set(launcher.widget.clone());
     over.add_overlay(&launcher.widget);
     let lock = lock::build(app);
-    idle::start(&lock);
+    idle::start(&lock, &cfg.idle);
     let prompts = prompt::Prompts::new(app);
     polkit::start(&prompts);
     PROMPTS.with(|p| *p.borrow_mut() = Some(prompts));

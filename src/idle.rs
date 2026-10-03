@@ -1,5 +1,5 @@
 //! Idle and sleep, in place of swayidle: the screen locked after 10 min without input and off after 15 (on
-//! again at the next), locked before the machine sleeps and on logind's lock-session (loginctl lock-session, the
+//! again at the next; the times config.rs's), locked before the machine sleeps and on logind's lock-session (loginctl lock-session, the
 //! quick settings' button). Idle as the compositor tells it (ext-idle-notify, its inhibitors honoured: a video
 //! playing keeps the screen on), on a Wayland connection and thread of its own; sleep and lock-session from
 //! logind, a delay inhibitor held so the lock is up before the machine goes down.
@@ -16,20 +16,19 @@ use wayland_protocols::ext::idle_notify::v1::client::ext_idle_notifier_v1::ExtId
 
 use crate::lock::Lock;
 
-/// Idle this long, the lock; this long, the screens off.
-const LOCK: Duration = Duration::from_secs(600);
-const OFF: Duration = Duration::from_secs(900);
-
 /// What the threads ask of GTK's.
 enum Ask {
     Lock,
     Screens(bool),
 }
 
-pub fn start(lock: &Rc<Lock>) {
+/// Idle and sleep watched: the lock after times.lock seconds idle, the screens off after times.screens_off (0
+/// for never, config.rs).
+pub fn start(lock: &Rc<Lock>, times: &crate::config::Idle) {
     let (tx, rx) = async_channel::unbounded::<Ask>();
     let t = tx.clone();
-    std::thread::spawn(move || idle(t));
+    let (lock_after, off_after) = (times.lock, times.screens_off);
+    std::thread::spawn(move || idle(t, lock_after, off_after));
     std::thread::spawn(move || logind(tx));
     let lock = lock.clone();
     glib::spawn_future_local(async move {
@@ -73,7 +72,7 @@ impl Dispatch<ExtIdleNotificationV1, Which> for Idle {
 }
 
 /// The compositor's idle notifications, for as long as it runs.
-fn idle(tx: async_channel::Sender<Ask>) {
+fn idle(tx: async_channel::Sender<Ask>, lock_after: u32, off_after: u32) {
     let Ok(conn) = Connection::connect_to_env() else { return };
     let Ok((globals, mut queue)) = registry_queue_init::<Idle>(&conn) else { return };
     let qh = queue.handle();
@@ -83,8 +82,8 @@ fn idle(tx: async_channel::Sender<Ask>) {
         eprintln!("ostrov: idle: no ext-idle-notify");
         return;
     };
-    let _lock = notifier.get_idle_notification(LOCK.as_millis() as u32, &seat, &qh, Which::Lock);
-    let _off = notifier.get_idle_notification(OFF.as_millis() as u32, &seat, &qh, Which::Off);
+    let _lock = (lock_after > 0).then(|| notifier.get_idle_notification(lock_after * 1000, &seat, &qh, Which::Lock));
+    let _off = (off_after > 0).then(|| notifier.get_idle_notification(off_after * 1000, &seat, &qh, Which::Off));
     let mut state = Idle(tx);
     while queue.blocking_dispatch(&mut state).is_ok() {}
 }
