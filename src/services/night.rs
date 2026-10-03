@@ -6,7 +6,6 @@
 //! TZif file once, as Go loads time.Local once.
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
-use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
@@ -53,70 +52,9 @@ fn save(c: &Config) -> Res {
     std::fs::write(night_file(), b + "\n").map_err(|e| e.to_string())
 }
 
-/// The local zone: its transitions (unix seconds), the offset from each on, and the offset before the first.
-type Zone = (Vec<i64>, Vec<i64>, i64);
-
-/// The local zone as Go finds it: $TZ unset /etc/localtime, empty UTC, a name one of /usr/share/zoneinfo's
-/// (":" before it allowed), or a file's path; UTC when it does not read.
-fn zone() -> &'static Zone {
-    static ZONE: OnceLock<Zone> = OnceLock::new();
-    ZONE.get_or_init(|| {
-        let path = match std::env::var("TZ") {
-            Err(_) => Some("/etc/localtime".to_string()),
-            Ok(tz) if tz.is_empty() => None,
-            Ok(tz) if tz.starts_with('/') => Some(tz),
-            Ok(tz) => Some(format!("/usr/share/zoneinfo/{}", tz.trim_start_matches(':'))),
-        };
-        path.and_then(|p| std::fs::read(p).ok()).and_then(|b| tzif(&b)).unwrap_or_default()
-    })
-}
-
-/// A TZif file's transitions and offsets, from its 64-bit part where it has one (version 2 on). Past the last
-/// transition its offset holds.
-// ponytail: the footer's POSIX TZ rule is not read, so a zone with summer time is right only up to its last
-// transition: 2037 in Ubuntu's "fat" files, sooner in "slim" ones; parse the footer if a system ships those.
-fn tzif(b: &[u8]) -> Option<Zone> {
-    let num = |at: usize, n: usize| -> Option<i64> {
-        let v = b.get(at..at + n)?.iter().fold(0u64, |a, &x| a << 8 | u64::from(x));
-        let shift = 64 - 8 * n as u32;
-        Some(((v << shift) as i64) >> shift)
-    };
-    let counts = |at: usize| -> Option<[usize; 6]> {
-        let mut c = [0; 6];
-        for (i, v) in c.iter_mut().enumerate() {
-            *v = num(at + 20 + 4 * i, 4)? as usize;
-        }
-        Some(c)
-    };
-    if b.get(..4)? != b"TZif" {
-        return None;
-    }
-    let [isut, isstd, leap, timecnt, typecnt, charcnt] = counts(0)?;
-    let (head, size) = if *b.get(4)? >= b'2' {
-        (44 + timecnt * 5 + typecnt * 6 + charcnt + leap * 8 + isstd + isut, 8)
-    } else {
-        (0, 4)
-    };
-    let [_, _, _, timecnt, _, _] = counts(head)?;
-    let body = head + 44;
-    let types = body + timecnt * (size + 1);
-    let utoff = |t: usize| num(types + 6 * t, 4);
-    let mut times = Vec::with_capacity(timecnt);
-    let mut offs = Vec::with_capacity(timecnt);
-    for i in 0..timecnt {
-        times.push(num(body + i * size, size)?);
-        offs.push(utoff(usize::from(*b.get(body + timecnt * size + i)?))?);
-    }
-    Some((times, offs, utoff(0)?))
-}
-
-/// Unix seconds as local ones: the zone's offset then added.
+/// Unix seconds as local ones: the local zone's offset then added (GLib's, its summer time and all).
 pub fn local(secs: i64) -> i64 {
-    let (times, offs, first) = zone();
-    match times.partition_point(|&t| t <= secs) {
-        0 => secs + first,
-        i => secs + offs[i - 1],
-    }
+    secs + gtk4::glib::DateTime::from_unix_local(secs).map_or(0, |d| d.utc_offset().as_seconds())
 }
 
 /// Now, in nanoseconds since the epoch.
