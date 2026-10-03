@@ -146,8 +146,15 @@ window.prompt { background: @shade; }
 /* the lock screen */
 window.lock { background: @lock; }
 .lock-time { font-size: 64pt; }
-passwordentry.lock-entry { background: @lock; border: 1px solid @accent; border-radius: 6px; min-width: 320px; min-height: 40px; }
-passwordentry.lock-entry:disabled { border-color: @dim; }
+.lock-entry { background: @lock; border: 1px solid @accent; border-radius: 6px; min-width: 320px; min-height: 40px; }
+.lock-entry:disabled { border-color: @dim; }
+/* the login screen (greet.rs): the lock screen's, a user and a session picked over the password */
+dropdown.lock-entry > button { padding: 0 12px; }
+.greet popover > contents { background: @lock; border: 1px solid @rule; border-radius: 6px; }
+.greet popover row:hover, .greet popover row:selected { background: @hover; border-radius: 6px; }
+.greet-power button { padding: 10px; border-radius: 6px; }
+.greet-power button:hover { background: @hover; }
+.greet-power image { -gtk-icon-size: 24px; }
 "#;
 
 /// The CSS on the display, the Adwaita icons, the bar's black reloaded as bin/theme changes it.

@@ -9,6 +9,7 @@ mod calc;
 mod calendar;
 mod clip;
 mod config;
+mod greet;
 mod hub;
 mod idle;
 mod launcher;
@@ -181,6 +182,10 @@ fn askpass(cl: &gtk4::gio::ApplicationCommandLine, args: &[String]) {
 }
 
 fn main() -> glib::ExitCode {
+    // the login screen, greetd's greeter (greet.rs): none of the desktop, nor the one ostrov
+    if std::env::args().nth(1).as_deref() == Some("greet") {
+        return greet::run();
+    }
     // one ostrov: run again, it hands its arguments to the running one and exits
     let app = gtk4::Application::builder()
         .application_id("dev.danil.ostrov")

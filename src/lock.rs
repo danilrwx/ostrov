@@ -40,35 +40,15 @@ fn face(inst: &Instance) -> gtk4::Box {
     let col = gtk4::Box::new(Orientation::Vertical, 14);
     col.set_halign(Align::Center);
     col.set_valign(Align::Center);
-    let time = gtk4::Label::new(None);
-    time.add_css_class("lock-time");
-    let date = gtk4::Label::new(None);
-    date.add_css_class("dim");
-    date.set_margin_bottom(30);
+    clock(&col);
     let entry = gtk4::PasswordEntry::new();
     entry.add_css_class("lock-entry");
     entry.set_alignment(0.5);
     entry.set_placeholder_text(Some("password"));
     let error = gtk4::Label::new(None);
     error.add_css_class("error");
-    col.append(&time);
-    col.append(&date);
     col.append(&entry);
     col.append(&error);
-
-    let tick = {
-        let (time, date) = (time.downgrade(), date.downgrade());
-        move || {
-            let (Some(time), Some(date)) = (time.upgrade(), date.upgrade()) else { return glib::ControlFlow::Break };
-            if let Ok(now) = glib::DateTime::now_local() {
-                time.set_text(&now.format("%H:%M").unwrap_or_default());
-                date.set_text(&now.format("%A, %-d %B").unwrap_or_default());
-            }
-            glib::ControlFlow::Continue
-        }
-    };
-    tick();
-    glib::timeout_add_seconds_local(1, tick);
     entry.connect_map(|e| {
         e.grab_focus();
     });
@@ -104,6 +84,30 @@ fn face(inst: &Instance) -> gtk4::Box {
         });
     });
     col
+}
+
+/// The time large and the date under it, ticking, appended to a column: the lock screen's and the login screen's.
+pub fn clock(col: &gtk4::Box) {
+    let time = gtk4::Label::new(None);
+    time.add_css_class("lock-time");
+    let date = gtk4::Label::new(None);
+    date.add_css_class("dim");
+    date.set_margin_bottom(30);
+    col.append(&time);
+    col.append(&date);
+    let tick = {
+        let (time, date) = (time.downgrade(), date.downgrade());
+        move || {
+            let (Some(time), Some(date)) = (time.upgrade(), date.upgrade()) else { return glib::ControlFlow::Break };
+            if let Ok(now) = glib::DateTime::now_local() {
+                time.set_text(&now.format("%H:%M").unwrap_or_default());
+                date.set_text(&now.format("%A, %-d %B").unwrap_or_default());
+            }
+            glib::ControlFlow::Continue
+        }
+    };
+    tick();
+    glib::timeout_add_seconds_local(1, tick);
 }
 
 // PAM, by hand: the three calls a check of a password takes and the conversation that hands it over
