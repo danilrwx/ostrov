@@ -18,6 +18,7 @@ mod panel;
 mod polkit;
 mod popup;
 mod prompt;
+mod record;
 mod services;
 mod shot;
 mod style;
@@ -90,6 +91,7 @@ fn activate(app: &gtk4::Application) {
     idle::start(&lock, &cfg.idle);
     let shot = shot::Shot::new(app);
     let switcher = switcher::Switcher::new(app);
+    record::init(app, &shot);
     let prompts = prompt::Prompts::new(app);
     polkit::start(&prompts);
     PROMPTS.with(|p| *p.borrow_mut() = Some(prompts));
@@ -110,6 +112,8 @@ fn activate(app: &gtk4::Application) {
                 ["awake"] => idle::set_awake(!idle::awake()),
                 ["capture", path] => shot::capture(path.to_string()),
                 ["windows"] => switcher.open(),
+                ["record"] => record::toggle(false),
+                ["record", "--audio"] => record::toggle(true),
                 ["bar", what @ ("toggle" | "peek" | "unpeek")] => {
                     match what {
                         "toggle" => host.docked.set(!host.docked.get()),

@@ -4,8 +4,8 @@
 //! history (clip.rs). ostrov screenshot: Print, $mod+Shift+S, the quick settings' button.
 
 use std::cell::{Cell, RefCell};
-use std::io::Read;
 use std::os::fd::AsFd;
+use std::os::unix::fs::FileExt;
 use std::rc::Rc;
 
 use gtk4::prelude::*;
@@ -13,16 +13,16 @@ use gtk4::{gdk, glib};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use wayland_client::globals::{registry_queue_init, GlobalListContents};
 use wayland_client::protocol::{wl_buffer::WlBuffer, wl_output::WlOutput, wl_registry::WlRegistry, wl_shm, wl_shm::WlShm, wl_shm_pool::WlShmPool};
-use wayland_client::{Connection, Dispatch, Proxy, QueueHandle, WEnum};
+use wayland_client::{Connection, Dispatch, EventQueue, Proxy, QueueHandle, WEnum};
 use wayland_protocols_wlr::screencopy::v1::client::zwlr_screencopy_frame_v1::{self, ZwlrScreencopyFrameV1};
 use wayland_protocols_wlr::screencopy::v1::client::zwlr_screencopy_manager_v1::ZwlrScreencopyManagerV1;
 
 /// The screen as taken: its pixels as the compositor wrote them.
-struct Frame {
-    width: u32,
-    height: u32,
+pub struct Frame {
+    pub width: u32,
+    pub height: u32,
     stride: u32,
-    format: gdk::MemoryFormat,
+    pub format: gdk::MemoryFormat,
     flipped: bool,
     data: Vec<u8>,
 }
@@ -68,71 +68,129 @@ impl Dispatch<ZwlrScreencopyFrameV1, ()> for Take {
     }
 }
 
-/// The screen (the first output) taken, off GTK's thread.
-fn take() -> Result<Frame, String> {
-    let conn = Connection::connect_to_env().map_err(|e| e.to_string())?;
-    let (globals, mut queue) = registry_queue_init::<Take>(&conn).map_err(|e| e.to_string())?;
-    let qh = queue.handle();
-    let manager = globals.bind::<ZwlrScreencopyManagerV1, _, _>(&qh, 1..=3, ()).map_err(|_| "no wlr-screencopy")?;
-    let shm = globals.bind::<WlShm, _, _>(&qh, 1..=1, ()).map_err(|e| e.to_string())?;
-    let output = globals.bind::<WlOutput, _, _>(&qh, 1..=1, ()).map_err(|e| e.to_string())?;
-    let frame = manager.capture_output(0, &output, &qh, ());
-    let mut t = Take::default();
-    // the buffer's size and format told, every one of them (version 3 says when) before one is made
-    while t.shm.is_none() || (manager.version() >= 3 && !t.buffer_done) {
-        queue.blocking_dispatch(&mut t).map_err(|e| e.to_string())?;
-        if t.failed {
-            return Err("the compositor would not copy the screen".into());
-        }
-    }
-    let (format, width, height, stride) = t.shm.ok_or("no shm buffer")?;
-    let gformat = match format {
-        wl_shm::Format::Argb8888 => gdk::MemoryFormat::B8g8r8a8,
-        wl_shm::Format::Xrgb8888 => gdk::MemoryFormat::B8g8r8x8,
-        wl_shm::Format::Abgr8888 => gdk::MemoryFormat::R8g8b8a8,
-        wl_shm::Format::Xbgr8888 => gdk::MemoryFormat::R8g8b8x8,
-        f => return Err(format!("a pixel format not read here: {f:?}")),
-    };
-    // the shared memory: a file in the runtime dir, unlinked once open
-    let dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".into());
-    let path = format!("{dir}/ostrov-shot-{}", std::process::id());
-    let mut file = std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(true).open(&path).map_err(|e| e.to_string())?;
-    let _ = std::fs::remove_file(&path);
-    let size = stride * height;
-    file.set_len(size as u64).map_err(|e| e.to_string())?;
-    let pool = shm.create_pool(file.as_fd(), size as i32, &qh, ());
-    let buffer = pool.create_buffer(0, width as i32, height as i32, stride as i32, format, &qh, ());
-    frame.copy(&buffer);
-    while !t.ready {
-        queue.blocking_dispatch(&mut t).map_err(|e| e.to_string())?;
-        if t.failed {
-            return Err("the compositor would not copy the screen".into());
-        }
-    }
-    let mut data = Vec::with_capacity(size as usize);
-    file.read_to_end(&mut data).map_err(|e| e.to_string())?;
-    buffer.destroy();
-    pool.destroy();
-    frame.destroy();
-    Ok(Frame { width, height, stride, format: gformat, flipped: t.flipped, data })
+/// The screen's copier: a Wayland connection of its own, off GTK's thread, and the shared memory the
+/// compositor copies into, kept for the next frame of the same size (a recording's, record.rs).
+pub struct Screen {
+    queue: EventQueue<Take>,
+    qh: QueueHandle<Take>,
+    manager: ZwlrScreencopyManagerV1,
+    shm: WlShm,
+    output: WlOutput,
+    buf: Option<Shm>,
 }
 
-/// The region (x, y, w, h, in the frame's pixels) of a frame: its rows, top first.
-fn crop(f: &Frame, (x, y, w, h): (u32, u32, u32, u32)) -> Option<Vec<u8>> {
-    let mut rows = Vec::with_capacity((w * h * 4) as usize);
-    for r in y..y + h {
-        let src = if f.flipped { f.height - 1 - r } else { r };
-        let at = (src * f.stride + x * 4) as usize;
-        rows.extend_from_slice(f.data.get(at..at + (w * 4) as usize)?);
-    }
-    Some(rows)
+/// The shared memory: a file in the runtime dir, unlinked once open, a buffer over it of the size the
+/// compositor asked for.
+struct Shm {
+    spec: (wl_shm::Format, u32, u32, u32),
+    file: std::fs::File,
+    pool: WlShmPool,
+    buffer: WlBuffer,
 }
+
+impl Screen {
+    pub fn open() -> Result<Screen, String> {
+        let conn = Connection::connect_to_env().map_err(|e| e.to_string())?;
+        let (globals, queue) = registry_queue_init::<Take>(&conn).map_err(|e| e.to_string())?;
+        let qh = queue.handle();
+        let manager = globals.bind::<ZwlrScreencopyManagerV1, _, _>(&qh, 1..=3, ()).map_err(|_| "no wlr-screencopy")?;
+        let shm = globals.bind::<WlShm, _, _>(&qh, 1..=1, ()).map_err(|e| e.to_string())?;
+        let output = globals.bind::<WlOutput, _, _>(&qh, 1..=1, ()).map_err(|e| e.to_string())?;
+        Ok(Screen { queue, qh, manager, shm, output, buf: None })
+    }
+
+    /// The first output taken: all of it, or a region of it (x, y, w, h in its logical coordinates, the frame
+    /// in its pixels), with the pointer or without.
+    pub fn frame(&mut self, region: Option<(i32, i32, i32, i32)>, pointer: bool) -> Result<Frame, String> {
+        let qh = self.qh.clone();
+        let frame = match region {
+            Some((x, y, w, h)) => self.manager.capture_output_region(pointer as i32, &self.output, x, y, w, h, &qh, ()),
+            None => self.manager.capture_output(pointer as i32, &self.output, &qh, ()),
+        };
+        let taken = self.copy(&frame);
+        frame.destroy();
+        taken
+    }
+
+    fn copy(&mut self, frame: &ZwlrScreencopyFrameV1) -> Result<Frame, String> {
+        let mut t = Take::default();
+        // the buffer's size and format told, every one of them (version 3 says when) before one is made
+        while t.shm.is_none() || (self.manager.version() >= 3 && !t.buffer_done) {
+            self.wait(&mut t)?;
+        }
+        let spec @ (format, width, height, stride) = t.shm.ok_or("no shm buffer")?;
+        let gformat = match format {
+            wl_shm::Format::Argb8888 => gdk::MemoryFormat::B8g8r8a8,
+            wl_shm::Format::Xrgb8888 => gdk::MemoryFormat::B8g8r8x8,
+            wl_shm::Format::Abgr8888 => gdk::MemoryFormat::R8g8b8a8,
+            wl_shm::Format::Xbgr8888 => gdk::MemoryFormat::R8g8b8x8,
+            f => return Err(format!("a pixel format not read here: {f:?}")),
+        };
+        let size = stride * height;
+        if self.buf.as_ref().is_none_or(|b| b.spec != spec) {
+            if let Some(old) = self.buf.take() {
+                old.buffer.destroy();
+                old.pool.destroy();
+            }
+            let dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".into());
+            let path = format!("{dir}/ostrov-shot-{}", std::process::id());
+            let file = std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(true).open(&path).map_err(|e| e.to_string())?;
+            let _ = std::fs::remove_file(&path);
+            file.set_len(size as u64).map_err(|e| e.to_string())?;
+            let pool = self.shm.create_pool(file.as_fd(), size as i32, &self.qh, ());
+            let buffer = pool.create_buffer(0, width as i32, height as i32, stride as i32, format, &self.qh, ());
+            self.buf = Some(Shm { spec, file, pool, buffer });
+        }
+        frame.copy(&self.buf.as_ref().ok_or("no shm buffer")?.buffer);
+        while !t.ready {
+            self.wait(&mut t)?;
+        }
+        let buf = self.buf.as_ref().ok_or("no shm buffer")?;
+        let mut data = vec![0; size as usize];
+        buf.file.read_exact_at(&mut data, 0).map_err(|e| e.to_string())?;
+        Ok(Frame { width, height, stride, format: gformat, flipped: t.flipped, data })
+    }
+
+    fn wait(&mut self, t: &mut Take) -> Result<(), String> {
+        self.queue.blocking_dispatch(t).map_err(|e| e.to_string())?;
+        if t.failed {
+            return Err("the compositor would not copy the screen".into());
+        }
+        Ok(())
+    }
+}
+
+impl Drop for Screen {
+    fn drop(&mut self) {
+        if let Some(b) = self.buf.take() {
+            b.buffer.destroy();
+            b.pool.destroy();
+        }
+    }
+}
+
+impl Frame {
+    /// The region (x, y, w, h, in the frame's pixels): its rows, top first.
+    pub fn crop(&self, (x, y, w, h): (u32, u32, u32, u32)) -> Option<Vec<u8>> {
+        let mut rows = Vec::with_capacity((w * h * 4) as usize);
+        for r in y..y + h {
+            let src = if self.flipped { self.height.checked_sub(r + 1)? } else { r };
+            let at = (src * self.stride + x * 4) as usize;
+            rows.extend_from_slice(self.data.get(at..at + (w * 4) as usize)?);
+        }
+        Some(rows)
+    }
+}
+
+/// What is done with a region picked: the frozen screen's frame, the region in its pixels (x, y, w, h), and
+/// the frame's pixels to a logical one.
+pub type Then = Rc<dyn Fn(&Frame, (u32, u32, u32, u32), f64)>;
 
 /// The whole screen as a PNG into a file, no region asked (ostrov capture FILE: for scripts).
 pub fn capture(path: String) {
     std::thread::spawn(move || {
-        let r = take().and_then(|f| {
-            let rows = crop(&f, (0, 0, f.width, f.height)).ok_or("the frame came short")?;
+        let r = Screen::open().and_then(|mut s| s.frame(None, false)).and_then(|f| {
+            let rows = f.crop((0, 0, f.width, f.height)).ok_or("the frame came short")?;
             let tex = gdk::MemoryTexture::new(f.width as i32, f.height as i32, f.format, &glib::Bytes::from_owned(rows), (f.width * 4) as usize);
             tex.save_to_png(&path).map_err(|e| e.to_string())
         });
@@ -152,19 +210,38 @@ impl Shot {
         Rc::new(Shot { app: app.clone(), busy: Cell::new(false) })
     }
 
-    /// The screen taken, then a region asked for over it.
+    /// The screen taken, a region asked for over it, put on the clipboard as a PNG.
     pub fn take(self: &Rc<Self>) {
+        self.ask(Rc::new(|frame, region, _| {
+            let Some(rows) = frame.crop(region) else { return };
+            let (format, (_, _, w, h)) = (frame.format, region);
+            // a PNG of the whole screen takes a while: made off GTK's thread
+            let (tx, rx) = async_channel::bounded(1);
+            std::thread::spawn(move || {
+                let tex = gdk::MemoryTexture::new(w as i32, h as i32, format, &glib::Bytes::from_owned(rows), (w * 4) as usize);
+                let _ = tx.send_blocking(tex.save_to_png_bytes().to_vec());
+            });
+            glib::spawn_future_local(async move {
+                if let Ok(png) = rx.recv().await {
+                    crate::clip::put(png, "png");
+                }
+            });
+        }));
+    }
+
+    /// The screen taken, then a region asked for over it, handed to then (a screenshot's, a recording's).
+    pub fn ask(self: &Rc<Self>, then: Then) {
         if self.busy.replace(true) {
             return;
         }
         let (tx, rx) = async_channel::bounded(1);
         std::thread::spawn(move || {
-            let _ = tx.send_blocking(take());
+            let _ = tx.send_blocking(Screen::open().and_then(|mut s| s.frame(None, false)));
         });
         let me = self.clone();
         glib::spawn_future_local(async move {
             match rx.recv().await {
-                Ok(Ok(frame)) => me.select(frame),
+                Ok(Ok(frame)) => me.select(frame, then),
                 Ok(Err(e)) => {
                     eprintln!("ostrov: screenshot: {e}");
                     me.busy.set(false);
@@ -175,7 +252,7 @@ impl Shot {
     }
 
     /// The frozen screen over everything, a region dragged out of it.
-    fn select(self: &Rc<Self>, frame: Frame) {
+    fn select(self: &Rc<Self>, frame: Frame, then: Then) {
         let tex = gdk::MemoryTexture::new(
             frame.width as i32,
             frame.height as i32,
@@ -237,19 +314,7 @@ impl Shot {
                 let px = |v: f64| (v * k).round() as u32;
                 let (x, y) = (px(x).min(frame.width - 1), px(y).min(frame.height - 1));
                 let (w, h) = (px(w).clamp(1, frame.width - x), px(h).clamp(1, frame.height - y));
-                let Some(rows) = crop(&frame, (x, y, w, h)) else { return };
-                // a PNG of the whole screen takes a while: made off GTK's thread
-                let format = frame.format;
-                let (tx, rx) = async_channel::bounded(1);
-                std::thread::spawn(move || {
-                    let tex = gdk::MemoryTexture::new(w as i32, h as i32, format, &glib::Bytes::from_owned(rows), (w * 4) as usize);
-                    let _ = tx.send_blocking(tex.save_to_png_bytes().to_vec());
-                });
-                glib::spawn_future_local(async move {
-                    if let Ok(png) = rx.recv().await {
-                        crate::clip::put(png, "png");
-                    }
-                });
+                then(&frame, (x, y, w, h), k);
             })
         };
 

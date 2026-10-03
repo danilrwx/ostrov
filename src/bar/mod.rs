@@ -60,6 +60,7 @@ fn block(name: &str, cx: &Rc<Ctx>) -> Option<Block> {
         "layout" => layout::build(cx),
         "tray" => tray::build(cx),
         "status" => status::build(cx),
+        "record" => crate::record::block(),
         _ => {
             eprintln!("ostrov: no block {name}");
             return None;

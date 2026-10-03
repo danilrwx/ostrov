@@ -5,7 +5,7 @@
 //!     [bar]
 //!     left = ["workspaces"]
 //!     center = ["clock"]
-//!     right = ["layout", "tray", "status"]
+//!     right = ["record", "layout", "tray", "status"]
 //!
 //!     [idle]
 //!     lock = 600          # seconds idle to the lock, 0 never
@@ -30,7 +30,7 @@ pub struct Bar {
 impl Default for Bar {
     fn default() -> Bar {
         let v = |s: &[&str]| s.iter().map(|s| s.to_string()).collect();
-        Bar { left: v(&["workspaces"]), center: v(&["clock"]), right: v(&["layout", "tray", "status"]) }
+        Bar { left: v(&["workspaces"]), center: v(&["clock"]), right: v(&["record", "layout", "tray", "status"]) }
     }
 }
 
