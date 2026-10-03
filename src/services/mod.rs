@@ -17,6 +17,7 @@ mod audio;
 mod backlight;
 mod battery;
 mod bt;
+mod dbus;
 mod keymap;
 mod location;
 mod media;

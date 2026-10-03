@@ -28,7 +28,7 @@ thread_local! {
     static COMMAND: std::cell::RefCell<Option<Box<dyn Fn(&[String]) -> Result<String, String>>>> = Default::default();
 }
 
-const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | lock | bar toggle|peek|unpeek | state | \
+const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | lock | bar toggle|peek|unpeek | state | dump | \
 BLOCK ARGS | SERVICE ARGS]";
 
 /// The bar's blocks, left, middle and right.
@@ -84,6 +84,8 @@ fn activate(app: &gtk4::Application) {
                     }
                     host.apply();
                 }
+                // the services' state, wmd watch's JSON
+                ["dump"] => return Ok(hub.state().to_string()),
                 // what is open, and the bar's mode: for a script, a test
                 ["state"] => {
                     let mut words: Vec<&str> = bar.open().into_iter().collect();

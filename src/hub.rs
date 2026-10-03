@@ -32,6 +32,11 @@ impl Hub {
         hub
     }
 
+    /// The state now.
+    pub fn state(&self) -> Value {
+        self.state.borrow().clone()
+    }
+
     /// f with the state now and on every change.
     pub fn on(&self, f: impl Fn(&Value) + 'static) {
         f(&self.state.borrow());

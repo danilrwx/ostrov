@@ -7,7 +7,7 @@ use serde_json::Value;
 use zbus::zvariant::ObjectPath;
 
 use super::rfkill;
-use super::wifi::{call, err, managed, prop, set_property};
+use super::dbus::{call, err, managed, prop, set_property};
 use super::{Ctx, Res, USAGE};
 
 const BLUEZ: &str = "org.bluez";

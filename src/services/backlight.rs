@@ -43,7 +43,7 @@ pub async fn cmd(c: &Ctx, args: &[&str]) -> Res {
         )
         .await
         .map(drop)
-        .map_err(super::power::dbus_err)
+        .map_err(super::dbus::err)
 }
 
 #[cfg(test)]

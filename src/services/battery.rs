@@ -33,7 +33,7 @@ pub async fn state(c: &Ctx) -> Value {
     let b = match read(c).await {
         Ok(b) => b,
         Err(e) => {
-            eprintln!("ostrov: battery: {}", super::power::dbus_err(e));
+            eprintln!("ostrov: battery: {}", super::dbus::err(e));
             Battery::default()
         }
     };

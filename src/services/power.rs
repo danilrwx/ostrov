@@ -21,7 +21,7 @@ struct Power {
 pub async fn state(c: &Ctx) -> Value {
     let mut p = Power::default();
     if let Err(e) = read(c, &mut p).await {
-        eprintln!("ostrov: power: {}", dbus_err(e));
+        eprintln!("ostrov: power: {}", super::dbus::err(e));
     }
     serde_json::to_value(p).unwrap_or_default()
 }
@@ -42,13 +42,5 @@ async fn get(c: &Ctx, prop: &str) -> zbus::Result<OwnedValue> {
 pub async fn cmd(c: &Ctx, args: &[&str]) -> Res {
     let ["set", profile] = args else { return Err(USAGE.into()) };
     let body = (PPD, "ActiveProfile", zvariant::Value::from(*profile));
-    c.system.call_method(Some(PPD), PATH, Some(PROPS), "Set", &body).await.map(drop).map_err(dbus_err)
-}
-
-/// A D-Bus error as wmd's godbus says it: the error's message, or its name when it came without one.
-pub(super) fn dbus_err(e: zbus::Error) -> String {
-    match e {
-        zbus::Error::MethodError(name, desc, _) => desc.unwrap_or_else(|| name.to_string()),
-        e => e.to_string(),
-    }
+    c.system.call_method(Some(PPD), PATH, Some(PROPS), "Set", &body).await.map(drop).map_err(super::dbus::err)
 }

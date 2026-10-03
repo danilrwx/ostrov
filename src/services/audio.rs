@@ -138,12 +138,26 @@ async fn audio_state() -> Result<Audio, String> {
     Ok(a)
 }
 
+/// The sound's state last read, and whether PipeWire has changed it since: every state the watcher sends (every
+/// 3 s besides a change) would run a pw-dump of the whole graph otherwise, and the monitor (events) tells every
+/// change that counts.
+static LAST: std::sync::Mutex<Value> = std::sync::Mutex::new(Value::Null);
+static STALE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+
 pub async fn state() -> Value {
+    if !STALE.swap(false, std::sync::atomic::Ordering::Relaxed) {
+        return LAST.lock().map(|v| v.clone()).unwrap_or_default();
+    }
     let a = audio_state().await.unwrap_or_else(|e| {
         eprintln!("ostrov: audio: {e}");
+        STALE.store(true, std::sync::atomic::Ordering::Relaxed);
         Audio::default()
     });
-    serde_json::to_value(a).unwrap_or_default()
+    let v = serde_json::to_value(a).unwrap_or_default();
+    if let Ok(mut last) = LAST.lock() {
+        *last = v.clone();
+    }
+    v
 }
 
 /// A kick on a change PipeWire reports to what the sound's state is made of: the sinks and sources, the cards
@@ -189,6 +203,9 @@ pub async fn events(kick: Kick) {
                     }
                 }
                 touched |= watched.contains(&id);
+            }
+            if touched {
+                STALE.store(true, std::sync::atomic::Ordering::Relaxed);
             }
             if touched && kick.send_blocking(()).is_err() {
                 return;
