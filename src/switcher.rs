@@ -1,10 +1,10 @@
 //! The window switcher, held like Alt+Tab: `ostrov windows` (Super+Tab) opens it over the screen's middle with
 //! Hyprland's windows as cards, the last focused first, the one before the current picked; Super+Tab again, Tab,
 //! Right or Ctrl+N move on, Shift+Tab, Left or Ctrl+P back; Super let go, Enter or a click focuses the picked
-//! window, Escape leaves things as they were. Super's release is Hyprland's to tell (ostrov windows release, a
-//! transparent release bind: GTK has no word of Super held before the switcher had the keyboard). Shown only
-//! once Super has been held a moment: a quick tap goes straight to the window before, nothing flashing up,
-//! GNOME's way.
+//! window, Escape leaves things as they were. `ostrov windows app` (Super+`) the same over the focused app's
+//! windows alone. Super's release is Hyprland's to tell (ostrov windows release, a transparent release bind: GTK
+//! has no word of Super held before the switcher had the keyboard). Shown only once Super has been held a
+//! moment: a quick tap goes straight to the window before, nothing flashing up, GNOME's way.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -114,13 +114,18 @@ impl Switcher {
         s
     }
 
-    /// Open with the windows as they are now, the one before the current picked; open, the next picked.
-    pub fn open(self: &Rc<Self>) {
+    /// Open with the windows as they are now, the one before the current picked; open, the next picked. With
+    /// app (Super+`), the focused window's app's windows alone: a browser's, a terminal's, GNOME's Alt+`.
+    pub fn open(self: &Rc<Self>, app: bool) {
         if self.win.is_visible() {
             return self.step(1);
         }
-        let wins = windows(&crate::wm::hyprctl("j/clients"));
-        if wins.is_empty() {
+        let mut wins = windows(&crate::wm::hyprctl("j/clients"));
+        if app {
+            let class = wins.first().map(|w| w.class.clone()).unwrap_or_default();
+            wins.retain(|w| w.class == class);
+        }
+        if wins.len() < 2 && app || wins.is_empty() {
             return;
         }
         crate::style::clear(&self.grid);

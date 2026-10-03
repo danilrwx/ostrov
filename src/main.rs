@@ -42,7 +42,7 @@ thread_local! {
     static PROMPTS: std::cell::RefCell<Option<Rc<prompt::Prompts>>> = Default::default();
 }
 
-const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | ask QUESTION | clip | windows | lock | key NAME | awake | screenshot | \
+const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | ask QUESTION | clip | windows [app] | lock | key NAME | awake | screenshot | \
 capture FILE | record [--audio] | bar toggle|peek|unpeek | state | dump | BLOCK ARGS | SERVICE ARGS]";
 
 fn activate(app: &gtk4::Application) {
@@ -120,7 +120,8 @@ fn activate(app: &gtk4::Application) {
                 ["screenshot"] => shot.take(),
                 ["awake"] => idle::set_awake(!idle::awake()),
                 ["capture", path] => shot::capture(path.to_string()),
-                ["windows"] => switcher.open(),
+                ["windows"] => switcher.open(false),
+                ["windows", "app"] => switcher.open(true),
                 ["windows", "release"] => switcher.release(),
                 ["record"] => record::toggle(false),
                 ["record", "--audio"] => record::toggle(true),
