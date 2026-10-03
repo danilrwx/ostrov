@@ -1,10 +1,9 @@
 //! The launcher in the bar, dmenu's way: in place of the clock a prompt, what is typed, the apps it matches in a
-//! row (or the clipboard's history, from cliphist), the picked one inverted. Left, Right and Tab move, Enter
+//! row (or the clipboard's history, clip.rs), the picked one inverted. Left, Right and Tab move, Enter
 //! launches (or copies back), Delete drops a clipboard entry, Escape closes. ostrov run ($mod+d), ostrov clip
 //! ($mod+Shift+v).
 
 use std::cell::{Cell, RefCell};
-use std::process::Command;
 use std::rc::Rc;
 
 use gtk4::gdk::Key;
@@ -17,14 +16,15 @@ use crate::hub::run;
 /// A hit: what the row shows, and what picking it does.
 enum Hit {
     App(gio::AppInfo),
-    Clip(String),
+    /// an entry of the clipboard's history: its id, what is shown of it
+    Clip(u64, String),
 }
 
 impl Hit {
     fn name(&self) -> String {
         match self {
             Hit::App(a) => a.name().to_string(),
-            Hit::Clip(line) => line.split_once('\t').map_or(line.as_str(), |l| l.1).split_whitespace().collect::<Vec<_>>().join(" ").chars().take(60).collect(),
+            Hit::Clip(_, shown) => shown.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(60).collect(),
         }
     }
 }
@@ -112,11 +112,7 @@ impl Launcher {
         self.clip.set(clip);
         self.prompt.set_text(if clip { "clip" } else { "run" });
         *self.all.borrow_mut() = if clip {
-            Command::new("cliphist")
-                .arg("list")
-                .output()
-                .map(|o| String::from_utf8_lossy(&o.stdout).lines().filter(|l| !l.is_empty()).map(|l| Hit::Clip(l.into())).collect())
-                .unwrap_or_default()
+            crate::clip::list().into_iter().map(|(id, shown)| Hit::Clip(id, shown)).collect()
         } else {
             gio::AppInfo::all().into_iter().filter(|a| a.should_show()).map(Hit::App).collect()
         };
@@ -208,7 +204,7 @@ impl Launcher {
                     let _ = a.launch(&[], ctx.as_ref());
                 }
             }
-            Some(Hit::Clip(line)) => run(&["sh", "-c", "printf '%s' \"$1\" | cliphist decode | wl-copy", "sh", line]),
+            Some(Hit::Clip(id, _)) => crate::clip::copy(*id),
             None if !typed.trim().is_empty() => run(&["sh", "-c", &typed]),
             None => {}
         }
@@ -217,8 +213,8 @@ impl Launcher {
     /// The picked clip out of the history.
     fn delete(self: &Rc<Self>) {
         let Some(i) = self.hits.borrow().get(self.picked.get()).copied() else { return };
-        if let Hit::Clip(line) = &self.all.borrow()[i] {
-            run(&["sh", "-c", "printf '%s' \"$1\" | cliphist delete", "sh", line]);
+        if let Hit::Clip(id, _) = &self.all.borrow()[i] {
+            crate::clip::delete(*id);
         }
         self.all.borrow_mut().remove(i);
         let n = self.picked.get();

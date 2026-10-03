@@ -6,6 +6,7 @@
 
 mod bar;
 mod calendar;
+mod clip;
 mod hub;
 mod idle;
 mod launcher;
@@ -46,6 +47,7 @@ fn activate(app: &gtk4::Application) {
     let host = popup::Host::new(app, &over);
     style::load();
     wallpaper::start(app);
+    clip::start();
 
     let hub = Hub::start();
     let notes = notes::start(app);

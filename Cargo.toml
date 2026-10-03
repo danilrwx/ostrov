@@ -21,4 +21,5 @@ wayland-backend = { version = "0.3", features = ["client_system", "dlopen"] }
 wayland-client = "0.31"
 wayland-protocols = { version = "0.32", features = ["client", "staging"] }
 wayland-protocols-hyprland = { version = "1.2", features = ["client"] }
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
 zbus = { version = "5", default-features = false, features = ["tokio"] }
