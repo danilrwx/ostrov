@@ -28,6 +28,7 @@ const CSS: &str = r#"
 @define-color rule #333333;                     /* an outline */
 @define-color idle #666666;                     /* a workspace not focused */
 @define-color urgent #cd0000;                   /* an error, a critical notification */
+@define-color recording #ff4040;                /* the mic or the camera taken (bar/privacy.rs) */
 @define-color lock #000000;                     /* the lock screen */
 @define-color ground #000000;
 @define-color shade rgba(0, 0, 0, 0.4);         /* the screen under a question (polkit's, askpass's) */                   /* under the wallpaper, and in its place under the dark theme */
@@ -126,6 +127,7 @@ calendar > grid > label.day-number:selected { background: @accent; color: @ink; 
 .slot:hover > .pill, .slot.tab > .pill { background: @surface; box-shadow: 0 0 0 30px @bar; }
 .tray-item { padding: 0 5px; }
 .rec-dot { color: @urgent; }
+.recording image { color: @recording; }
 .dot { min-width: 8px; min-height: 8px; border-radius: 4px; background: @idle; transition: background 100ms; }
 .dot.focused, .dot:hover { background: @accent; }
 /* the launcher in it */

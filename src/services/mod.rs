@@ -43,7 +43,7 @@ pub type Kick = async_channel::Sender<()>;
 pub type Res = Result<(), String>;
 
 pub const USAGE: &str = "wifi on|off|scan|disconnect|connect SSID|forget SSID | bt on|off|scan|connect ADDR|disconnect ADDR|\
-pair ADDR|forget ADDR | headset | power set PROFILE | brightness PERCENT | night mode off|on|time|sun|time FROM TO|temp K|\
+pair ADDR|forget ADDR | headset | audio volume ID LEVEL | power set PROFILE | brightness PERCENT | night mode off|on|time|sun|time FROM TO|temp K|\
 preview K|apply | location CITY|LAT LON | media play-pause|next|previous | displays set NAME MODE POSITION SCALE|\
 on NAME|off NAME|mirror NAME OF|save NAME|load NAME|delete NAME";
 
@@ -86,6 +86,7 @@ pub async fn run(c: &Ctx, args: &[String], input: Option<String>) -> Res {
         "wifi" => wifi::cmd(c, rest, input).await,
         "bt" => bt::cmd(c, rest).await,
         "headset" => audio::headset().await,
+        "audio" => audio::cmd(rest).await,
         "power" => power::cmd(c, rest).await,
         "brightness" => backlight::cmd(c, rest).await,
         "night" => night::cmd(rest).await,
@@ -135,6 +136,7 @@ pub async fn watch(c: Arc<Ctx>, out: async_channel::Sender<Value>) {
                 emit(&c).await;
             }
             _ = tick.tick() => {
+                audio::scan_cameras().await;
                 if let Err(e) = night::apply_now().await {
                     eprintln!("ostrov: night: {e}");
                 }

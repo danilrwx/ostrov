@@ -1,0 +1,22 @@
+[
+  {"id": 30, "type": "PipeWire:Interface:Metadata", "props": {"metadata.name": "default"},
+   "metadata": [{"subject": 0, "key": "default.audio.sink", "type": "Spa:String:JSON", "value": {"name": "alsa_output.speakers"}}]},
+  {"id": 40, "type": "PipeWire:Interface:Node",
+   "info": {"state": "running", "props": {"media.class": "Audio/Sink", "node.name": "alsa_output.speakers", "node.nick": "Speakers"},
+            "params": {"Props": [{"channelVolumes": [0.125, 0.125], "mute": false}]}}},
+  {"id": 88, "type": "PipeWire:Interface:Node",
+   "info": {"state": "running", "props": {"media.class": "Stream/Input/Audio", "application.name": "Chromium input",
+            "application.process.binary": "chromium"}}},
+  {"id": 89, "type": "PipeWire:Interface:Node",
+   "info": {"state": "suspended", "props": {"media.class": "Stream/Input/Audio", "application.name": "Telegram"}}},
+  {"id": 90, "type": "PipeWire:Interface:Node",
+   "info": {"state": "running", "props": {"media.class": "Stream/Input/Video", "application.process.binary": "zoom"}}},
+  {"id": 120, "type": "PipeWire:Interface:Node",
+   "info": {"state": "idle", "props": {"media.class": "Stream/Output/Audio", "application.name": "mpv",
+            "application.icon_name": "mpv", "application.process.binary": "mpv"},
+            "params": {"Props": [{"channelVolumes": [0.125, 0.125]}]}}},
+  {"id": 116, "type": "PipeWire:Interface:Node",
+   "info": {"state": "running", "props": {"media.class": "Stream/Output/Audio", "application.name": "Chromium",
+            "application.process.binary": "chromium"},
+            "params": {"Props": [{"channelVolumes": [1.0, 1.0]}]}}}
+]

@@ -16,6 +16,7 @@ use crate::popup::{Host, Popup, BAR};
 
 mod clock;
 mod layout;
+mod privacy;
 mod status;
 mod tray;
 mod workspaces;
@@ -58,6 +59,7 @@ fn block(name: &str, cx: &Rc<Ctx>) -> Option<Block> {
         "workspaces" => workspaces::build(cx),
         "clock" => clock::build(cx),
         "layout" => layout::build(cx),
+        "privacy" => privacy::build(cx),
         "tray" => tray::build(cx),
         "status" => status::build(cx),
         "record" => crate::record::block(),

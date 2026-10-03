@@ -211,7 +211,27 @@ impl Slider {
         if self.touched.borrow().elapsed() > Duration::from_millis(800) {
             self.scale.set_value(v);
         }
-        self.icon.set_icon_name(icon);
+        if !icon.is_empty() {
+            self.icon.set_icon_name(icon);
+        }
+    }
+}
+
+/// An app's icon: the one its stream names, else its desktop entry's (the one named as the app or running its
+/// binary, else one whose id has the binary in it: chrome's is google-chrome), else a generic one.
+fn app_icon(icon: &str, bin: &str, name: &str) -> gtk4::Image {
+    if !icon.is_empty() {
+        return gtk4::Image::from_icon_name(icon);
+    }
+    let all = gtk4::gio::AppInfo::all();
+    let exact = |a: &&gtk4::gio::AppInfo| {
+        a.display_name().eq_ignore_ascii_case(name)
+            || !bin.is_empty() && a.executable().file_name() == Some(bin.as_ref())
+    };
+    let near = |a: &&gtk4::gio::AppInfo| !bin.is_empty() && a.id().is_some_and(|id| id.contains(bin));
+    match all.iter().find(exact).or_else(|| all.iter().find(near)).and_then(|a| a.icon()) {
+        Some(g) => gtk4::Image::from_gicon(&g),
+        None => gtk4::Image::from_icon_name("audio-x-generic-symbolic"),
     }
 }
 
@@ -341,7 +361,13 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
     vol.icon.connect_clicked(|_| run(&["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"]));
     vol.root.append(&menus.arrow("outs"));
     col.append(&vol.root);
-    let (outs, outs_items) = menus.menu("outs", "audio-speakers-symbolic", "Sound Output");
+    let (outs, outs_menu) = menus.menu("outs", "audio-speakers-symbolic", "Sound Output");
+    // the devices, then the apps playing, a slider each
+    let outs_items = gtk4::Box::new(Orientation::Vertical, 0);
+    let apps = gtk4::Box::new(Orientation::Vertical, 4);
+    outs_menu.append(&outs_items);
+    outs_menu.append(&apps);
+    let app_sliders: RefCell<Vec<Slider>> = RefCell::default();
     col.append(&outs);
     let mic = Slider::new("microphone-sensitivity-high-symbolic", |v| run(&["wpctl", "set-volume", "@DEFAULT_AUDIO_SOURCE@", &format!("{v:.2}")]));
     mic.icon.connect_clicked(|_| run(&["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"]));
@@ -562,6 +588,30 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
                         }));
                     }
                 }
+            }
+            let streams = a["streams"].as_array().cloned().unwrap_or_default();
+            let who = |x: &Value| format!("{} {} {} {}", x["id"], x["name"], x["icon"], x["bin"]);
+            if changed("apps", streams.iter().map(who).collect()) {
+                clear(&apps);
+                let mut sliders = app_sliders.borrow_mut();
+                sliders.clear();
+                if !streams.is_empty() {
+                    apps.append(&gtk4::Separator::new(Orientation::Horizontal));
+                }
+                for x in &streams {
+                    let id = x["id"].to_string();
+                    let sl = Slider::new("", move |v| service(&["audio", "volume", &id, &format!("{v:.2}")]));
+                    sl.icon.set_child(Some(&app_icon(s(x, &["icon"]), s(x, &["bin"]), s(x, &["name"]))));
+                    sl.icon.set_can_target(false);
+                    let name = label(s(x, &["name"]), "dim");
+                    name.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+                    apps.append(&name);
+                    apps.append(&sl.root);
+                    sliders.push(sl);
+                }
+            }
+            for (sl, x) in app_sliders.borrow().iter().zip(&streams) {
+                sl.set(x["volume"].as_f64().unwrap_or(0.0), "");
             }
 
             // night light
