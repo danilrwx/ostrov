@@ -106,7 +106,10 @@ impl Popup {
 
         // every frame: the gap as wide as the tab's border box (width() is its content alone), the input region
         // over the popup as it grows and shrinks
-        let last = RefCell::new((0, 0));
+        let last = Rc::new(RefCell::new((0, 0)));
+        // a surface anew on every mapping, its input region the whole of it again: set it anew
+        let l2 = last.clone();
+        win.connect_map(move |_| *l2.borrow_mut() = (0, 0));
         let (w2, tab2) = (win.clone(), popup.tab.clone());
         let inner = if side == Side::Right { 1 } else { 2 };
         shape.add_tick_callback(move |shape, _| {

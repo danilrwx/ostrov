@@ -33,7 +33,6 @@ window.panel-window, window.catcher { background: transparent; }
 .gap { background: rgba(38, 38, 38, 0.75); border-right: 1px solid transparent; min-height: 10px; }
 .gap-mid { background: rgba(38, 38, 38, 0.75); min-height: 10px; }
 .edge-right { background: rgba(38, 38, 38, 0.75); border-top: 1px solid transparent; border-right: 1px solid transparent; border-top-right-radius: 10px; min-height: 10px; }
-.pill.tab, .pill.tab:hover { background: TABBG; border-color: transparent; }
 .panel label { font-size: 10pt; }
 .bold { font-weight: bold; }
 .dim { color: #888888; }
@@ -107,7 +106,13 @@ scrolledwindow { background: none; }
    either way, so nothing in the bar moves as a panel opens */
 .pill { padding: 0 8px; margin: 2px 0 0 0; border: 1px solid transparent; border-bottom-width: 0;
         border-radius: 6px 6px 0 0; transition: background 100ms; }
-.pill:hover { background: TABBG; }
+/* the bar's black laid by its parts, not under the whole window: a block's slot is black but for the block
+   hovered or a tab, then its ground is the panel's straight over the wallpaper (the same grey, the same blur) and
+   the black left round its corners its shadow, clipped to the slot */
+window.bar { background: transparent; }
+.bar-bg, .slot { background: rgba(0, 0, 0, ALPHA); }
+.slot:hover, .slot.tab { background: transparent; }
+.slot:hover > .pill, .slot.tab > .pill { background: rgba(38, 38, 38, 0.75); box-shadow: 0 0 0 30px rgba(0, 0, 0, ALPHA); }
 .tray-item { padding: 0 5px; }
 image { -gtk-icon-size: 16px; }
 popover > contents { background: #000000; border: 1px solid #ffffff; border-radius: 10px; padding: 4px; }
@@ -261,22 +266,19 @@ fn volume_icon((v, muted): (f64, bool)) -> &'static str {
     }
 }
 
-/// The tab's (and a hovered block's) ground over the bar's black at alpha a, so the two together come out as the
-/// panel's grey at 0.75 over the wallpaper: alpha t with 1-0.75 = (1-t)(1-a), its grey 0.75*38/t. With a bar of
-/// 0.75 or more no such ground; the panel's own then.
-fn tab_bg(a: f64) -> String {
-    if a >= 0.74 {
-        return "rgba(38, 38, 38, 0.75)".into();
-    }
-    let t = 1.0 - 0.25 / (1.0 - a);
-    let c = (0.75 * 38.0 / t).round();
-    format!("rgba({c}, {c}, {c}, {t:.3})")
-}
-
 fn pill() -> gtk4::Box {
     let b = gtk4::Box::new(gtk4::Orientation::Horizontal, 7);
     b.add_css_class("pill");
     b
+}
+
+/// A block's place in the bar: the black around it, gone while it is hovered or a tab (see the CSS).
+fn slot(w: &impl IsA<gtk4::Widget>) -> gtk4::Box {
+    let s = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+    s.add_css_class("slot");
+    s.set_overflow(gtk4::Overflow::Hidden);
+    s.append(w);
+    s
 }
 
 fn activate(app: &gtk4::Application) {
@@ -284,6 +286,7 @@ fn activate(app: &gtk4::Application) {
     win.init_layer_shell();
     win.set_layer(Layer::Top);
     win.set_namespace(Some("rbar"));
+    win.add_css_class("bar");
     for e in [Edge::Top, Edge::Left, Edge::Right] {
         win.set_anchor(e, true);
     }
@@ -298,7 +301,7 @@ fn activate(app: &gtk4::Application) {
         let (css, f) = (css.clone(), alpha_file.clone());
         move || {
             let alpha = std::fs::read_to_string(&f).unwrap_or("1".into());
-            css.load_from_string(&CSS.replace("ALPHA", alpha.trim()).replace("TABBG", &tab_bg(alpha.trim().parse().unwrap_or(1.0))));
+            css.load_from_string(&CSS.replace("ALPHA", alpha.trim()));
         }
     };
     load();
@@ -311,15 +314,16 @@ fn activate(app: &gtk4::Application) {
     gtk4::IconTheme::for_display(&display).set_theme_name(Some("Adwaita"));
 
     let bar = gtk4::CenterBox::new();
-    bar.set_margin_start(12);
-    bar.set_margin_end(6);
 
     // the workspaces
     let dots = gtk4::Box::new(gtk4::Orientation::Horizontal, 6);
     dots.set_valign(gtk4::Align::Center);
     // the prototype's mark, so it is not taken for the Quickshell bar
     let start = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
+    start.add_css_class("bar-bg");
+    start.set_hexpand(true);
     let mark = gtk4::Label::new(Some("rbar"));
+    mark.set_margin_start(12);
     mark.add_css_class("mark");
     start.append(&mark);
     start.append(&dots);
@@ -388,10 +392,15 @@ fn activate(app: &gtk4::Application) {
     mid.append(&weather_icon);
     mid.append(&weather);
     mid.append(&clock);
-    bar.set_center_widget(Some(&mid));
+    let mid_slot = slot(&mid);
+    bar.set_center_widget(Some(&mid_slot));
 
     // the right: layout, tray, status
-    let right = gtk4::Box::new(gtk4::Orientation::Horizontal, 2);
+    let right = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+    right.set_hexpand(true);
+    let fill = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+    fill.add_css_class("bar-bg");
+    fill.set_hexpand(true);
     let layout = gtk4::Label::new(Some("US"));
     layout.add_css_class("pill");
     let tray_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
@@ -402,9 +411,15 @@ fn activate(app: &gtk4::Application) {
     status.append(&wifi);
     status.append(&vol);
     status.append(&bat);
-    right.append(&layout);
+    let status_slot = slot(&status);
+    let end = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+    end.add_css_class("bar-bg");
+    end.set_size_request(6, -1);
+    right.append(&fill);
+    right.append(&slot(&layout));
     right.append(&tray_box);
-    right.append(&status);
+    right.append(&status_slot);
+    right.append(&end);
     bar.set_end_widget(Some(&right));
 
     // once a second: the clock
@@ -419,9 +434,9 @@ fn activate(app: &gtk4::Application) {
 
     // wmd's state: Wi-Fi, the weather, the layout, the battery
     let hub = Hub::start();
-    let panel = panel::build(app, &hub, &status);
+    let panel = panel::build(app, &hub, &status_slot);
     let notes = notes::start(app);
-    let cal = calendar::build(app, &hub, &mid, &notes);
+    let cal = calendar::build(app, &hub, &mid_slot, &notes);
     // a click on the clock opens the calendar, one popup open at a time
     {
         let (cal, pp) = (cal.clone(), panel.popup.clone());
@@ -510,7 +525,7 @@ fn activate(app: &gtk4::Application) {
                     }
                 });
                 cell.add_controller(click);
-                tray_box.append(&cell);
+                tray_box.append(&slot(&cell));
             }
         }
     });
