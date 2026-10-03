@@ -5,7 +5,7 @@
 //! ($mod+Shift+v).
 //!
 //! What is typed picks the run's mode, named by the prompt: arithmetic is calculated (calc.rs), its result copied;
-//! :name finds emoji, copied; g words and y words search Google in the browser; /name finds files under
+//! :name finds emoji, copied; g words searches Google in the browser; /name finds files under
 //! the home with fd, opened in their default app.
 
 use std::cell::{Cell, RefCell};
@@ -363,11 +363,10 @@ impl Launcher {
     }
 }
 
-/// "g words" searches Google, "y words" Example: the engine's name and its query's URL.
+/// "g words" searches Google: the engine's name and its query's URL.
 fn web(q: &str) -> Option<(&'static str, &'static str)> {
     match q.get(..2)? {
         "g " => Some(("Google", "https://www.google.com/search?q=")),
-        "y " => Some(("Example", "https://example.com/search/?text=")),
         _ => None,
     }
 }
@@ -421,7 +420,6 @@ mod tests {
     #[test]
     fn web() {
         assert_eq!(super::web("g rust gtk").map(|w| w.0), Some("Google"));
-        assert_eq!(super::web("y погода").map(|w| w.0), Some("Example"));
         assert_eq!(super::web("gimp"), None);
     }
 }

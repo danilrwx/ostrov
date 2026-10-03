@@ -1,5 +1,6 @@
-//! The calendar's events for the calendar popup: a CalDAV calendar's through CalDAV (any CalDAV server's: the
-//! login, and an app password printed by a command, never kept in the config), and calendars shared as .ics
+//! The calendar's events for the calendar popup: a CalDAV account's (any server's: Example, iCloud, Fastmail,
+//! Nextcloud...; Google's wants OAuth, not had here; the login, and an app password printed by a command, never
+//! kept in the config), and calendars shared as .ics
 //! links, as config.toml's [calendar] says. Fetched every 15 min and on `calendar refresh`; the events of this
 //! month and a week either side of it, their repeats unrolled here, in local time.
 //!
@@ -546,7 +547,7 @@ fn fetch(c: &Calendar) -> Result<Value, String> {
         let b = agent.get(&url).call().and_then(|mut r| r.body_mut().with_config().limit(LIMIT).read_to_vec());
         docs.push((unfold(&b.map_err(|e| format!("{url}: {e}"))?), String::new()));
     }
-    if !c.user.is_empty() {
+    if !c.caldav_url.is_empty() && !c.user.is_empty() {
         docs.extend(caldav(&agent, c, from, to)?);
     }
     let mut events = Vec::new();
@@ -579,7 +580,7 @@ pub async fn run(kick: Kick) {
     loop {
         let c = crate::config::load().calendar;
         let mut wait = Duration::from_secs(15 * 60);
-        let got = if c.ics.is_empty() && c.user.is_empty() {
+        let got = if c.ics.is_empty() && (c.caldav_url.is_empty() || c.user.is_empty()) {
             Ok(Value::Null)
         } else {
             tokio::task::spawn_blocking(move || fetch(&c)).await.map_err(|e| e.to_string()).and_then(|r| r)

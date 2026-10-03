@@ -15,9 +15,10 @@
 //!     surface = "rgba(0, 0, 0, 0.75)"
 //!
 //!     [calendar]          # the calendar popup's events (services/calendar.rs), read anew on every fetch
-//!     user = "login@example.com"                                    # CalDAV, Example's unless caldav_url says
-//!     password_command = "secret-tool lookup service example-caldav"  # prints the app password
-//!     ics = ["https://calendar.example.com/export/ics.xml?private_token=..."]  # and/or calendars' links
+//!     caldav_url = "https://caldav.example.com"                     # any CalDAV server: Example, iCloud's
+//!     user = "login@example.com"                                    # https://caldav.icloud.com, Fastmail's,
+//!     password_command = "secret-tool lookup service caldav"      # Nextcloud's...; prints the app password
+//!     ics = ["https://example.org/calendar.ics"]                  # and/or calendars' shared links
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -65,7 +66,7 @@ pub struct Calendar {
 impl Default for Calendar {
     fn default() -> Calendar {
         Calendar {
-            caldav_url: "https://caldav.example.com".into(),
+            caldav_url: String::new(),
             user: String::new(),
             password_command: String::new(),
             ics: Vec::new(),
