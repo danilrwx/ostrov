@@ -161,6 +161,8 @@ impl Prompts {
         self.error.set_visible(!a.error.is_empty());
         *self.current.borrow_mut() = Some(a.reply);
         self.win.set_visible(true);
+        // the focus ringed from the start, not only after a first key
+        self.win.set_focus_visible(true);
         // the focus where the answer is given: the password, or OK for a yes or no
         if a.secret {
             self.entry.grab_focus();
