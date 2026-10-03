@@ -49,7 +49,7 @@ button.arrow image { transition: -gtk-icon-transform 100ms; }
 button.arrow.open { background: #ffffff; }
 button.arrow.open image { color: #000000; -gtk-icon-transform: rotate(90deg); }
 scale { padding: 0 4px; }
-scale trough { min-height: 14px; border-radius: 6px; background: #333333; }
+scale trough { min-height: 14px; border-radius: 6px; background: rgba(255, 255, 255, 0.1); }
 scale trough highlight { border-radius: 6px; background: #ffffff; border: none; margin: 0; min-height: 14px; min-width: 0; }
 scale slider { min-width: 0; min-height: 0; margin: 0; background: none; box-shadow: none; border: none; }
 .toggle { background: rgba(255, 255, 255, 0.08); border: 1px solid #333333; border-radius: 6px; min-height: 48px; }
@@ -63,7 +63,7 @@ scale slider { min-width: 0; min-height: 0; margin: 0; background: none; box-sha
 button.toggle-side { min-width: 40px; border-left: 1px solid #333333; border-radius: 0 6px 6px 0; }
 .toggle.on button.toggle-side { border-left-color: #999999; }
 .toggle.on button.toggle-side.open { background: #d0d0d0; }
-.menu { background: rgba(0, 0, 0, 0.25); border: 1px solid #333333; border-radius: 6px; padding: 10px; margin-top: 4px; }
+.menu { background: rgba(255, 255, 255, 0.06); border: 1px solid #333333; border-radius: 6px; padding: 10px; margin-top: 4px; }
 .menu-head { margin-bottom: 6px; }
 .badge { background: #ffffff; color: #000000; border-radius: 6px; min-width: 32px; min-height: 32px; }
 button.item { padding: 0 10px; min-height: 34px; border-radius: 6px; }
@@ -72,7 +72,7 @@ button.item.on { background: #ffffff; }
 button.item.on label, button.item.on image { color: #000000; }
 button.connect { background: #ffffff; padding: 0 10px; border-radius: 6px; min-height: 30px; }
 button.connect label { color: #000000; font-weight: bold; }
-entry, passwordentry { background: rgba(0, 0, 0, 0.4); border: 1px solid #333333; border-radius: 6px; min-height: 30px; padding: 0 8px; }
+entry, passwordentry { background: rgba(0, 0, 0, 0.2); border: 1px solid #333333; border-radius: 6px; min-height: 30px; padding: 0 8px; }
 entry:focus-within, passwordentry:focus-within { border-color: #ffffff; }
 separator { background: #333333; margin: 4px 4px; min-height: 1px; min-width: 1px; }
 .card { background: rgba(255, 255, 255, 0.06); border: 1px solid #333333; border-radius: 6px; padding: 10px; }
@@ -85,7 +85,7 @@ button.chip, togglebutton.chip, button.chip:checked { background: rgba(255, 255,
 button.chip:hover { background: rgba(255, 255, 255, 0.15); }
 button.chip:checked { background: #ffffff; }
 button.chip:checked label { color: #000000; }
-progressbar.progress trough { min-height: 3px; border-radius: 2px; background: #333333; }
+progressbar.progress trough { min-height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); }
 progressbar.progress progress { min-height: 3px; border-radius: 2px; background: #ffffff; }
 calendar { background: rgba(255, 255, 255, 0.06); border: 1px solid #333333; border-radius: 6px; padding: 6px; }
 calendar > header { border: none; }
