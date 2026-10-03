@@ -33,7 +33,7 @@ window.panel-window, window.catcher { background: transparent; }
 .gap { background: rgba(38, 38, 38, 0.75); border-right: 1px solid transparent; min-height: 10px; }
 .gap-mid { background: rgba(38, 38, 38, 0.75); min-height: 10px; }
 .edge-right { background: rgba(38, 38, 38, 0.75); border-top: 1px solid transparent; border-right: 1px solid transparent; border-top-right-radius: 10px; min-height: 10px; }
-.pill.tab, .pill.tab:hover { background: rgba(38, 38, 38, 0.75); border-color: transparent; }
+.pill.tab, .pill.tab:hover { background: TABBG; border-color: transparent; }
 .panel label { font-size: 10pt; }
 .bold { font-weight: bold; }
 .dim { color: #888888; }
@@ -107,7 +107,7 @@ scrolledwindow { background: none; }
    either way, so nothing in the bar moves as a panel opens */
 .pill { padding: 0 8px; margin: 2px 0 0 0; border: 1px solid transparent; border-bottom-width: 0;
         border-radius: 6px 6px 0 0; transition: background 100ms; }
-.pill:hover { background: rgba(255, 255, 255, 0.15); }
+.pill:hover { background: TABBG; }
 .tray-item { padding: 0 5px; }
 image { -gtk-icon-size: 16px; }
 popover > contents { background: #000000; border: 1px solid #ffffff; border-radius: 10px; padding: 4px; }
@@ -261,6 +261,18 @@ fn volume_icon((v, muted): (f64, bool)) -> &'static str {
     }
 }
 
+/// The tab's (and a hovered block's) ground over the bar's black at alpha a, so the two together come out as the
+/// panel's grey at 0.75 over the wallpaper: alpha t with 1-0.75 = (1-t)(1-a), its grey 0.75*38/t. With a bar of
+/// 0.75 or more no such ground; the panel's own then.
+fn tab_bg(a: f64) -> String {
+    if a >= 0.74 {
+        return "rgba(38, 38, 38, 0.75)".into();
+    }
+    let t = 1.0 - 0.25 / (1.0 - a);
+    let c = (0.75 * 38.0 / t).round();
+    format!("rgba({c}, {c}, {c}, {t:.3})")
+}
+
 fn pill() -> gtk4::Box {
     let b = gtk4::Box::new(gtk4::Orientation::Horizontal, 7);
     b.add_css_class("pill");
@@ -286,7 +298,7 @@ fn activate(app: &gtk4::Application) {
         let (css, f) = (css.clone(), alpha_file.clone());
         move || {
             let alpha = std::fs::read_to_string(&f).unwrap_or("1".into());
-            css.load_from_string(&CSS.replace("ALPHA", alpha.trim()));
+            css.load_from_string(&CSS.replace("ALPHA", alpha.trim()).replace("TABBG", &tab_bg(alpha.trim().parse().unwrap_or(1.0))));
         }
     };
     load();
