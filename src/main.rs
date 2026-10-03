@@ -4,8 +4,11 @@
 //! volume, battery). Wi-Fi, the weather and the layout from wmd watch, the volume from wpctl, the battery
 //! from sysfs, the workspaces from Hyprland's sockets, the tray from the system-tray crate.
 
+mod calendar;
 mod hub;
+mod notes;
 mod panel;
+mod popup;
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::os::unix::net::UnixStream;
@@ -28,7 +31,9 @@ window.panel-window, window.catcher { background: transparent; }
 .panel.attached { border-top: none; border-radius: 0 0 10px 10px; padding-top: 4px; }
 .edge { background: rgba(38, 38, 38, 0.75); border-top: 1px solid #ffffff; border-left: 1px solid #ffffff; border-top-left-radius: 10px; min-height: 10px; }
 .gap { background: rgba(38, 38, 38, 0.75); border-right: 1px solid #ffffff; min-height: 10px; }
-.pill.tab { background: rgba(38, 38, 38, 0.75); border: 1px solid #ffffff; border-bottom: none; border-radius: 6px 6px 0 0; margin: 2px 0 0 0; }
+.gap-mid { background: rgba(38, 38, 38, 0.75); min-height: 10px; }
+.edge-right { background: rgba(38, 38, 38, 0.75); border-top: 1px solid #ffffff; border-right: 1px solid #ffffff; border-top-right-radius: 10px; min-height: 10px; }
+.pill.tab { background: rgba(38, 38, 38, 0.75); border-color: #ffffff; }
 .panel label { font-size: 10pt; }
 .bold { font-weight: bold; }
 .dim { color: #888888; }
@@ -70,14 +75,38 @@ button.connect { background: #ffffff; padding: 0 10px; border-radius: 6px; min-h
 button.connect label { color: #000000; font-weight: bold; }
 entry, passwordentry { background: rgba(0, 0, 0, 0.4); border: 1px solid #333333; border-radius: 6px; min-height: 30px; padding: 0 8px; }
 entry:focus-within, passwordentry:focus-within { border-color: #ffffff; }
-separator { background: #333333; margin: 4px 4px; min-height: 1px; }
+separator { background: #333333; margin: 4px 4px; min-height: 1px; min-width: 1px; }
+.card { background: rgba(255, 255, 255, 0.06); border: 1px solid #333333; border-radius: 6px; padding: 10px; }
+.card.critical { border-color: #cd0000; }
+.toasts > .card { background: rgba(38, 38, 38, 0.75); border-color: #ffffff; border-radius: 10px; }
+.osd { background: rgba(38, 38, 38, 0.75); border: 1px solid #ffffff; border-radius: 10px; padding: 12px 16px; }
+.art { border-radius: 6px; }
+.date { font-size: 14pt; font-weight: bold; }
+button.chip, togglebutton.chip, button.chip:checked { background: rgba(255, 255, 255, 0.08); border: 1px solid #333333; border-radius: 6px; padding: 4px 10px; min-height: 0; }
+button.chip:hover { background: rgba(255, 255, 255, 0.15); }
+button.chip:checked { background: #ffffff; }
+button.chip:checked label { color: #000000; }
+progressbar.progress trough { min-height: 3px; border-radius: 2px; background: #333333; }
+progressbar.progress progress { min-height: 3px; border-radius: 2px; background: #ffffff; }
+calendar { background: none; border: 1px solid #333333; border-radius: 6px; padding: 6px; }
+calendar > header { border: none; }
+calendar > header > button { min-width: 28px; min-height: 28px; border-radius: 6px; }
+calendar > header > button:hover { background: rgba(255, 255, 255, 0.15); }
+calendar > grid > label.day-name { color: #888888; font-weight: bold; font-size: 8.5pt; }
+calendar > grid > label.day-number { padding: 6px; border-radius: 6px; }
+calendar > grid > label.day-number.other-month { color: #444444; }
+calendar > grid > label.day-number:selected { background: #ffffff; color: #000000; font-weight: bold; }
+scrolledwindow { background: none; }
 * { font-family: "Iosevka"; font-size: 11pt; color: #ffffff; }
 .dot { min-width: 8px; min-height: 8px; border-radius: 4px; background: #666666;
        transition: min-width 100ms ease-out, background 100ms; }
 .dot.focused { min-width: 28px; background: #ffffff; }
 .dot:hover { background: #ffffff; }
 .mark { color: #e01b24; font-weight: bold; }
-.pill { padding: 0 8px; margin: 2px 0; border-radius: 6px; transition: background 100ms; }
+/* a block of the bar: as a tab (.tab) it changes colours alone, the same border (transparent here) and margins
+   either way, so nothing in the bar moves as a panel opens */
+.pill { padding: 0 8px; margin: 2px 0 0 0; border: 1px solid transparent; border-bottom-width: 0;
+        border-radius: 6px 6px 0 0; transition: background 100ms; }
 .pill:hover { background: rgba(255, 255, 255, 0.15); }
 .tray-item { padding: 0 5px; }
 image { -gtk-icon-size: 16px; }
@@ -250,10 +279,23 @@ fn activate(app: &gtk4::Application) {
     win.set_default_size(-1, 25);
 
     let display = gdk::Display::default().unwrap();
-    let alpha = std::fs::read_to_string(home().join(".cache/theme/alpha")).unwrap_or("1".into());
+    // the bar's see-through, bin/theme's alpha (1 under dark), followed as bin/theme rewrites it
     let css = gtk4::CssProvider::new();
-    css.load_from_string(&CSS.replace("ALPHA", alpha.trim()));
+    let alpha_file = home().join(".cache/theme/alpha");
+    let load = {
+        let (css, f) = (css.clone(), alpha_file.clone());
+        move || {
+            let alpha = std::fs::read_to_string(&f).unwrap_or("1".into());
+            css.load_from_string(&CSS.replace("ALPHA", alpha.trim()));
+        }
+    };
+    load();
     gtk4::style_context_add_provider_for_display(&display, &css, 900);
+    if let Ok(mon) = gtk4::gio::File::for_path(&alpha_file).monitor_file(gtk4::gio::FileMonitorFlags::NONE, gtk4::gio::Cancellable::NONE) {
+        mon.connect_changed(move |_, _, _, _| load());
+        // kept for the program's life
+        std::mem::forget(mon);
+    }
     gtk4::IconTheme::for_display(&display).set_theme_name(Some("Adwaita"));
 
     let bar = gtk4::CenterBox::new();
@@ -366,6 +408,19 @@ fn activate(app: &gtk4::Application) {
     // wmd's state: Wi-Fi, the weather, the layout, the battery
     let hub = Hub::start();
     let panel = panel::build(app, &hub, &status);
+    let notes = notes::start(app);
+    let cal = calendar::build(app, &hub, &mid, &notes);
+    // a click on the clock opens the calendar, one popup open at a time
+    {
+        let (cal, pp) = (cal.clone(), panel.popup.clone());
+        let click = gtk4::GestureClick::new();
+        click.connect_released(move |_, _, _, _| {
+            pp.close();
+            cal.toggle();
+        });
+        mid.add_controller(click);
+        mid.set_cursor_from_name(Some("pointer"));
+    }
     hub.on(move |s| {
         let w = &s["wifi"];
         let icon = if !w["on"].as_bool().unwrap_or(false) {
@@ -402,7 +457,10 @@ fn activate(app: &gtk4::Application) {
         glib::ControlFlow::Continue
     });
     let click = gtk4::GestureClick::new();
-    click.connect_released(move |_, _, _, _| panel.toggle());
+    click.connect_released(move |_, _, _, _| {
+        cal.close();
+        panel.toggle();
+    });
     status.add_controller(click);
     status.set_cursor_from_name(Some("pointer"));
 

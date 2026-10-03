@@ -14,10 +14,10 @@ use std::time::{Duration, Instant};
 
 use gtk4::prelude::*;
 use gtk4::{glib, Align, Orientation};
-use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use serde_json::Value;
 
 use crate::hub::{bin, run, run_then, s, wmd, Hub};
+use crate::popup::{Popup, Side};
 
 fn wmdc(args: &[&str]) {
     let w = wmd().to_string_lossy().into_owned();
@@ -266,82 +266,27 @@ pub fn battery_time(b: &Value) -> String {
 }
 
 pub struct Panel {
-    win: gtk4::ApplicationWindow,
-    catcher: gtk4::ApplicationWindow,
-    menus: Rc<Menus>,
-    // the bar's block the panel grows out of, a tab of it while open
-    tab: gtk4::Box,
+    pub popup: Rc<Popup>,
 }
 
 impl Panel {
     pub fn toggle(&self) {
-        let open = !self.win.is_visible();
-        // RBAR_MENU=wifi opens with that menu unfolded: a look at one without a click
-        self.menus.set(&std::env::var("RBAR_MENU").unwrap_or_default());
-        self.catcher.set_visible(open);
-        self.win.set_visible(open);
-        self.mark(open);
-    }
-    pub fn close(&self) {
-        self.win.set_visible(false);
-        self.catcher.set_visible(false);
-        self.mark(false);
-    }
-    fn mark(&self, open: bool) {
-        if open {
-            self.tab.add_css_class("tab");
-        } else {
-            self.tab.remove_css_class("tab");
-        }
+        self.popup.toggle()
     }
 }
 
 pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Panel> {
-    // the catcher: the whole screen, see-through, under the panel; a click on it closes the panel
-    let catcher = gtk4::ApplicationWindow::new(app);
-    catcher.init_layer_shell();
-    catcher.set_layer(Layer::Top);
-    catcher.set_namespace(Some("rbar-catcher"));
-    for e in [Edge::Top, Edge::Bottom, Edge::Left, Edge::Right] {
-        catcher.set_anchor(e, true);
-    }
-    catcher.set_exclusive_zone(-1);
-    catcher.add_css_class("catcher");
-
-    let win = gtk4::ApplicationWindow::new(app);
-    win.init_layer_shell();
-    win.set_layer(Layer::Overlay);
-    win.set_namespace(Some("rbar-panel"));
-    // down to the screen's bottom and never resized: the panel grows and shrinks inside it, so a menu sliding
-    // open moves no window (a layer surface resized frame by frame jerks); input only over the panel itself
-    win.set_anchor(Edge::Top, true);
-    win.set_anchor(Edge::Right, true);
-    win.set_anchor(Edge::Bottom, true);
-    // right under the bar, against its tab
-    win.set_margin(Edge::Top, 0);
-    win.set_margin(Edge::Right, 6);
-    // the keyboard on a click into it: a passphrase, Escape
-    win.set_keyboard_mode(KeyboardMode::OnDemand);
-    win.set_default_size(390, -1);
-    win.add_css_class("panel-window");
-
     let menus = Rc::new(Menus::default());
-    let panel = Rc::new(Panel { win: win.clone(), catcher: catcher.clone(), menus: menus.clone(), tab: tab.clone() });
-
-    let click = gtk4::GestureClick::new();
-    let p = panel.clone();
-    click.connect_pressed(move |_, _, _, _| p.close());
-    catcher.add_controller(click);
-    let keys = gtk4::EventControllerKey::new();
-    let p = panel.clone();
-    keys.connect_key_pressed(move |_, k, _, _| {
-        if k == gtk4::gdk::Key::Escape {
-            p.close();
-            return glib::Propagation::Stop;
-        }
-        glib::Propagation::Proceed
-    });
-    win.add_controller(keys);
+    // closes the panel, once the popup is made (the buttons that close it are made before it)
+    let closer: Rc<RefCell<Option<Rc<Popup>>>> = Rc::default();
+    let panel = {
+        let c = closer.clone();
+        Rc::new(move || {
+            if let Some(p) = c.borrow().as_ref() {
+                p.close()
+            }
+        })
+    };
 
     let col = gtk4::Box::new(Orientation::Vertical, 10);
     col.add_css_class("panel");
@@ -369,12 +314,12 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Pane
     };
     let p = panel.clone();
     head.append(&round("applets-screenshooter-symbolic", Box::new(move || {
-        p.close();
+        p();
         run(&[&bin("screenshot-select")]);
     })));
     let p = panel.clone();
     head.append(&round("system-lock-screen-symbolic", Box::new(move || {
-        p.close();
+        p();
         run(&["loginctl", "lock-session"]);
     })));
     let power = menus.arrow("system");
@@ -393,7 +338,7 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Pane
     ] {
         let p = panel.clone();
         sys_items.append(&row(icon, text, "", false, move || {
-            p.close();
+            p();
             run(&cmd);
         }));
     }
@@ -538,43 +483,11 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Pane
     let headset_row = grid_row(&headset.root, None);
     col.append(&headset_row);
 
-    // the panel grown out of the bar's tab: a top edge from its left corner to the tab, open under the tab
-    // (whose sides run on down as the panel's), then the panel with no top edge of its own
-    let shape = gtk4::Box::new(Orientation::Vertical, 0);
-    shape.set_valign(Align::Start);
-    let top = gtk4::Box::new(Orientation::Horizontal, 0);
-    let edge = gtk4::Box::new(Orientation::Horizontal, 0);
-    edge.add_css_class("edge");
-    edge.set_hexpand(true);
-    let gap = gtk4::Box::new(Orientation::Horizontal, 0);
-    gap.add_css_class("gap");
-    top.append(&edge);
-    top.append(&gap);
-    shape.append(&top);
-    col.add_css_class("attached");
-    shape.append(&col);
-    win.set_child(Some(&shape));
-    // the gap as wide as the tab; the input region over the panel as it grows and shrinks, frame by frame
-    // while a menu slides
-    let last = RefCell::new((0, 0));
-    let w2 = win.clone();
-    let tab2 = tab.clone();
-    shape.add_tick_callback(move |col, _| {
-        // the tab's border box (width() is its content alone, without its padding and border)
-        let tw = tab2.compute_bounds(&tab2).map(|b| b.width().round() as i32).unwrap_or(0);
-        if tw > 0 && gap.width_request() != tw - 1 {
-            gap.set_size_request(tw - 1, -1);
-        }
-        let (w, h) = (col.width(), col.height());
-        if *last.borrow() != (w, h) {
-            *last.borrow_mut() = (w, h);
-            if let Some(surface) = w2.surface() {
-                let rect = gtk4::cairo::RectangleInt::new(0, 0, w, h);
-                surface.set_input_region(Some(&gtk4::cairo::Region::create_rectangle(&rect)));
-            }
-        }
-        glib::ControlFlow::Continue
-    });
+    let popup = Popup::new(app, "rbar-panel", tab, Side::Right, 390, &col);
+    *closer.borrow_mut() = Some(popup.clone());
+    // RBAR_MENU=wifi opens with that menu unfolded: a look at one without a click
+    let m = menus.clone();
+    popup.on_open(move || m.set(&std::env::var("RBAR_MENU").unwrap_or_default()));
 
     // Wi-Fi's passphrase asked for, and Bluetooth's pairing, kept across redraws
     let asking: Rc<RefCell<String>> = Rc::default();
@@ -922,5 +835,5 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Pane
         draw();
     });
 
-    panel
+    Rc::new(Panel { popup })
 }
