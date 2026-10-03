@@ -1,8 +1,8 @@
 //! The calendar grown out of the bar's clock, as the Quickshell bar's date menu: at the left the player (MPRIS:
 //! art, track, artist, previous/play/next, how far in) over the notifications' history with Do Not Disturb and
-//! Clear; at the right today's weekday and date, the month (GTK's calendar, today inverted, the days with events
-//! marked), the picked day's events (services/calendar.rs: a CalDAV calendar's, .ics links'), the weather where
-//! wmd location put the machine. Everything from wmd's state but the history, ostrov's own notifications.
+//! Clear; at the right the month (GTK's calendar, today inverted, the days with events marked; its top level with
+//! the player's), the picked day's events (services/calendar.rs: a CalDAV account's, .ics links'), the weather
+//! where wmd location put the machine. Everything from wmd's state but the history, ostrov's own notifications.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -90,16 +90,13 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     // the right: the date, the month, the weather
     let right = gtk4::Box::new(Orientation::Vertical, 4);
     right.set_size_request(300, -1);
-    let weekday = label("", "dim");
-    let date = label("", "date");
     let cal = gtk4::Calendar::new();
-    cal.set_margin_top(8);
-    right.append(&weekday);
-    right.append(&date);
     right.append(&cal);
     let agenda = gtk4::Box::new(Orientation::Vertical, 6);
     agenda.add_css_class("card");
     agenda.set_margin_top(8);
+    // shown only with a day's events in it (draw below)
+    agenda.set_visible(false);
     right.append(&agenda);
     let weather = gtk4::Box::new(Orientation::Vertical, 8);
     weather.add_css_class("card");
@@ -124,18 +121,17 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     let popup = Popup::new(host, tab, Side::Center, 680, &body);
 
     // on every opening: today, this month
-    let (wd, dt, c2) = (weekday.clone(), date.clone(), cal.clone());
+    let c2 = cal.clone();
     let today = move || {
         if let Ok(now) = glib::DateTime::now_local() {
-            wd.set_text(&now.format("%A").unwrap_or_default());
-            dt.set_text(&now.format("%B %-d %Y").unwrap_or_default());
             c2.select_day(&now);
         }
     };
     today();
     popup.on_open(today);
 
-    // the events: the month's days with any marked, the picked day's listed; nothing while no calendar is set
+    // the events: the month's days with any marked, the picked day's listed; nothing while no calendar is set or
+    // the day has none
     {
         let events: Rc<RefCell<serde_json::Value>> = Rc::default();
         let (c2, a2, e2) = (cal.clone(), agenda.clone(), events.clone());
@@ -144,7 +140,6 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
             c2.clear_marks();
             crate::style::clear(&a2);
             let Some(events) = events.as_array() else { return a2.set_visible(false) };
-            a2.set_visible(true);
             let picked = c2.date();
             let Ok(first) = picked.add_days(1 - picked.day_of_month()) else { return };
             for d in (0..31).filter_map(|i| first.add_days(i).ok()).take_while(|d| d.month() == picked.month()) {
@@ -152,10 +147,9 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
                     c2.mark_day(d.day_of_month() as u32);
                 }
             }
+            // no card at all for a day without events: nothing empty between the month and the weather
             let day: Vec<_> = events.iter().filter(|e| on(e, &picked)).collect();
-            if day.is_empty() {
-                a2.append(&label("No events", "dim"));
-            }
+            a2.set_visible(!day.is_empty());
             for e in day {
                 a2.append(&event(e, &picked));
             }
