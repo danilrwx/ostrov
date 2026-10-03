@@ -141,7 +141,7 @@ fn activate(app: &gtk4::Application) {
                     return bar.command(block, rest).unwrap_or(Ok(String::new()));
                 }
                 // the services' commands, wmd's words: their outcome said by the running ostrov
-                ["wifi" | "bt" | "headset" | "power" | "brightness" | "night" | "location" | "media", ..] => {
+                ["wifi" | "bt" | "headset" | "power" | "brightness" | "night" | "location" | "media" | "displays", ..] => {
                     hub::service(&args)
                 }
                 _ => return Err(USAGE.into()),

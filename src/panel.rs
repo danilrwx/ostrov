@@ -20,6 +20,8 @@ use crate::style::{clear, label};
 use crate::hub::{bin, run, s, service, service_then, Hub};
 use crate::popup::{Popup, Side};
 
+mod displays;
+
 
 
 /// A menu row: an icon, its text, a note, a tick while on (the row inverted); a click picks it.
@@ -482,6 +484,14 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
     col.append(&grid_row(&keep.root, Some(&headset.root)));
     *awake.borrow_mut() = Some(keep);
 
+    let m = menus.clone();
+    let displays_t =
+        Toggle::new(&menus, "video-display-symbolic", "Displays", Some("displays"), move || m.flip("displays"));
+    let displays_row = grid_row(&displays_t.root, None);
+    col.append(&displays_row);
+    let (displays_menu, displays_items) = menus.menu("displays", "video-display-symbolic", "Displays");
+    col.append(&displays_menu);
+
     let popup = Popup::new(host, tab, Side::Right, 390, &col);
     *closer.borrow_mut() = Some(popup.clone());
     // every opening with the menus folded
@@ -831,6 +841,9 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
                 t.set(crate::idle::awake(), "", if crate::idle::awake() { "the screen stays on" } else { "" });
             }
             headset.set(hs == "handsfree", "", if hs == "handsfree" { "Handsfree, with the mic" } else { "Headphones" });
+
+            let d = &st["displays"];
+            displays::draw(d, &displays_t, &displays_row, &displays_items, changed("displays", d.to_string()));
         }
     };
     let draw: Rc<dyn Fn()> = Rc::new(draw);
