@@ -5,8 +5,8 @@
 //! ($mod+Shift+v).
 //!
 //! What is typed picks the run's mode, named by the prompt: arithmetic is calculated (calc.rs), its result copied;
-//! :name finds emoji, copied; ?question asks Claude (claude -p), the answer shown under the bar and Enter again
-//! copying it; g words searches Google in the browser; /name finds files under
+//! :name finds emoji, copied; ?question asks Claude, claude.ai opened in the browser with it; g words searches
+//! Google in the browser; /name finds files under
 //! the home with fd, opened in their default app.
 
 use std::cell::{Cell, RefCell};
@@ -31,8 +31,6 @@ enum Hit {
     Copy(String, String),
     /// a search or a file: what is shown, the URI opened in its default app
     Open(String, String),
-    /// a question for Claude (after ?): the question
-    Ask(String),
 }
 
 impl Hit {
@@ -41,7 +39,6 @@ impl Hit {
             Hit::App(a) => a.name().to_string(),
             Hit::Clip(_, _, shown) => shown.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(60).collect(),
             Hit::Copy(shown, _) | Hit::Open(shown, _) => shown.clone(),
-            Hit::Ask(q) => format!("Ask Claude: {q}"),
         }
     }
 }
@@ -55,8 +52,6 @@ pub struct Launcher {
     hits: RefCell<Vec<Hit>>,
     /// bumped by every key typed: a file search's late answer to an older query is dropped
     typed: Cell<u64>,
-    /// Claude's answer to the question asked, "" while it thinks; None with none asked
-    reply: RefCell<Option<String>>,
     picked: Cell<usize>,
     row: gtk4::Box,
     scroll: gtk4::ScrolledWindow,
@@ -120,7 +115,6 @@ impl Launcher {
             all: RefCell::default(),
             hits: RefCell::default(),
             typed: Cell::new(0),
-            reply: RefCell::default(),
             picked: Cell::new(0),
             row,
             scroll,
@@ -179,18 +173,7 @@ impl Launcher {
         self.query.grab_focus();
     }
 
-    /// Opened with a question to Claude typed and asked (ostrov ask QUESTION).
-    pub fn ask_now(self: &Rc<Self>, question: &str) {
-        if !self.is_open() || self.clip.get() {
-            self.toggle(false);
-        }
-        self.query.set_text(&format!("? {question}"));
-        self.query.set_position(-1);
-        self.pick(0);
-    }
-
     pub fn close(&self) {
-        *self.reply.borrow_mut() = None;
         self.widget.set_visible(false);
         self.preview.set_visible(false);
         (self.on_toggle)(false);
@@ -210,10 +193,8 @@ impl Launcher {
             let hit = Hit::Open(format!("Search {engine} for {words}"), uri);
             ("web", if words.is_empty() { vec![] } else { vec![hit] })
         } else if let Some(question) = q.strip_prefix('?') {
-            // a question typed anew: the last answer is gone with it
-            *self.reply.borrow_mut() = None;
             let question = question.trim();
-            ("claude", if question.is_empty() { vec![] } else { vec![Hit::Ask(question.into())] })
+            ("claude", if question.is_empty() { vec![] } else { vec![Hit::Open(format!("Ask Claude: {question}"), claude(question))] })
         } else if let Some(name) = q.strip_prefix('/') {
             self.files(name.trim());
             ("files", vec![])
@@ -299,15 +280,8 @@ impl Launcher {
         self.show_preview();
     }
 
-    /// The picked clipboard entry whole under the bar, or Claude's answer; nothing over the apps.
+    /// The picked clipboard entry whole under the bar; nothing over the apps.
     fn show_preview(&self) {
-        if let Some(reply) = self.reply.borrow().as_ref() {
-            self.preview_text.set_text(if reply.is_empty() { "…" } else { reply });
-            self.preview_text.set_visible(true);
-            self.preview_picture.set_visible(false);
-            self.preview.set_visible(true);
-            return;
-        }
         let id = self.hits.borrow().get(self.picked.get()).and_then(|h| match h {
             Hit::Clip(id, ..) => Some(*id),
             _ => None,
@@ -355,18 +329,6 @@ impl Launcher {
     /// a file opened; with none, what was typed run, when it is a run.
     fn pick(self: &Rc<Self>, n: usize) {
         let typed = self.query.text().to_string();
-        // a question: asked, the launcher kept open for its answer; with the answer there, it copied
-        if let Some(Hit::Ask(q)) = self.hits.borrow().get(n).cloned() {
-            match self.reply.borrow().clone() {
-                Some(answer) if !answer.is_empty() => {
-                    self.close();
-                    crate::clip::put(answer.into_bytes(), "text");
-                }
-                Some(_) => {}
-                None => self.ask(q),
-            }
-            return;
-        }
         let run_mode = self.prompt.text() == "run";
         let hit = self.hits.borrow().get(n).cloned();
         self.close();
@@ -389,43 +351,9 @@ impl Launcher {
                     eprintln!("ostrov: open {uri}: {e}");
                 }
             }
-            // asked above, before the launcher closed
-            Some(Hit::Ask(_)) => {}
             None if run_mode && !typed.trim().is_empty() => run(&["sh", "-c", &typed]),
             None => {}
         }
-    }
-
-    /// The question put to Claude Code (claude -p) off GTK's thread, "…" under the bar till its answer comes;
-    /// an answer to a question since typed over is dropped.
-    fn ask(self: &Rc<Self>, question: String) {
-        *self.reply.borrow_mut() = Some(String::new());
-        self.show_preview();
-        let (me, typed) = (Rc::downgrade(self), self.typed.get());
-        let (tx, rx) = async_channel::bounded(1);
-        std::thread::spawn(move || {
-            let claude = crate::hub::home().join(".local/bin/claude");
-            let out = std::process::Command::new(claude)
-                .args(["-p", "--output-format", "text", "--append-system-prompt"])
-                .arg("Answer briefly and in plain text, no Markdown: the answer is read in a small popup under the \
-                      desktop's bar, and copied from there.")
-                .arg(&question)
-                .current_dir(crate::hub::home())
-                .stdin(std::process::Stdio::null())
-                .output();
-            let answer = match out {
-                Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).trim().to_string(),
-                Ok(o) => format!("claude: {}", String::from_utf8_lossy(&o.stderr).trim()),
-                Err(e) => format!("claude: {e}"),
-            };
-            let _ = tx.send_blocking(answer);
-        });
-        glib::spawn_future_local(async move {
-            let Ok(answer) = rx.recv().await else { return };
-            let Some(me) = me.upgrade().filter(|me| me.typed.get() == typed && me.is_open()) else { return };
-            *me.reply.borrow_mut() = Some(if answer.is_empty() { "(no answer)".into() } else { answer });
-            me.show_preview();
-        });
     }
 
     /// The picked clip out of the history.
@@ -437,6 +365,11 @@ impl Launcher {
         self.filter();
         self.set_picked(n.min(self.hits.borrow().len().saturating_sub(1)));
     }
+}
+
+/// Claude's page with the question asked (claude.ai/new?q=, the question typed in and sent).
+pub fn claude(question: &str) -> String {
+    format!("https://claude.ai/new?q={}", glib::Uri::escape_string(question, None, false))
 }
 
 /// "g words" searches Google: the engine's name and its query's URL.

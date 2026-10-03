@@ -110,7 +110,11 @@ fn activate(app: &gtk4::Application) {
                 ["calendar"] => toggle("clock")?,
                 ["menu", name] => return bar.command("status", &["menu", name]).unwrap_or(Err("no status block".into())),
                 ["run"] => launcher.toggle(false),
-                ["ask", ref question @ ..] if !question.is_empty() => launcher.ask_now(&question.join(" ")),
+                ["ask", ref question @ ..] if !question.is_empty() => {
+                    let ctx = gtk4::gdk::Display::default().map(|d| d.app_launch_context());
+                    let uri = launcher::claude(&question.join(" "));
+                    gtk4::gio::AppInfo::launch_default_for_uri(&uri, ctx.as_ref()).map_err(|e| e.to_string())?;
+                }
                 ["clip"] => launcher.toggle(true),
                 ["lock"] => lock.lock(),
                 ["screenshot"] => shot.take(),
