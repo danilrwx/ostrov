@@ -7,6 +7,8 @@
 
 mod calendar;
 mod hub;
+mod launcher;
+mod lock;
 mod notes;
 mod panel;
 mod popup;
@@ -18,7 +20,7 @@ use hub::{home, Hub};
 
 use gtk4::prelude::*;
 use gtk4::{gdk, glib};
-use gtk4_layer_shell::{Edge, Layer, LayerShell};
+use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use system_tray::client::{ActivateRequest, Client};
 use system_tray::item::StatusNotifierItem;
 use system_tray::menu::{MenuItem, MenuType, ToggleState, ToggleType, TrayMenu};
@@ -102,7 +104,14 @@ scrolledwindow { background: none; }
        transition: min-width 100ms ease-out, background 100ms; }
 .dot.focused { min-width: 28px; background: #ffffff; }
 .dot:hover { background: #ffffff; }
-.mark { color: #e01b24; font-weight: bold; }
+text.query { background: none; border: none; box-shadow: none; padding: 0; }
+.hit { padding: 0 10px; }
+.hit:hover { background: rgba(255, 255, 255, 0.15); }
+.hit.picked { background: #ffffff; color: #000000; }
+window.lock { background: #000000; }
+.lock-time { font-size: 64pt; }
+passwordentry.lock-entry { background: #000000; border: 1px solid #ffffff; border-radius: 6px; min-width: 320px; min-height: 40px; }
+passwordentry.lock-entry:disabled { border-color: #888888; }
 /* a block of the bar: as a tab (.tab) it changes colours alone, the same border (transparent here) and margins
    either way, so nothing in the bar moves as a panel opens */
 .pill { padding: 0 8px; margin: 2px 0 0 0; border: 1px solid transparent; border-bottom-width: 0;
@@ -140,18 +149,46 @@ fn hyprctl(req: &str) -> String {
     out
 }
 
-/// Every workspace event of Hyprland's, as a kick down the channel.
-fn hypr_events(tx: async_channel::Sender<()>) {
+/// Every event of Hyprland's, its name down the channel.
+fn hypr_events(tx: async_channel::Sender<String>) {
     let Some(Ok(s)) = hypr_socket(".socket2.sock").map(UnixStream::connect) else { return };
     for line in BufReader::new(s).lines().map_while(Result::ok) {
-        if ["workspace", "createworkspace", "destroyworkspace", "urgent", "focusedmon"]
-            .iter()
-            .any(|e| line.starts_with(&format!("{e}>>")))
-        {
-            let _ = tx.send_blocking(());
+        if let Some((name, _)) = line.split_once(">>") {
+            let _ = tx.send_blocking(name.to_string());
         }
     }
 }
+
+/// The bar's mode, i3's bar mode toggle: docked (its strip taken from the windows), or hidden and shown over
+/// the windows while Super is held (ostrov bar toggle, peek, unpeek: config/hypr's binds).
+struct Mode {
+    win: gtk4::ApplicationWindow,
+    docked: std::cell::Cell<bool>,
+    peeking: std::cell::Cell<bool>,
+    launching: std::cell::Cell<bool>,
+}
+
+impl Mode {
+    fn apply(&self) {
+        if self.docked.get() {
+            self.win.set_layer(Layer::Top);
+            self.win.auto_exclusive_zone_enable();
+        } else {
+            self.win.set_layer(Layer::Overlay);
+            self.win.set_exclusive_zone(0);
+        }
+        // the launcher in it takes the keyboard while open, and shows it hidden or not
+        self.win.set_keyboard_mode(if self.launching.get() { KeyboardMode::Exclusive } else { KeyboardMode::None });
+        self.win.set_visible(self.docked.get() || self.peeking.get() || self.launching.get());
+    }
+}
+
+thread_local! {
+    /// What `ostrov ARGS` does in the running ostrov, set once it is built.
+    static COMMAND: std::cell::RefCell<Option<Box<dyn Fn(&[String]) -> Result<(), String>>>> = Default::default();
+}
+
+const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | clip | lock | bar toggle|peek|unpeek]";
 
 /// What the tray shows of an item: its address, its icon, its menu.
 #[derive(Clone)]
@@ -323,10 +360,7 @@ fn activate(app: &gtk4::Application) {
     let start = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
     start.add_css_class("bar-bg");
     start.set_hexpand(true);
-    let mark = gtk4::Label::new(Some("ostrov"));
-    mark.set_margin_start(12);
-    mark.add_css_class("mark");
-    start.append(&mark);
+    dots.set_margin_start(12);
     start.append(&dots);
     bar.set_start_widget(Some(&start));
     // a dot a workspace, made once and kept, so the focused one's class alone changes and CSS animates it
@@ -377,11 +411,25 @@ fn activate(app: &gtk4::Application) {
         }
     };
     draw_dots();
+    let mode = std::rc::Rc::new(Mode { win: win.clone(), docked: true.into(), peeking: false.into(), launching: false.into() });
     let (ws_tx, ws_rx) = async_channel::unbounded();
     std::thread::spawn(move || hypr_events(ws_tx));
+    let m = mode.clone();
     glib::spawn_future_local(async move {
-        while ws_rx.recv().await.is_ok() {
-            draw_dots();
+        while let Ok(e) = ws_rx.recv().await {
+            if ["workspace", "createworkspace", "destroyworkspace", "urgent", "focusedmon"].contains(&e.as_str()) {
+                draw_dots();
+            }
+            // a Super combination done (a workspace, a window): Hyprland skips the release bind after another
+            // key, so the peek ends here instead
+            if m.peeking.get()
+                && ["workspacev2", "focusedmonv2", "activewindowv2", "openwindow", "closewindow", "movewindowv2",
+                    "changefloatingmode", "fullscreen"]
+                    .contains(&e.as_str())
+            {
+                m.peeking.set(false);
+                m.apply();
+            }
         }
     });
 
@@ -417,7 +465,8 @@ fn activate(app: &gtk4::Application) {
     end.add_css_class("bar-bg");
     end.set_size_request(6, -1);
     right.append(&fill);
-    right.append(&slot(&layout));
+    let layout_slot = slot(&layout);
+    right.append(&layout_slot);
     right.append(&tray_box);
     right.append(&status_slot);
     right.append(&end);
@@ -478,12 +527,72 @@ fn activate(app: &gtk4::Application) {
             if t.is_empty() { t } else { format!(", {t}") }
         })));
     });
-    // a click on the status opens the quick settings, and so does SIGUSR1 (pkill -USR1 ostrov: a key)
-    let p = panel.clone();
-    glib_unix::unix_signal_add_local(10, move || {
-        p.toggle();
-        glib::ControlFlow::Continue
-    });
+    // the launcher, in the clock's place
+    let launcher_widget: std::rc::Rc<std::cell::OnceCell<gtk4::Box>> = Default::default();
+    let launcher = {
+        let lw = launcher_widget.clone();
+        let (m, mid, mid_slot, bar, dots, layout_slot) =
+            (mode.clone(), mid.clone(), mid_slot.clone(), bar.clone(), dots.clone(), layout_slot.clone());
+        launcher::Launcher::new(move |open| {
+            // over the bar from the workspaces to the right's blocks, the clock out of the way under it
+            if open {
+                let x = |w: &gtk4::Box| w.compute_bounds(&bar).map_or(0, |b| b.x() as i32);
+                let start = x(&dots) + dots.width();
+                if let Some(w) = lw.get() {
+                    w.set_margin_start(start + 12);
+                    w.set_margin_end(bar.width() - x(&layout_slot) + 12);
+                }
+            }
+            // the clock's slot keeps its black, the clock in it hidden
+            mid.set_opacity(if open { 0.0 } else { 1.0 });
+            mid_slot.set_can_target(!open);
+            m.launching.set(open);
+            m.apply();
+        })
+    };
+    let _ = launcher_widget.set(launcher.widget.clone());
+    launcher.widget.set_margin_start(0);
+    let over = gtk4::Overlay::new();
+    over.add_overlay(&launcher.widget);
+    let lock = lock::build(app);
+
+    // ostrov ARGS, from a key or a script, handed over to this ostrov by GApplication
+    {
+        let (panel, cal) = (panel.clone(), cal.clone());
+        COMMAND.with(|c| {
+            *c.borrow_mut() = Some(Box::new(move |args: &[String]| {
+                let args: Vec<&str> = args.iter().map(String::as_str).collect();
+                match args[..] {
+                    ["panel"] => {
+                        cal.close();
+                        panel.toggle();
+                    }
+                    ["menu", name] => {
+                        cal.close();
+                        panel.open_menu(name);
+                    }
+                    ["run"] => launcher.toggle(false),
+                    ["clip"] => launcher.toggle(true),
+                    ["lock"] => lock.lock(),
+                    ["calendar"] => {
+                        panel.popup.close();
+                        cal.toggle();
+                    }
+                    ["bar", what @ ("toggle" | "peek" | "unpeek")] => {
+                        match what {
+                            "toggle" => mode.docked.set(!mode.docked.get()),
+                            "peek" => mode.peeking.set(true),
+                            _ => mode.peeking.set(false),
+                        }
+                        mode.apply();
+                    }
+                    _ => return Err(USAGE.into()),
+                }
+                Ok(())
+            }))
+        });
+    }
+    // a click on the status opens the quick settings
     let click = gtk4::GestureClick::new();
     click.connect_released(move |_, _, _, _| {
         cal.close();
@@ -531,12 +640,33 @@ fn activate(app: &gtk4::Application) {
         }
     });
 
-    win.set_child(Some(&bar));
+    over.set_child(Some(&bar));
+    win.set_child(Some(&over));
     win.present();
 }
 
 fn main() -> glib::ExitCode {
-    let app = gtk4::Application::builder().application_id("dev.danil.ostrov").build();
+    // one ostrov: run again, it hands its arguments to the running one and exits
+    let app = gtk4::Application::builder()
+        .application_id("dev.danil.ostrov")
+        .flags(gtk4::gio::ApplicationFlags::HANDLES_COMMAND_LINE)
+        .build();
     app.connect_activate(activate);
+    app.connect_command_line(|app, cl| {
+        if COMMAND.with(|c| c.borrow().is_none()) {
+            app.activate();
+        }
+        let args: Vec<String> = cl.arguments().iter().skip(1).map(|a| a.to_string_lossy().into_owned()).collect();
+        if args.is_empty() {
+            return glib::ExitCode::SUCCESS;
+        }
+        match COMMAND.with(|c| c.borrow().as_ref().map(|f| f(&args))) {
+            Some(Err(e)) => {
+                cl.printerr_literal(&format!("{e}\n"));
+                glib::ExitCode::FAILURE
+            }
+            _ => glib::ExitCode::SUCCESS,
+        }
+    });
     app.run()
 }

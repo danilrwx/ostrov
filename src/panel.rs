@@ -267,11 +267,18 @@ pub fn battery_time(b: &Value) -> String {
 
 pub struct Panel {
     pub popup: Rc<Popup>,
+    menus: Rc<Menus>,
 }
 
 impl Panel {
     pub fn toggle(&self) {
         self.popup.toggle()
+    }
+
+    /// Open with one menu unfolded (ostrov menu wifi: a key to it, or a look at it without a click).
+    pub fn open_menu(&self, name: &str) {
+        self.popup.open();
+        self.menus.set(name);
     }
 }
 
@@ -485,9 +492,9 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Pane
 
     let popup = Popup::new(app, "ostrov-panel", tab, Side::Right, 390, &col);
     *closer.borrow_mut() = Some(popup.clone());
-    // OSTROV_MENU=wifi opens with that menu unfolded: a look at one without a click
+    // every opening with the menus folded
     let m = menus.clone();
-    popup.on_open(move || m.set(&std::env::var("OSTROV_MENU").unwrap_or_default()));
+    popup.on_open(move || m.set(""));
 
     // Wi-Fi's passphrase asked for, and Bluetooth's pairing, kept across redraws
     let asking: Rc<RefCell<String>> = Rc::default();
@@ -835,5 +842,5 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Pane
         draw();
     });
 
-    Rc::new(Panel { popup })
+    Rc::new(Panel { popup, menus })
 }

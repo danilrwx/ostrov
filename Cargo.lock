@@ -380,6 +380,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "gio-unix"
+version = "0.22.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce8d768735e229742c135afa3d3326604088d2df0679901cdb05e791fe2fbe0a"
+dependencies = [
+ "gio",
+ "gio-unix-sys",
+ "glib",
+ "libc",
+]
+
+[[package]]
+name = "gio-unix-sys"
+version = "0.22.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c01dbb58f92f67548d85e2209e073acc7ee04e107c7e04ee69b49e38b4933b4"
+dependencies = [
+ "gio-sys",
+ "glib-sys",
+ "gobject-sys",
+ "libc",
+ "system-deps 9.0.0",
+]
+
+[[package]]
 name = "gl"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -438,28 +463,6 @@ version = "0.22.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99b38907e67e40dec9b60f858bcada952598719cb512a13eb13d6cdcd16f8295"
 dependencies = [
- "libc",
- "system-deps 9.0.0",
-]
-
-[[package]]
-name = "glib-unix"
-version = "0.22.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc698e05c8483a899312f76b30b8d6d59e44f9e6ddf93a7487a6de34019b543d"
-dependencies = [
- "futures-core",
- "glib",
- "glib-unix-sys",
-]
-
-[[package]]
-name = "glib-unix-sys"
-version = "0.22.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8644d8d71c4f25b27f775dc9bb4dcd69ff81de8614b23f16c2d7944c915e96ab"
-dependencies = [
- "glib-sys",
  "libc",
  "system-deps 9.0.0",
 ]
@@ -586,6 +589,34 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.6",
+]
+
+[[package]]
+name = "gtk4-session-lock"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26659c1334b67c91fc270ebb5ccfb6f20c92b169164b967bcf9f62d79d1f033f"
+dependencies = [
+ "gdk4",
+ "glib",
+ "glib-sys",
+ "gtk4",
+ "gtk4-session-lock-sys",
+ "libc",
+]
+
+[[package]]
+name = "gtk4-session-lock-sys"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51b694670ce8c85cfdafeaec6faf1567bf6abe661be147ba9dab0059564522ba"
+dependencies = [
+ "gdk4-sys",
+ "glib-sys",
+ "gobject-sys",
+ "gtk4-sys",
+ "libc",
+ "system-deps 8.0.0",
 ]
 
 [[package]]
@@ -723,9 +754,11 @@ name = "ostrov"
 version = "0.1.0"
 dependencies = [
  "async-channel",
- "glib-unix",
+ "gio",
+ "gio-unix",
  "gtk4",
  "gtk4-layer-shell",
+ "gtk4-session-lock",
  "serde_json",
  "system-tray",
  "tokio",
