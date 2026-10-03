@@ -341,7 +341,7 @@ pub fn build(app: &gtk4::Application, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Pane
         ("weather-clear-night-symbolic", "Suspend", vec!["systemctl", "suspend"]),
         ("view-refresh-symbolic", "Restart…", vec!["systemctl", "reboot"]),
         ("system-shutdown-symbolic", "Power Off…", vec!["systemctl", "poweroff"]),
-        ("system-log-out-symbolic", "Log Out", vec!["hyprctl", "dispatch", "exit"]),
+        ("system-log-out-symbolic", "Log Out", vec!["sh", "-c", "hyprctl dispatch exit || swaymsg exit"]),
     ] {
         let p = panel.clone();
         sys_items.append(&row(icon, text, "", false, move || {

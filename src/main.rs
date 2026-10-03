@@ -12,9 +12,8 @@ mod lock;
 mod notes;
 mod panel;
 mod popup;
+mod wm;
 
-use std::io::{BufRead, BufReader, Read, Write};
-use std::os::unix::net::UnixStream;
 
 use hub::{home, Hub};
 
@@ -134,33 +133,6 @@ popover button { background: none; border: none; box-shadow: none; padding: 6px 
 popover button:hover { background: @hover; }
 popover separator { background: rgba(255, 255, 255, 0.1); margin: 4px 6px; }
 "#;
-
-fn hypr_socket(name: &str) -> Option<String> {
-    let sig = std::env::var("HYPRLAND_INSTANCE_SIGNATURE").ok()?;
-    let run = std::env::var("XDG_RUNTIME_DIR").ok()?;
-    Some(format!("{run}/hypr/{sig}/{name}"))
-}
-
-/// A request to Hyprland's socket ("j/workspaces"), its answer.
-fn hyprctl(req: &str) -> String {
-    let Some(Ok(mut s)) = hypr_socket(".socket.sock").map(UnixStream::connect) else {
-        return String::new();
-    };
-    let _ = s.write_all(req.as_bytes());
-    let mut out = String::new();
-    let _ = s.read_to_string(&mut out);
-    out
-}
-
-/// Every event of Hyprland's, its name down the channel.
-fn hypr_events(tx: async_channel::Sender<String>) {
-    let Some(Ok(s)) = hypr_socket(".socket2.sock").map(UnixStream::connect) else { return };
-    for line in BufReader::new(s).lines().map_while(Result::ok) {
-        if let Some((name, _)) = line.split_once(">>") {
-            let _ = tx.send_blocking(name.to_string());
-        }
-    }
-}
 
 /// The bar's mode, i3's bar mode toggle: docked (its strip taken from the windows), or hidden and shown over
 /// the windows while Super is held (ostrov bar toggle, peek, unpeek: config/hypr's binds).
@@ -407,11 +379,7 @@ fn activate(app: &gtk4::Application) {
         let dots = dots.clone();
         let made: std::rc::Rc<std::cell::RefCell<Vec<(i64, gtk4::Box)>>> = Default::default();
         move || {
-            let ws: serde_json::Value = serde_json::from_str(&hyprctl("j/workspaces")).unwrap_or_default();
-            let active: serde_json::Value = serde_json::from_str(&hyprctl("j/activeworkspace")).unwrap_or_default();
-            let mut ids: Vec<i64> =
-                ws.as_array().into_iter().flatten().filter_map(|w| w["id"].as_i64()).filter(|i| *i > 0).collect();
-            ids.sort();
+            let (ids, active) = wm::workspaces();
             let mut made = made.borrow_mut();
             // gone workspaces out, new ones in at their place
             made.retain(|(id, dot)| {
@@ -431,7 +399,7 @@ fn activate(app: &gtk4::Application) {
                 let id = *id;
                 let click = gtk4::GestureClick::new();
                 click.connect_released(move |_, _, _, _| {
-                    hyprctl(&format!("dispatch workspace {id}"));
+                    wm::go(id);
                 });
                 dot.add_controller(click);
                 dot.set_cursor_from_name(Some("pointer"));
@@ -441,7 +409,7 @@ fn activate(app: &gtk4::Application) {
                 made.insert(at, (id, dot));
             }
             for (id, dot) in made.iter() {
-                if Some(*id) == active["id"].as_i64() {
+                if Some(*id) == active {
                     dot.add_css_class("focused");
                 } else {
                     dot.remove_css_class("focused");
@@ -453,22 +421,17 @@ fn activate(app: &gtk4::Application) {
     draw_dots();
     let mode = std::rc::Rc::new(Mode { win: win.clone(), docked: true.into(), peeking: false.into(), launching: false.into() });
     let (ws_tx, ws_rx) = async_channel::unbounded();
-    std::thread::spawn(move || hypr_events(ws_tx));
+    std::thread::spawn(move || wm::events(ws_tx));
     let m = mode.clone();
     glib::spawn_future_local(async move {
         while let Ok(e) = ws_rx.recv().await {
-            if ["workspace", "createworkspace", "destroyworkspace", "urgent", "focusedmon"].contains(&e.as_str()) {
-                draw_dots();
-            }
-            // a Super combination done (a workspace, a window): Hyprland skips the release bind after another
-            // key, so the peek ends here instead
-            if m.peeking.get()
-                && ["workspacev2", "focusedmonv2", "activewindowv2", "openwindow", "closewindow", "movewindowv2",
-                    "changefloatingmode", "fullscreen"]
-                    .contains(&e.as_str())
-            {
-                m.peeking.set(false);
-                m.apply();
+            match e {
+                wm::Event::Workspaces => draw_dots(),
+                wm::Event::Done if m.peeking.get() => {
+                    m.peeking.set(false);
+                    m.apply();
+                }
+                wm::Event::Done => {}
             }
         }
     });

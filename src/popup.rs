@@ -26,6 +26,8 @@ pub struct Popup {
     tab: gtk4::Widget,
     on_open: RefCell<Vec<Box<dyn Fn()>>>,
     closed: std::cell::Cell<Option<std::time::Instant>>,
+    /// Hyprland's focus grab while it is open: a click outside it and the bar closes it
+    grab: RefCell<Option<crate::wm::Grab>>,
 }
 
 impl Popup {
@@ -58,7 +60,7 @@ impl Popup {
         reveal.set_transition_type(gtk4::RevealerTransitionType::SlideDown);
         reveal.set_transition_duration(120);
         reveal.set_valign(Align::Start);
-        let popup = Rc::new(Popup { win: win.clone(), reveal: reveal.clone(), tab: tab.clone().upcast(), on_open: RefCell::default(), closed: Default::default() });
+        let popup = Rc::new(Popup { win: win.clone(), reveal: reveal.clone(), tab: tab.clone().upcast(), on_open: RefCell::default(), closed: Default::default(), grab: Default::default() });
 
         let keys = gtk4::EventControllerKey::new();
         let p = popup.clone();
@@ -96,17 +98,27 @@ impl Popup {
         reveal.set_child(Some(&shape));
         win.set_child(Some(&reveal));
         // unrolled once the window is on screen (a revealer not yet mapped would just jump); rolled up, gone
+        let p = Rc::downgrade(&popup);
         win.connect_map(move |w| {
             if let Some(r) = w.child().and_downcast::<gtk4::Revealer>() {
                 r.set_reveal_child(true);
             }
+            let Some(p) = p.upgrade() else { return };
+            let mut grab = vec![w.clone().upcast::<gtk4::Window>()];
+            grab.extend(p.tab.root().and_downcast::<gtk4::Window>());
+            let p2 = Rc::downgrade(&p);
+            *p.grab.borrow_mut() = crate::wm::grab(&grab, move || {
+                if let Some(p) = p2.upgrade() {
+                    p.close();
+                }
+            });
         });
         let p = Rc::downgrade(&popup);
         reveal.connect_child_revealed_notify(move |r| {
             if let Some(p) = p.upgrade().filter(|_| !r.is_child_revealed() && !r.reveals_child()) {
                 p.win.set_visible(false);
                 p.tab.remove_css_class("tab");
-                nudge();
+                crate::wm::nudge();
             }
         });
 
@@ -130,11 +142,11 @@ impl Popup {
             }
         });
         win.add_controller(click);
-        // a click into a window, caught by the keyboard it takes: the popup has it from its opening (on demand),
-        // and closes as it loses it
+        // without a grab (sway) a click into a window, caught by the keyboard it takes: the popup has it from its
+        // opening (on demand), and closes as it loses it
         let p = Rc::downgrade(&popup);
         win.connect_is_active_notify(move |w| {
-            if let Some(p) = p.upgrade().filter(|p| !w.is_active() && p.is_open()) {
+            if let Some(p) = p.upgrade().filter(|p| !w.is_active() && p.is_open() && p.grab.borrow().is_none()) {
                 p.close();
             }
         });
@@ -164,6 +176,7 @@ impl Popup {
     }
 
     pub fn close(&self) {
+        self.grab.take();
         if self.reveal.reveals_child() {
             self.closed.set(Some(std::time::Instant::now()));
         }
@@ -179,12 +192,4 @@ impl Popup {
             self.open()
         }
     }
-}
-
-/// The pointer put back where it is, once the layers have mapped or gone: Hyprland hands the pointer to a surface
-/// that maps under it only on its next motion, so a click without one would go nowhere.
-fn nudge() {
-    glib::timeout_add_local_once(std::time::Duration::from_millis(30), || {
-        crate::hub::run(&["sh", "-c", "hyprctl dispatch movecursor $(hyprctl cursorpos | tr -d ,)"]);
-    });
 }
