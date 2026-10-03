@@ -13,6 +13,11 @@
 //!
 //!     [colors]            # any of style.rs's palette
 //!     surface = "rgba(0, 0, 0, 0.75)"
+//!
+//!     [calendar]          # the calendar popup's events (services/calendar.rs), read anew on every fetch
+//!     user = "login@example.com"                                    # CalDAV, Example's unless caldav_url says
+//!     password_command = "secret-tool lookup service example-caldav"  # prints the app password
+//!     ics = ["https://calendar.example.com/export/ics.xml?private_token=..."]  # and/or calendars' links
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -47,12 +52,34 @@ impl Default for Idle {
     }
 }
 
+/// The calendars: a CalDAV account (its password never here: a command prints it) and .ics links.
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct Calendar {
+    pub caldav_url: String,
+    pub user: String,
+    pub password_command: String,
+    pub ics: Vec<String>,
+}
+
+impl Default for Calendar {
+    fn default() -> Calendar {
+        Calendar {
+            caldav_url: "https://caldav.example.com".into(),
+            user: String::new(),
+            password_command: String::new(),
+            ics: Vec::new(),
+        }
+    }
+}
+
 #[derive(Deserialize, Default)]
 #[serde(default)]
 pub struct Config {
     pub bar: Bar,
     pub idle: Idle,
     pub colors: BTreeMap<String, String>,
+    pub calendar: Calendar,
 }
 
 pub fn path() -> PathBuf {

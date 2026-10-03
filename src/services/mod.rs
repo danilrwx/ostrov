@@ -17,6 +17,7 @@ mod audio;
 mod backlight;
 mod battery;
 mod bt;
+mod calendar;
 mod dbus;
 mod displays;
 mod keymap;
@@ -45,7 +46,7 @@ pub type Res = Result<(), String>;
 pub const USAGE: &str = "wifi on|off|scan|disconnect|connect SSID|forget SSID | bt on|off|scan|connect ADDR|disconnect ADDR|\
 pair ADDR|forget ADDR | headset | audio volume ID LEVEL | power set PROFILE | brightness PERCENT | night mode off|on|time|sun|time FROM TO|temp K|\
 preview K|apply | location CITY|LAT LON | media play-pause|next|previous | displays set NAME MODE POSITION SCALE|\
-on NAME|off NAME|mirror NAME OF|save NAME|load NAME|delete NAME";
+on NAME|off NAME|mirror NAME OF|save NAME|load NAME|delete NAME | calendar refresh";
 
 /// The state now, as wmd watch prints it.
 pub async fn state(c: &Ctx) -> Value {
@@ -75,6 +76,7 @@ pub async fn state(c: &Ctx) -> Value {
         "battery": battery,
         "media": media,
         "displays": displays::state(),
+        "calendar": calendar::state(),
     })
 }
 
@@ -93,6 +95,7 @@ pub async fn run(c: &Ctx, args: &[String], input: Option<String>) -> Res {
         "location" => location::cmd(rest).await,
         "media" => media::cmd(c, rest).await,
         "displays" => displays::cmd(rest).await,
+        "calendar" => calendar::cmd(rest).await,
         _ => Err(USAGE.into()),
     }
 }
@@ -107,6 +110,7 @@ pub async fn watch(c: Arc<Ctx>, out: async_channel::Sender<Value>) {
     tokio::spawn(signals(c.clone(), kick.clone()));
     tokio::spawn(keymap::events(kick.clone()));
     tokio::spawn(weather::run(kick.clone()));
+    tokio::spawn(calendar::run(kick.clone()));
     tokio::spawn(media::events(c.clone(), kick.clone()));
     tokio::spawn(audio::events(kick.clone()));
     tokio::spawn(displays::events(kick.clone()));

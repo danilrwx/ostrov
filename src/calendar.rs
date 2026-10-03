@@ -1,6 +1,7 @@
 //! The calendar grown out of the bar's clock, as the Quickshell bar's date menu: at the left the player (MPRIS:
 //! art, track, artist, previous/play/next, how far in) over the notifications' history with Do Not Disturb and
-//! Clear; at the right today's weekday and date, the month (GTK's calendar, today inverted), the weather where
+//! Clear; at the right today's weekday and date, the month (GTK's calendar, today inverted, the days with events
+//! marked), the picked day's events (services/calendar.rs: a CalDAV calendar's, .ics links'), the weather where
 //! wmd location put the machine. Everything from wmd's state but the history, ostrov's own notifications.
 
 use std::cell::RefCell;
@@ -96,6 +97,10 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     right.append(&weekday);
     right.append(&date);
     right.append(&cal);
+    let agenda = gtk4::Box::new(Orientation::Vertical, 6);
+    agenda.add_css_class("card");
+    agenda.set_margin_top(8);
+    right.append(&agenda);
     let weather = gtk4::Box::new(Orientation::Vertical, 8);
     weather.add_css_class("card");
     weather.set_margin_top(8);
@@ -129,6 +134,46 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     };
     today();
     popup.on_open(today);
+
+    // the events: the month's days with any marked, the picked day's listed; nothing while no calendar is set
+    {
+        let events: Rc<RefCell<serde_json::Value>> = Rc::default();
+        let (c2, a2, e2) = (cal.clone(), agenda.clone(), events.clone());
+        let draw: Rc<dyn Fn()> = Rc::new(move || {
+            let events = e2.borrow();
+            c2.clear_marks();
+            crate::style::clear(&a2);
+            let Some(events) = events.as_array() else { return a2.set_visible(false) };
+            a2.set_visible(true);
+            let picked = c2.date();
+            let Ok(first) = picked.add_days(1 - picked.day_of_month()) else { return };
+            for d in (0..31).filter_map(|i| first.add_days(i).ok()).take_while(|d| d.month() == picked.month()) {
+                if events.iter().any(|e| on(e, &d)) {
+                    c2.mark_day(d.day_of_month() as u32);
+                }
+            }
+            let day: Vec<_> = events.iter().filter(|e| on(e, &picked)).collect();
+            if day.is_empty() {
+                a2.append(&label("No events", "dim"));
+            }
+            for e in day {
+                a2.append(&event(e, &picked));
+            }
+        });
+        for sig in ["day-selected", "next-month", "prev-month", "next-year", "prev-year"] {
+            let d = draw.clone();
+            cal.connect_local(sig, false, move |_| {
+                d();
+                None
+            });
+        }
+        hub.on(move |st| {
+            if *events.borrow() != st["calendar"] {
+                *events.borrow_mut() = st["calendar"].clone();
+                draw();
+            }
+        });
+    }
 
     // the notifications' history: newest first, a click dismisses one, its actions as buttons
     {
@@ -222,4 +267,62 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     });
 
     popup
+}
+
+/// A day's bounds as the events' ISO times: its midnight and the next one.
+fn bounds(day: &glib::DateTime) -> (String, String) {
+    let iso = |d: &glib::DateTime| d.format("%Y-%m-%dT00:00:00").map(|s| s.to_string()).unwrap_or_default();
+    (iso(day), day.add_days(1).map(|d| iso(&d)).unwrap_or_default())
+}
+
+/// Whether an event of the calendar service's falls on a day: overlaps it, or, taking no time, starts in it.
+fn on(e: &serde_json::Value, day: &glib::DateTime) -> bool {
+    let (from, to) = bounds(day);
+    let (start, end) = (s(e, &["start"]), s(e, &["end"]));
+    start < to.as_str() && (end > from.as_str() || start >= from.as_str())
+}
+
+/// An event's row: its hours on the day (a part running over from another day or on to the next ending or
+/// starting at the day's edge), a dot of its calendar's colour, its title over where it is.
+fn event(e: &serde_json::Value, day: &glib::DateTime) -> gtk4::Box {
+    let (from, to) = bounds(day);
+    fn hour<'a>(t: &'a str, from: &str, to: &str) -> &'a str {
+        if t < from || t >= to { "…" } else { t.get(11..16).unwrap_or("") }
+    }
+    let when = if e["all_day"].as_bool() == Some(true) {
+        "all day".to_string()
+    } else {
+        format!("{}–{}", hour(s(e, &["start"]), &from, &to), hour(s(e, &["end"]), &from, &to))
+    };
+    let row = gtk4::Box::new(Orientation::Horizontal, 8);
+    let time = label(&when, "dim");
+    time.set_width_chars(11);
+    time.set_valign(Align::Start);
+    // the calendar's own colour, so drawn rather than styled; the text's where it says none
+    let dot = gtk4::DrawingArea::new();
+    dot.set_content_width(8);
+    dot.set_content_height(8);
+    dot.set_valign(Align::Start);
+    dot.set_margin_top(5);
+    let color = gtk4::gdk::RGBA::parse(s(e, &["color"])).ok();
+    dot.set_draw_func(move |w, cr, wd, ht| {
+        let c = color.unwrap_or_else(|| w.color());
+        cr.set_source_rgba(c.red().into(), c.green().into(), c.blue().into(), c.alpha().into());
+        cr.arc(f64::from(wd) / 2.0, f64::from(ht) / 2.0, 4.0, 0.0, std::f64::consts::TAU);
+        let _ = cr.fill();
+    });
+    let col = gtk4::Box::new(Orientation::Vertical, 0);
+    col.set_hexpand(true);
+    let title = label(s(e, &["title"]), "");
+    title.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+    col.append(&title);
+    if !s(e, &["location"]).is_empty() {
+        let place = label(s(e, &["location"]), "dim");
+        place.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+        col.append(&place);
+    }
+    row.append(&time);
+    row.append(&dot);
+    row.append(&col);
+    row
 }
