@@ -124,6 +124,21 @@ fn programs(out: &mut Vec<Line>) {
         let text = "charge limit: the thresholds are root's; to let ostrov set them, run: ostrov battery limit install";
         out.push(('·', t(text).into()));
     }
+    use crate::polkit::Answering;
+    out.push(match crate::polkit::answering() {
+        Answering::Ostrov => ('✓', t("polkit agent: ostrov").into()),
+        Answering::Off => ('·', t("polkit agent: not ostrov ([polkit] agent = false)").into()),
+        Answering::Other(name) => {
+            let name = if name.is_empty() { t("another one").to_string() } else { name };
+            let hint = match crate::polkit::autostart(&name) {
+                Some(p) => fill(t("its autostart {} kept out of Hyprland, ostrov asks from the next login (ostrov welcome)"),
+                    &[&p.display()]),
+                None => t("not started, ostrov asks").into(),
+            };
+            ('·', fill(t("polkit agent: {}, in its own look; {}"), &[&name, &hint]))
+        }
+        Answering::Unknown => ('!', t("polkit agent: none (polkit not there, or not answering)").into()),
+    });
     out.push(if std::path::Path::new("/etc/pam.d/ostrov").exists() {
         ('✓', "PAM: /etc/pam.d/ostrov".into())
     } else {

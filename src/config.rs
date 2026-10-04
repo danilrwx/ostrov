@@ -248,6 +248,20 @@ pub struct Config {
     /// calendar's name, icon or width changed the same way
     pub panels: BTreeMap<String, PanelSpec>,
     pub hyprland: Hyprland,
+    pub polkit: Polkit,
+}
+
+/// Whether ostrov is the session's polkit agent (polkit.rs): false leaves it to another (hyprpolkitagent, ...).
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct Polkit {
+    pub agent: bool,
+}
+
+impl Default for Polkit {
+    fn default() -> Polkit {
+        Polkit { agent: true }
+    }
 }
 
 /// What ostrov puts into Hyprland itself (modules/hyprland.rs): its layers' rules, its keys where free, a key

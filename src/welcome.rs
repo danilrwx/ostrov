@@ -233,6 +233,33 @@ fn look() -> gtk4::Widget {
     p.upcast()
 }
 
+/// Another polkit agent there first (an autostart meant for other desktops): its dialogs asking the passwords in
+/// its own look, and a way to keep it out of Hyprland.
+fn polkit(p: &gtk4::Box) {
+    let crate::polkit::Answering::Other(name) = crate::polkit::answering() else { return };
+    let name = if name.is_empty() { t("another agent").to_string() } else { name };
+    let note = label(&fill(t("Passwords are asked by {} now, in its own look, not ostrov's."), &[&name]), "field-help");
+    note.set_wrap(true);
+    note.set_xalign(0.0);
+    p.append(&note);
+    let Some(system) = crate::polkit::autostart(&name) else { return };
+    let b = gtk4::Button::with_label(t("Keep it out of Hyprland"));
+    b.add_css_class("chip");
+    b.set_halign(gtk4::Align::Start);
+    b.connect_clicked(move |b| {
+        let said = match crate::polkit::keep_out(&system) {
+            Ok(_) => t("Done: ostrov asks from the next login."),
+            Err(e) => {
+                eprintln!("ostrov: polkit: {e}");
+                t("Not done: ~/.config/autostart is not writable.")
+            }
+        };
+        b.set_label(said);
+        b.set_sensitive(false);
+    });
+    p.append(&b);
+}
+
 /// Of Hyprland: what ostrov puts into it, and [hyprland]'s two switches.
 fn hyprland() -> gtk4::Widget {
     if crate::wm::wm() != crate::wm::Wm::Hyprland {
@@ -253,8 +280,7 @@ fn hyprland() -> gtk4::Widget {
         });
         p.append(&setting(title, help, &s, false));
     };
-    switch("rules", cfg.rules, t("Layer rules"), t("Blur under the bar, the panels and the dialogs; no fade for its \
-        dialogs."));
+    switch("rules", cfg.rules, t("Layer rules"), t("Blur under the bar, the panels and the dialogs."));
     switch("binds", cfg.binds, t("Keys"), t("Its keys below, each only where it is free: a bind of yours is kept. \
         Turned off, from the next start."));
     let lock = label(t("And always: misc:allow_session_lock_restore, so a new ostrov takes the lock over from one \
@@ -262,6 +288,7 @@ fn hyprland() -> gtk4::Widget {
     lock.set_wrap(true);
     lock.set_xalign(0.0);
     p.append(&lock);
+    polkit(&p);
 
     let grid = gtk4::Grid::new();
     grid.set_column_spacing(12);

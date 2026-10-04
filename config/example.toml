@@ -59,6 +59,11 @@ bar_height = 25         # px
 [colors]
 # urgent = "#cd0000"
 
+# The session's polkit agent: ostrov's password dialog for pkexec and the like. Another agent started first
+# (lxpolkit's autostart, hyprpolkitagent) answers instead, in its own look; false leaves it to that one.
+[polkit]
+agent = true
+
 # What ostrov puts into Hyprland itself over its IPC, at start and after every config reload: its layers' rules
 # (blur behind its surfaces) and its keys, each only where the combination is free (a bind of yours is never
 # replaced). `ostrov hyprland` prints all of it as hyprland.conf lines, for keeping it there instead.

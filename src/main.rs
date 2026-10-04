@@ -71,6 +71,10 @@ fn usage() -> String {
 
 fn activate(app: &gtk4::Application) {
     style::load();
+    // the polkit agent before anything else: polkit takes the first one registered in the session, and an agent
+    // autostarted alongside (lxpolkit's XDG autostart) would have the passwords asked in its look
+    let prompts = prompt::Prompts::new(app);
+    polkit::start(&prompts);
     wallpaper::start(app);
     clip::start();
 
@@ -116,8 +120,6 @@ fn activate(app: &gtk4::Application) {
     idle::start(&lock, &cfg.idle);
     let shot = shot::Shot::new(app);
     record::init(app, &shot);
-    let prompts = prompt::Prompts::new(app);
-    polkit::start(&prompts);
     keys::battery(&hub, &notes, &prompts);
     let keys = keys::Keys::new(&hub, &notes);
     PROMPTS.with(|p| *p.borrow_mut() = Some(prompts));
