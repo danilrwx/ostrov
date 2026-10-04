@@ -382,8 +382,9 @@ impl Notes {
         let entry = gtk4::Entry::new();
         entry.set_hexpand(true);
         entry.set_placeholder_text(Some(if prompt.is_empty() { "Reply…" } else { prompt }));
-        let send = gtk4::Button::from_icon_name("mail-send-symbolic");
-        send.add_css_class("connect");
+        let send = gtk4::Button::from_icon_name("go-up-symbolic");
+        send.add_css_class("send");
+        send.set_tooltip_text(Some("Send"));
         line.append(&entry);
         line.append(&send);
         let (me, l, e) = (self.clone(), line.clone(), entry.clone());

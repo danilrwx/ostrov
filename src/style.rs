@@ -84,6 +84,10 @@ button.arrow.open image, .tile.open button.arrow image { }
 button.item { padding: 0 10px; min-height: 34px; border-radius: 6px; }
 button.connect { background: @accent; padding: 0 10px; border-radius: 6px; min-height: 30px; }
 button.connect label { color: @ink; font-weight: bold; }
+/* a message's send: a square on the accent, as tall as the entry beside it */
+button.send { background: @accent; border-radius: 6px; min-width: 32px; min-height: 32px; }
+button.send:hover { background: @accent-pressed; }
+button.send image { color: @ink; -gtk-icon-size: 16px; }
 button.chip, togglebutton.chip { background: @raised; border: 1px solid @rule; border-radius: 6px; padding: 4px 10px; min-height: 0; }
 
 .toggle { background: @raised; border: 1px solid @rule; border-radius: 6px; min-height: 48px; }
