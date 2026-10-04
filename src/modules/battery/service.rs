@@ -1,4 +1,4 @@
-//! The battery through UPower (battery.go).
+//! The battery through UPower.
 use std::collections::HashMap;
 
 use serde::{Serialize, Serializer};

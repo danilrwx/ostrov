@@ -1,6 +1,6 @@
-//! The night light through Hyprland's screen shader (night.go): its config as the quick settings set it, kept in
-//! ~/.cache/night-light.json, the mode (off, on, time: from to to, sun: sunset to sunrise where `location` puts
-//! the machine) and the warmth in kelvin, 6500 neutral; a shader a warmth in ~/.cache/night-light.
+//! The night light through Hyprland's screen shader: its config as the quick settings set it, kept in
+//! ~/.local/state/ostrov/night.json, the mode (off, on, time: from to to, sun: sunset to sunrise where `location` puts
+//! the machine) and the warmth in kelvin, 6500 neutral; a shader a warmth in ~/.cache/ostrov/night-light.
 //!
 //! The local time here is the one Go's time package keeps: the zone of $TZ, or /etc/localtime, read from its
 //! TZif file once, as Go loads time.Local once.
@@ -15,7 +15,7 @@ use crate::services::{location, Res};
 
 const NS: i64 = 1_000_000_000;
 
-/// The config, wmd's NightConfig: its defaults those of a file not there yet or missing fields.
+/// The config: its defaults those of a file not there yet or missing fields.
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
 struct Config {
@@ -36,11 +36,11 @@ fn home() -> String {
 }
 
 fn night_file() -> String {
-    format!("{}/.cache/night-light.json", home())
+    format!("{}/.local/state/ostrov/night.json", home())
 }
 
 fn shader_dir() -> String {
-    format!("{}/.cache/night-light", home())
+    format!("{}/.cache/ostrov/night-light", home())
 }
 
 fn load() -> Config {
@@ -49,6 +49,9 @@ fn load() -> Config {
 
 fn save(c: &Config) -> Res {
     let b = serde_json::to_string_pretty(c).map_err(|e| e.to_string())?;
+    if let Some(dir) = std::path::Path::new(&night_file()).parent() {
+        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
     std::fs::write(night_file(), b + "\n").map_err(|e| e.to_string())
 }
 
@@ -167,7 +170,7 @@ fn shader(k: i64) -> Result<String, String> {
     let (r, g, b) = gains(k);
     let src = format!(
         "#version 300 es
-// wmd's night light at {k} K
+// ostrov's night light at {k} K
 precision highp float;
 in vec2 v_texcoord;
 uniform sampler2D tex;
@@ -217,12 +220,12 @@ fn apply(c: &Config) -> Res {
     hyprctl(&format!("keyword decoration:screen_shader {want}")).map(drop)
 }
 
-/// The screen as the config wants now: wmd watch's tick, every 3 s.
+/// The screen as the config wants now, every 3 s.
 pub async fn apply_now() -> Res {
     apply(&load())
 }
 
-/// wmd's Night: whether the screen is warmed now, the config, and today's sunset and sunrise where a location
+/// Whether the screen is warmed now, the config, and today's sunset and sunrise where a location
 /// is known ("" where not, or the sun neither rises nor sets).
 pub fn state() -> Value {
     let c = load();
@@ -293,7 +296,7 @@ mod tests {
         assert_eq!(clock("24:00"), Err("\"24:00\" is not HH:MM".into()));
     }
 
-    /// The state as it is here, to set beside wmd watch's: cargo test -- --ignored --nocapture night_state
+    /// The state as it is here: cargo test -- --ignored --nocapture night_state
     #[test]
     #[ignore]
     fn night_state() {

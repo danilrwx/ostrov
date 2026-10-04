@@ -1,7 +1,7 @@
 //! The monitors through Hyprland (its socket's j/monitors all, keyword monitor): each one's mode, place, scale,
 //! whether it is on or mirrors another; the layout set from the quick settings or `ostrov displays ...`. Layouts
 //! kept by name as profiles in ~/.config/ostrov/displays.toml, a file of ostrov's own rather than a part of
-//! config.toml: that one is the user's, in the dotfiles, commented by hand, and a save would write it over. A
+//! config.toml: that one is the user's, commented by hand, and a save would write it over. A
 //! profile names its monitors by description (make, model, serial), which stay what they are from dock to dock
 //! where the connector names do not; when the monitors plugged in become exactly a profile's, it is applied.
 //! Nothing of this outside Hyprland: no monitors, every command an error.

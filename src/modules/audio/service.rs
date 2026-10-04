@@ -1,4 +1,4 @@
-//! The sound devices through pw-dump, the headset's profile through wpctl (audio.go); the apps' streams too: the
+//! The sound devices through pw-dump, the headset's profile through wpctl; the apps' streams too: the
 //! ones recording (the mic, the camera, besides whatever holds a /dev/video* open) and the ones playing, each with
 //! its level for the quick settings' mixer.
 

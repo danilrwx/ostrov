@@ -85,9 +85,7 @@ fn draw(body: &gtk4::Box, st: &Rc<RefCell<State>>, again: Rc<dyn Fn()>) {
     let s = st.borrow();
     for (i, (_, title)) in PARTS.iter().enumerate() {
         body.append(&label(title, "dim"));
-        let row = gtk4::FlowBox::new();
-        row.set_selection_mode(gtk4::SelectionMode::None);
-        row.set_max_children_per_line(6);
+        let row = crate::ui::chip_flow();
         row.add_css_class("bar-part");
         for (j, id) in s.parts[i].iter().enumerate() {
             let (name, icon) = named(id);
@@ -104,10 +102,10 @@ fn draw(body: &gtk4::Box, st: &Rc<RefCell<State>>, again: Rc<dyn Fn()>) {
                 st.borrow_mut().picked = now;
                 again();
             });
-            row.insert(&chip, -1);
+            crate::ui::flow_in(&row, &chip);
         }
         if s.parts[i].is_empty() {
-            row.insert(&label("empty", "dim"), -1);
+            crate::ui::flow_in(&row, &label("empty", "dim"));
         }
         body.append(&row);
     }

@@ -28,7 +28,7 @@ pub mod media;
 pub mod night;
 pub mod power;
 pub mod system;
-pub mod theme;
+pub mod wallpaper;
 pub mod weather;
 pub mod wifi;
 
@@ -118,7 +118,7 @@ pub const ALL: &[&Module] = &[
     &location::MODULE,
     &keymap::MODULE,
     &media::MODULE,
-    &theme::MODULE,
+    &wallpaper::MODULE,
     &weather::MODULE,
     &displays::MODULE,
     &calendar::MODULE,

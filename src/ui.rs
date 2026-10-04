@@ -132,6 +132,25 @@ pub fn setting(title: &str, help: &str, control: &impl IsA<gtk4::Widget>, wide: 
     root
 }
 
+/// A row of chips that wraps onto more lines, each its own width, a gap between them.
+pub fn chip_flow() -> gtk4::FlowBox {
+    let f = gtk4::FlowBox::new();
+    f.set_selection_mode(gtk4::SelectionMode::None);
+    f.set_homogeneous(false);
+    f.set_column_spacing(6);
+    f.set_row_spacing(6);
+    f.set_max_children_per_line(12);
+    // as wide as its chips, not spread over the line's width
+    f.set_halign(Align::Start);
+    f
+}
+
+/// A chip put in a chip_flow at its own width, not stretched over the line.
+pub fn flow_in(f: &gtk4::FlowBox, chip: &impl IsA<gtk4::Widget>) {
+    chip.set_halign(Align::Start);
+    f.insert(chip, -1);
+}
+
 /// A right click on a widget runs f.
 pub fn on_right_click(w: &impl IsA<gtk4::Widget>, f: impl Fn() + 'static) {
     let g = gtk4::GestureClick::new();

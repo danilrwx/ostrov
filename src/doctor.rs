@@ -1,8 +1,8 @@
 //! `ostrov doctor`: what ostrov finds of what it works with, and what to do about what is missing. The compositor
 //! (Hyprland and its version, its blur, which of ostrov's keys are bound and which taken by something else),
 //! the services on the buses (Wi-Fi's, Bluetooth's, the power profiles', the battery's, the session's, the
-//! keyring), the programs it runs, its PAM profile, the dotfiles' scripts its VPN and wallpaper widgets switch
-//! through. A line each: ✓ there, ! missing and what that costs, · for information.
+//! keyring), the programs it runs, its PAM profile. A line each: ✓ there, ! missing and what that costs, · for
+//! information.
 
 use serde_json::Value;
 
@@ -110,9 +110,4 @@ fn programs(out: &mut Vec<Line>) {
     } else {
         ('·', "PAM: no /etc/pam.d/ostrov, the lock screen checks passwords as login does".into())
     });
-    for (s, what) in [("theme", "the Wallpaper widget")] {
-        if !std::path::Path::new(&crate::hub::bin(s)).is_file() {
-            out.push(('·', format!("{s}: not in the dotfiles' bin, {what} cannot switch")));
-        }
-    }
 }

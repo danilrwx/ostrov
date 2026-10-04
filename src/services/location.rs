@@ -1,5 +1,5 @@
 //! Where the machine is, for the weather and the night light's sunset and sunrise: set once by `location CITY`
-//! (open-meteo's geocoding) or `location LAT LON`, kept in ~/.config/wmd.json (location.go).
+//! (open-meteo's geocoding) or `location LAT LON`, kept in ~/.local/state/ostrov/location.json.
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -17,7 +17,7 @@ pub struct Location {
 }
 
 fn file() -> String {
-    format!("{}/.config/wmd.json", std::env::var("HOME").unwrap_or_default())
+    format!("{}/.local/state/ostrov/location.json", std::env::var("HOME").unwrap_or_default())
 }
 
 /// The location kept; None when there is none, it does not parse, or it is 0, 0 (never set).
@@ -26,7 +26,7 @@ pub fn load() -> Option<Location> {
     (l.lat != 0.0 || l.lon != 0.0).then_some(l)
 }
 
-/// The client for the internet (the weather, the geocoding): 10 s for a request, all of it, as wmd's was.
+/// The client for the internet (the weather, the geocoding): 10 s for a request, all of it.
 pub fn web() -> ureq::Agent {
     ureq::Agent::config_builder().timeout_global(Some(Duration::from_secs(10))).build().new_agent()
 }
@@ -63,6 +63,9 @@ pub async fn cmd(args: &[&str]) -> Res {
         Location { place: format!("{}, {}", s("name"), s("country")), lat: f("latitude"), lon: f("longitude") }
     };
     let b = serde_json::to_string_pretty(&l).map_err(|e| e.to_string())?;
+    if let Some(dir) = std::path::Path::new(&file()).parent() {
+        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
     std::fs::write(file(), b + "\n").map_err(|e| e.to_string())?;
     println!("{}", l.place);
     Ok(())

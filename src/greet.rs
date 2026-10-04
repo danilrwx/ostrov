@@ -15,13 +15,13 @@ use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-/// The last login's user and session, a line each; its directory the greeter user's (dotfiles' install makes it).
+/// The last login's user and session, a line each; its directory the greeter user's (made at install).
 const STATE: &str = "/var/cache/ostrov-greet/state";
 
 /// The greeter: a GApplication of its own, not unique, for there is no session bus to be one on.
 pub fn run() -> glib::ExitCode {
     let app = gtk4::Application::builder()
-        .application_id("dev.danil.ostrov.greet")
+        .application_id("dev.ostrov.Greet")
         .flags(gtk4::gio::ApplicationFlags::NON_UNIQUE)
         .build();
     app.connect_activate(build);
@@ -340,7 +340,7 @@ mod tests {
     fn run(script: Vec<(Value, Value)>) -> Result<(), String> {
         let (path, t) = greetd(script);
         let mut sock = UnixStream::connect(&path).unwrap();
-        let r = login(&mut sock, "danil", "pw", &["Hyprland".into()], &["XDG_SESSION_TYPE=wayland".into()]);
+        let r = login(&mut sock, "ada", "pw", &["Hyprland".into()], &["XDG_SESSION_TYPE=wayland".into()]);
         t.join().unwrap();
         let _ = std::fs::remove_file(&path);
         r
@@ -349,7 +349,7 @@ mod tests {
     #[test]
     fn logs_in() {
         let r = run(vec![
-            (json!({"type": "create_session", "username": "danil"}),
+            (json!({"type": "create_session", "username": "ada"}),
              json!({"type": "auth_message", "auth_message_type": "secret", "auth_message": "Password: "})),
             (json!({"type": "post_auth_message_response", "response": "pw"}), json!({"type": "success"})),
             (json!({"type": "start_session", "cmd": ["Hyprland"], "env": ["XDG_SESSION_TYPE=wayland"]}),
@@ -361,7 +361,7 @@ mod tests {
     #[test]
     fn wrong_password_cancels() {
         let r = run(vec![
-            (json!({"type": "create_session", "username": "danil"}),
+            (json!({"type": "create_session", "username": "ada"}),
              json!({"type": "auth_message", "auth_message_type": "info", "auth_message": "hello"})),
             (json!({"type": "post_auth_message_response", "response": null}),
              json!({"type": "auth_message", "auth_message_type": "secret", "auth_message": "Password: "})),
@@ -379,7 +379,7 @@ mod tests {
         assert_eq!(s.env, ["XDG_SESSION_TYPE=x11", "XDG_SESSION_DESKTOP=i3", "XDG_CURRENT_DESKTOP=i3"]);
         assert!(session("[Desktop Entry]\nName=a\nExec=a\nNoDisplay=true\n", false).is_none());
         let passwd = "root:x:0:0::/root:/bin/bash\n_greetd:x:114:118::/var/lib/greetd:/usr/sbin/nologin\n\
-                      nobody:x:65534:65534::/:/usr/sbin/nologin\ndanil:x:1000:1000::/home/danil:/usr/bin/zsh\n";
-        assert_eq!(humans(passwd), ["danil"]);
+                      nobody:x:65534:65534::/:/usr/sbin/nologin\nada:x:1000:1000::/home/ada:/bin/sh\n";
+        assert_eq!(humans(passwd), ["ada"]);
     }
 }

@@ -1,5 +1,5 @@
-# dotfiles: ostrov's login screen (ostrov greet) under cage on vt 7, remembering the last user and session in
-# /var/cache/ostrov-greet (owned by _greetd); ostrov copied to /usr/local/bin, _greetd not let into /home/danil
+# ostrov's login screen (ostrov greet) under cage on vt 7, remembering the last user and session in
+# /var/cache/ostrov-greet (owned by _greetd); ostrov copied to /usr/local/bin, _greetd not let into the users' homes
 [terminal]
 vt = 7
 

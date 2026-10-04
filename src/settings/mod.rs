@@ -243,7 +243,7 @@ fn config_text() -> String {
     std::fs::read_to_string(crate::config::path()).unwrap_or_default()
 }
 
-/// f on every change to the config the forms did not write (an edit by hand, bin/theme's).
+/// f on every change to the config the forms did not write (an edit by hand, another program's).
 pub fn on_outside(f: impl Fn() + 'static) {
     let first = OUTSIDE.with(|o| {
         let mut o = o.borrow_mut();

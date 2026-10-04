@@ -1,4 +1,4 @@
-//! Wi-Fi through iwd (wifi.go).
+//! Wi-Fi through iwd.
 
 use serde::Serialize;
 use serde_json::Value;
@@ -10,8 +10,8 @@ use crate::services::{Ctx, Res};
 
 const IWD: &str = "net.connman.iwd";
 
-/// The passphrase agent's object path on the system bus, wmd's own.
-const AGENT_PATH: &str = "/wmd/agent";
+/// The passphrase agent's object path on the system bus, ostrov's own.
+const AGENT_PATH: &str = "/dev/ostrov/wifi_agent";
 
 /// A Wi-Fi network iwd has seen: signal in bars, 0 to 4, as iwctl draws them.
 #[derive(Serialize)]
@@ -56,7 +56,7 @@ pub async fn state(c: &Ctx) -> Value {
     serde_json::to_value(w).unwrap_or_default()
 }
 
-/// The station's networks into w; on an error what was read before it stays, as in wmd.
+/// The station's networks into w; on an error what was read before it stays.
 async fn networks(c: &Ctx, w: &mut Wifi) -> Res {
     let objs = managed(&c.system, IWD).await?;
     let Some(st) = station(&objs) else { return Ok(()) };
@@ -89,7 +89,7 @@ async fn network(c: &Ctx, ssid: &str) -> Result<String, String> {
         .ok_or_else(|| format!("no network {ssid:?} in sight; scan first"))
 }
 
-/// Answers iwd's passphrase request with the one wmd read from stdin, for a network iwd does not know yet.
+/// Answers iwd's passphrase request with the one the command was given, for a network iwd does not know yet.
 struct Agent {
     passphrase: Option<String>,
 }
@@ -128,7 +128,7 @@ pub async fn cmd(c: &Ctx, args: &[&str], input: Option<String>) -> Res {
             // stdin read to its end: a line, "" when only its newline; nothing at all is no passphrase
             let passphrase = input.filter(|s| !s.is_empty()).map(|s| s.trim_end_matches(['\r', '\n']).to_owned());
             let server = c.system.object_server();
-            // the agent of a connect still waiting is replaced, as another wmd's would stand in for it
+            // the agent of a connect still waiting is replaced, as another ostrov's would stand in for it
             let _ = server.remove::<Agent, _>(AGENT_PATH).await;
             server.at(AGENT_PATH, Agent { passphrase }).await.map_err(err)?;
             let res = connect(c, &path).await;
@@ -139,7 +139,7 @@ pub async fn cmd(c: &Ctx, args: &[&str], input: Option<String>) -> Res {
     }
 }
 
-/// Connects to the network at path, wmd's agent registered with iwd for the while.
+/// Connects to the network at path, ostrov's agent registered with iwd for the while.
 async fn connect(c: &Ctx, path: &str) -> Res {
     let agent = zvariant::ObjectPath::from_static_str_unchecked(AGENT_PATH);
     call::<_, ()>(&c.system, IWD, "/net/connman/iwd", "net.connman.iwd.AgentManager.RegisterAgent", &(&agent,)).await?;

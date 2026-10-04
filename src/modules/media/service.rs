@@ -1,4 +1,4 @@
-//! The player through MPRIS on the session bus (media.go).
+//! The player through MPRIS on the session bus.
 
 use std::collections::HashMap;
 use std::sync::Arc;

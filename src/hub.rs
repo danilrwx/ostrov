@@ -1,4 +1,4 @@
-//! The desktop's state, from ostrov's services (services/, wmd's port), shared by the bar and its panels: every
+//! The desktop's state, from ostrov's services (services/, modules/), shared by the bar and its panels: every
 //! new one replaces it and is handed to each part that asked, which redraws what it shows of it. The services'
 //! commands, and the little helpers they all use.
 
@@ -56,11 +56,6 @@ pub fn home() -> PathBuf {
     PathBuf::from(std::env::var("HOME").unwrap_or_default())
 }
 
-/// A script of ~/dotfiles/bin.
-pub fn bin(name: &str) -> String {
-    home().join("dotfiles/bin").join(name).to_string_lossy().into_owned()
-}
-
 /// Run a command, detached, its exit reaped.
 pub fn run(args: &[&str]) {
     let Some((cmd, rest)) = args.split_first() else { return };
@@ -80,7 +75,7 @@ thread_local! {
     static COMMANDS: RefCell<Option<async_channel::Sender<Request>>> = const { RefCell::new(None) };
 }
 
-/// A service's command (wmd's words: wifi connect SSID, night mode sun), input what wmd read from its stdin, its
+/// A module's command (wifi connect SSID, night mode sun), input what it would read from its stdin, its
 /// outcome (Ok, or what went wrong) handed to done on GTK's thread.
 pub fn service_then(args: Vec<String>, input: Option<String>, done: impl Fn(crate::services::Res) + 'static) {
     let (tx, rx) = async_channel::bounded(1);

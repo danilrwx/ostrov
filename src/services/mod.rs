@@ -3,8 +3,8 @@
 //! put together and sent on as it changes, the commands handed to their module; and the helpers more than one
 //! uses (D-Bus, rfkill, the location).
 //!
-//! The state is wmd watch's JSON (~/dotfiles/wmd, ostrov's Go original), a key a module, so what draws it reads the
-//! same; the commands are wmd's (wifi connect SSID, bt pair ADDR, night mode sun, ...).
+//! The state is JSON, a key a module, what draws it reading its own; the commands are the modules' words
+//! (wifi connect SSID, bt pair ADDR, night mode sun, ...).
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -40,7 +40,7 @@ pub async fn state(c: &Ctx) -> Value {
     Value::Object(futures_util::future::join_all(parts).await.into_iter().map(|(k, v)| (k.into(), v)).collect())
 }
 
-/// A command, wmd's words, handed to the module it starts with; input is what it would read from its stdin (a
+/// A command, handed to the module it starts with; input is what it would read from its stdin (a
 /// Wi-Fi passphrase).
 pub async fn run(c: &Ctx, args: &[String], input: Option<String>) -> Res {
     let Some((first, rest)) = args.split_first() else { return Err(usage()) };

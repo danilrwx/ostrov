@@ -1,11 +1,10 @@
 //! How ostrov looks, all in one place: the palette (every colour a name, set here alone), the shapes, the CSS
-//! every part draws with, and the few widget helpers they share. The bar's black follows bin/theme's alpha
-//! (~/.cache/theme/alpha, 1 under dark), reloaded as it changes.
+//! every part draws with, and the few widget helpers they share. The bar's black is solid over no wallpaper, as
+//! see-through as [widget.wallpaper]'s bar says over one, reloaded as the wallpaper's pick changes.
 
 use gtk4::prelude::*;
 use gtk4::gio;
 
-use crate::hub::home;
 
 const CSS: &str = r#"
 /* the palette */
@@ -27,6 +26,7 @@ const CSS: &str = r#"
 @define-color sunk rgba(0, 0, 0, 0.2);          /* an entry */
 @define-color rule #333333;                     /* an outline */
 @define-color idle #666666;                     /* a workspace not focused */
+@define-color handle #3b82f6;                /* a tile's corner in Edit, sizing it */
 @define-color urgent #cd0000;                   /* an error, a critical notification */
 @define-color recording #ff4040;                /* the mic or the camera taken (bar/privacy.rs) */
 @define-color lock #000000;                     /* the lock screen */
@@ -117,7 +117,7 @@ button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }
 .plugin-card { background: @raised; border: 1px solid @rule; border-radius: 6px; padding: 4px 14px; }
 .tile.picked > :first-child { box-shadow: 0 0 0 2px @accent; border-radius: 6px; }
 .tile-ghost { border: 2px solid @accent; border-radius: 6px; background: alpha(@accent, 0.12); }
-.tile-grip { color: @dim; -gtk-icon-size: 12px; min-width: 28px; min-height: 28px; }
+.tile-grip { background: @handle; color: #ffffff; border-radius: 10px; min-width: 20px; min-height: 20px; margin: -5px; -gtk-icon-size: 12px; }
 .clock { padding: 0 14px; }
 .surface label.clock-time { font-size: 20pt; font-weight: bold; }
 /* the tiles as tall as the density's rows (look.rs), not their own */
@@ -237,21 +237,21 @@ thread_local! {
     static WATCHERS: std::cell::RefCell<Vec<Box<dyn Fn()>>> = Default::default();
 }
 
-/// f on every change to the config (and to bin/theme's alpha), once the CSS has followed it.
+/// f on every change to the config (and to the wallpaper's pick), once the CSS has followed it.
 pub fn on_config(f: impl Fn() + 'static) {
     WATCHERS.with(|w| w.borrow_mut().push(Box::new(f)));
 }
 
-/// The CSS on the display, the Adwaita icons, the bar's black reloaded as bin/theme changes it; the look as
+/// The CSS on the display, the Adwaita icons, the bar's black reloaded as the wallpaper's pick changes; the look as
 /// config.toml's [appearance] sets it (look.rs).
 pub fn load() {
     let Some(display) = gtk4::gdk::Display::default() else { return };
     let css = gtk4::CssProvider::new();
-    let alpha_file = home().join(".cache/theme/alpha");
+    let alpha_file = crate::modules::wallpaper::service::file();
     let load = {
-        let (css, f) = (css.clone(), alpha_file.clone());
+        let css = css.clone();
         move || {
-            let alpha = std::fs::read_to_string(&f).unwrap_or("1".into());
+            let alpha = crate::modules::wallpaper::service::bar_alpha();
             // the appearance's palette, then the config's colours over it, before the rules that take them
             let cfg = crate::config::load();
             let look = crate::look::palette(&cfg.appearance);
@@ -259,7 +259,7 @@ pub fn load() {
             let (palette, rules) = CSS.split_at(CSS.find("/* the shapes").unwrap_or(0));
             let rules = crate::look::radii(rules, cfg.appearance.radius);
             let previews = crate::look::previews();
-            css.load_from_string(&format!("{palette}{look}{own}{rules}{previews}").replace("ALPHA", alpha.trim()));
+            css.load_from_string(&format!("{palette}{look}{own}{rules}{previews}").replace("ALPHA", &alpha.to_string()));
             crate::look::apply(&cfg.appearance);
             WATCHERS.with(|w| w.borrow().iter().for_each(|f| f()));
         }

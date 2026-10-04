@@ -1,4 +1,4 @@
-//! The radios through /dev/rfkill (rfkill.go).
+//! The radios through /dev/rfkill.
 
 use std::io::Write;
 

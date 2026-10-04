@@ -1,4 +1,4 @@
-//! The backlight through sysfs and logind (backlight.go).
+//! The backlight through sysfs and logind.
 use crate::services::{Ctx, Res};
 
 /// The panel's backlight device under /sys/class/backlight, None without one.
@@ -48,7 +48,7 @@ pub async fn cmd(c: &Ctx, args: &[&str]) -> Res {
 
 #[cfg(test)]
 mod tests {
-    /// The state as wmd watch would print it: cargo test --release services_state -- --nocapture.
+    /// The state as it is here: cargo test --release services_state -- --nocapture.
     #[tokio::test]
     async fn services_state() {
         let (system, session) = (zbus::Connection::system().await.unwrap(), zbus::Connection::session().await.unwrap());

@@ -1,4 +1,4 @@
-//! The keyboard layout through the compositor (hypr.go): Hyprland's main keyboard, sway's first.
+//! The keyboard layout through the compositor: Hyprland's main keyboard, sway's first.
 
 use std::io::{BufRead, BufReader};
 use std::os::unix::net::UnixStream;

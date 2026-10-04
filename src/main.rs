@@ -1,7 +1,7 @@
 //! ostrov ("island" in Russian): the desktop's shell, everything in one place, in Rust on GTK4 and
 //! gtk4-layer-shell. The bar, made of blocks (bar/), with the popups grown out of them in its own window
 //! (popup.rs): the quick settings, the calendar, the tray's menus; the launcher in the bar, notifications, the
-//! lock screen; the desktop's state and switches from its services (services/, wmd's port), the compositor's
+//! lock screen; the desktop's state and switches from its services (services/, modules/), the compositor's
 //! through wm.rs, how it all looks in style.rs. One ostrov runs: `ostrov ARGS` hands ARGS to it.
 
 mod api;
@@ -172,7 +172,7 @@ fn activate(app: &gtk4::Application) {
                     }
                     host.apply();
                 }
-                // the services' state, wmd watch's JSON
+                // the services' state, as JSON
                 ["dump"] => return Ok(hub.state().to_string()),
                 ["toast", title, ref body @ ..] => {
                     notes.post("dialog-information-symbolic", title, &body.join(" "), false)
@@ -207,7 +207,7 @@ fn activate(app: &gtk4::Application) {
                 [block, ref rest @ ..] if bar.command(block, rest).is_some() => {
                     return bar.command(block, rest).unwrap_or(Ok(String::new()));
                 }
-                // the services' commands, wmd's words: their outcome said by the running ostrov
+                // the modules' commands: their outcome said by the running ostrov
                 [first, ..] if services::is_command(first) => hub::service(&args),
                 _ => return Err(format!("{}\n{}", usage(), services::usage())),
             }
@@ -306,7 +306,7 @@ fn main() -> glib::ExitCode {
     }
     // one ostrov: run again, it hands its arguments to the running one and exits
     // OSTROV_APP_ID: another id, a second ostrov beside the running one (a build tried out without stopping it)
-    let id = std::env::var("OSTROV_APP_ID").unwrap_or_else(|_| "dev.danil.ostrov".into());
+    let id = std::env::var("OSTROV_APP_ID").unwrap_or_else(|_| "dev.ostrov.Ostrov".into());
     // the shells' completion: the script printed here; its candidates by the running ostrov, nothing with none
     // (never this one made the shell)
     match std::env::args().nth(1).as_deref() {

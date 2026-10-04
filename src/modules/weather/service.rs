@@ -1,4 +1,4 @@
-//! The location's weather from open-meteo, no key needed (weather.go): now, the day's high and low, and the next
+//! The location's weather from open-meteo, no key needed: now, the day's high and low, and the next
 //! hours; icon names are Adwaita's (weather-clear-symbolic, ...).
 use std::sync::Mutex;
 use std::time::Duration;
@@ -9,7 +9,7 @@ use crate::services::location::{self, Location};
 use crate::modules::night::service::{civil, hhmm, local, now_ns};
 use crate::services::Kick;
 
-/// The last weather fetched, wmd's Weather (null before the first), refreshed every 15 min by run.
+/// The last weather fetched, null before the first, refreshed every 15 min by run.
 static LAST: Mutex<Value> = Mutex::new(Value::Null);
 
 /// A WMO weather code as Adwaita's icon and a word for it, night icons for clear and few clouds.
@@ -27,7 +27,7 @@ fn wmo(code: i64, day: bool) -> (String, &'static str) {
     }
 }
 
-/// Half away from zero, as wmd rounded.
+/// Half away from zero.
 fn round(f: f64) -> i64 {
     if f < 0.0 { (f - 0.5) as i64 } else { (f + 0.5) as i64 }
 }

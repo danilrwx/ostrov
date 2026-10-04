@@ -1,6 +1,6 @@
 //! The workspaces as GNOME's dots: a dot each, the focused one a longer pill, a click to go there. A dot is made
 //! once and kept, so the focused one's growing and the last one's shrinking can be drawn: every frame a step of
-//! each dot's width towards its own (28 focused, 8 not), about 100 ms in all, Quickshell's way, the frame clock
+//! each dot's width towards its own (28 focused, 8 not), about 100 ms in all, the frame clock
 //! let go once there (a CSS transition misses a dot made focused).
 
 use std::cell::{Cell, RefCell};

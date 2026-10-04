@@ -1,4 +1,4 @@
-//! The power profile through power-profiles-daemon (power.go).
+//! The power profile through power-profiles-daemon.
 use serde::Serialize;
 use serde_json::Value;
 use zbus::zvariant::{self, OwnedValue};
@@ -17,7 +17,7 @@ struct Power {
     profiles: Vec<String>,
 }
 
-/// The profile now and the names of all of them; what was read before an error is kept, as wmd keeps it.
+/// The profile now and the names of all of them; what was read before an error is kept.
 pub async fn state(c: &Ctx) -> Value {
     let mut p = Power::default();
     if let Err(e) = read(c, &mut p).await {

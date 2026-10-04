@@ -1,22 +1,19 @@
-//! The wallpaper, in place of swaybg: a layer under everything, the picture covering the screen, black under the
-//! dark theme. It follows bin/theme's pick as bin/theme writes it (~/.cache/theme: mode, wallpaper), a new one
-//! fading in over the last. The picture is read off GTK's thread, a full-screen JPEG taking a while.
+//! The wallpaper, in place of swaybg: a layer under everything, the picture covering the screen, black while the
+//! wallpaper is off. It follows the pick (modules/wallpaper: ~/.local/state/ostrov/wallpaper.json) as it is
+//! kept, a new one fading in over the last. The picture is read off GTK's thread, a full-screen JPEG taking a
+//! while.
 
 use gtk4::prelude::*;
 use gtk4::{gdk, gio, glib};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
-use crate::hub::home;
+use crate::modules::wallpaper::service as pick_;
 
-/// What bin/theme picked: the picture, None under the dark theme (or with none).
+/// The picture picked, None while off (or with none).
 fn pick() -> Option<std::path::PathBuf> {
-    let dir = home().join(".cache/theme");
-    let read = |f: &str| std::fs::read_to_string(dir.join(f)).unwrap_or_default().trim().to_string();
-    if read("mode") == "dark" {
-        return None;
-    }
-    let p = std::path::PathBuf::from(read("wallpaper"));
-    p.is_file().then_some(p)
+    let p = pick_::pick();
+    let path = std::path::PathBuf::from(p.path);
+    (p.on && path.is_file()).then_some(path)
 }
 
 pub fn start(app: &gtk4::Application) {
@@ -69,12 +66,12 @@ pub fn start(app: &gtk4::Application) {
         });
     };
     show();
-    if let Ok(mon) = gio::File::for_path(home().join(".cache/theme")).monitor_directory(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE) {
-        mon.connect_changed(move |_, f, _, _| {
-            if matches!(f.basename().as_deref().and_then(|b| b.to_str()), Some("mode" | "wallpaper")) {
-                show();
-            }
-        });
+    let file = pick_::file();
+    if let Some(dir) = file.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    if let Ok(mon) = gio::File::for_path(&file).monitor_file(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE) {
+        mon.connect_changed(move |_, _, _, _| show());
         // kept for the program's life
         std::mem::forget(mon);
     }

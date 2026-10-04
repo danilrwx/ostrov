@@ -1,4 +1,4 @@
-//! Bluetooth through BlueZ (bt.go).
+//! Bluetooth through BlueZ.
 
 use std::time::Duration;
 
@@ -12,8 +12,8 @@ use crate::services::{Ctx, Res};
 
 const BLUEZ: &str = "org.bluez";
 
-/// The pairing agent's object path on the system bus, wmd's own.
-const AGENT_PATH: &str = "/wmd/btagent";
+/// The pairing agent's object path on the system bus, ostrov's own.
+const AGENT_PATH: &str = "/dev/ostrov/bt_agent";
 
 /// A Bluetooth device paired, or found by a scan; icon is BlueZ's (audio-headset, input-mouse, ...).
 #[derive(Serialize)]
@@ -160,7 +160,7 @@ impl Agent {
     fn cancel(&self) {}
 }
 
-/// Pairs a device a scan found, through wmd's own agent, then trusts it (so it reconnects on its own) and
+/// Pairs a device a scan found, through ostrov's own agent, then trusts it (so it reconnects on its own) and
 /// connects it.
 async fn pair(c: &Ctx, address: &str) -> Res {
     let path = device(c, address).await?;

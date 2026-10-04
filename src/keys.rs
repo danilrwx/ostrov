@@ -1,8 +1,7 @@
-//! The media keys and the HONOR's Fn keys, bin/wm-fnkeys's work done by ostrov itself under Hyprland: `ostrov key
-//! NAME` from the compositor's binds. The volume and the mic through wpctl, the backlight through logind, the
+//! The media keys and a laptop's Fn keys: `ostrov key NAME` from the compositor's binds. The volume and the mic through wpctl, the backlight through logind, the
 //! player through MPRIS, the touchpad through Hyprland's per-device setting; what each did shown in the OSD
-//! (notes.rs), its level the new one. The performance and camera keys are acted on by honor-hotkey-actions.service;
-//! here only what it did is shown. And the battery's warnings as it runs down (battery).
+//! (notes.rs), its level the new one. The performance and camera keys, on a laptop whose vendor
+//! service acts on them (HONOR's honor-hotkey-actions), show only what it did. And the battery's warnings as it runs down (battery).
 
 use std::cell::Cell;
 use std::rc::Rc;

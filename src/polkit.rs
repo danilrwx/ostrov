@@ -14,7 +14,7 @@ use zbus::zvariant::{OwnedValue, Value};
 
 use crate::prompt::{Ask, Kind, Prompts};
 
-const AGENT_PATH: &str = "/dev/danil/ostrov/PolkitAgent";
+const AGENT_PATH: &str = "/dev/ostrov/PolkitAgent";
 
 /// What the agent asks of GTK's thread.
 enum Up {

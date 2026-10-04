@@ -102,7 +102,7 @@ impl Server {
     }
 
     fn get_server_information(&self) -> (String, String, String, String) {
-        ("ostrov".into(), "dotfiles".into(), "0.1".into(), "1.2".into())
+        ("ostrov".into(), "ostrov".into(), "0.1".into(), "1.2".into())
     }
 
     #[zbus(signal)]

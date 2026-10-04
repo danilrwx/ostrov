@@ -1,4 +1,4 @@
-//! ostrov's config, ~/.config/ostrov/config.toml (dotfiles' config/ostrov): the bar's blocks, idle's times, the
+//! ostrov's config, ~/.config/ostrov/config.toml: the bar's blocks, idle's times, the
 //! palette's colours over style.rs's own. Every key may be left out for its default; a file that does not read is
 //! said on stderr and the defaults taken. The colours follow the file as it changes; the rest is read at the start.
 //!

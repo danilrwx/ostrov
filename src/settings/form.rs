@@ -466,7 +466,7 @@ impl Page {
                 p.fill_list();
             }
         });
-        // the file edited by hand (or by bin/theme): the form open drawn again from it
+        // the file edited by hand (or by another program): the form open drawn again from it
         let w = Rc::downgrade(&p);
         super::on_outside(move || {
             if let Some((p, id)) = w.upgrade().and_then(|p| p.current.borrow().clone().map(|id| (p.clone(), id))) {

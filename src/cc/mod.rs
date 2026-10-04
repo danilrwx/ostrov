@@ -863,9 +863,7 @@ impl Panel {
         self.shelf.set_visible(self.editing.get() && !hidden.is_empty());
         self.shelf.append(&gtk4::Separator::new(Orientation::Horizontal));
         self.shelf.append(&label("In the bar only", "dim"));
-        let chips = gtk4::FlowBox::new();
-        chips.set_selection_mode(gtk4::SelectionMode::None);
-        chips.set_max_children_per_line(4);
+        let chips = crate::ui::chip_flow();
         for it in hidden {
             let Some(m) = self.reg.iter().find(|m| m.id == it.key) else { continue };
             let chip = gtk4::ToggleButton::new();
@@ -882,7 +880,7 @@ impl Panel {
                     p.pick(&now);
                 }
             });
-            chips.insert(&chip, -1);
+            crate::ui::flow_in(&chips, &chip);
         }
         self.shelf.append(&chips);
     }
@@ -1091,6 +1089,8 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     inspector.add_css_class("menu");
     inspector.set_visible(false);
     let shelf = gtk4::Box::new(Orientation::Vertical, 6);
+    shelf.set_margin_start(6);
+    shelf.set_margin_end(6);
     shelf.set_visible(false);
     body.append(&shelf);
     body.append(&inspector);

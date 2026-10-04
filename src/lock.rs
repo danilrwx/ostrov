@@ -168,7 +168,7 @@ extern "C" fn converse(n: c_int, msgs: *mut *const PamMessage, out: *mut *mut Pa
     0
 }
 
-/// The user's password right, by ostrov's PAM profile (/etc/pam.d/ostrov, the login's auth: dotfiles' install
+/// The user's password right, by ostrov's PAM profile (/etc/pam.d/ostrov, the login's auth: the package's
 /// puts it), by the login's itself where it is not there yet: a profile missing would leave PAM's "other", which
 /// takes no password, and the screen locked for good.
 fn authenticate(password: &str) -> bool {
