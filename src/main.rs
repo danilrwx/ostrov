@@ -64,7 +64,7 @@ const FORMS: &[&str] = &[
     "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
     "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID",
     "theme list", "theme set ID", "theme install PATH|GIT-URL", "theme remove ID",
-    "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor",
+    "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor", "greeter update",
 ];
 
 fn usage() -> String {
@@ -229,6 +229,7 @@ fn command(args: &[String], input: Option<String>) -> Reply {
     match args {
         [first, rest @ ..] if first == "plugin" => return plugins::run(rest, input),
         [first] if first == "doctor" => return Box::pin(doctor::report()),
+        [first, second] if first == "greeter" && second == "update" => return Box::pin(greet::update()),
         // a theme's install clones a repository: awaited, ostrov going on meanwhile
         [first, rest @ ..] if first == "theme" => return Box::pin(theme::command(rest.to_vec())),
         [first, rest @ ..] if first == "dialog" => {

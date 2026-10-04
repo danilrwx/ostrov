@@ -56,3 +56,5 @@
 
 # widgets
 "A widget file does not read" = "Не удаётся прочитать файл виджета"
+"login screen: /usr/local/bin/ostrov is another build than this one; ostrov greeter update puts this one there" = "экран входа: /usr/local/bin/ostrov — другая сборка, не эта; ostrov greeter update поставит туда эту"
+"login screen: this ostrov" = "экран входа: эта сборка ostrov"

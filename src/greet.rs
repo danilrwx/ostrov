@@ -10,13 +10,38 @@ use std::os::unix::net::UnixStream;
 use std::rc::Rc;
 
 use gtk4::prelude::*;
-use gtk4::{glib, Align, Orientation};
+use gtk4::{gio, glib, Align, Orientation};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
 /// The last login's user and session, a line each; its directory the greeter user's (made at install).
 const STATE: &str = "/var/cache/ostrov-greet/state";
+
+/// Where the login screen's ostrov is (etc/greetd's ostrov-greeter runs it under cage): a copy, root's, not the
+/// user's build, so not updated with it.
+const AT: &str = "/usr/local/bin/ostrov";
+
+/// Whether the login screen's ostrov is another build than this one; None with no login screen of ostrov's.
+pub fn stale() -> Option<bool> {
+    let theirs = std::fs::read(AT).ok()?;
+    let mine = std::env::current_exe().and_then(std::fs::read).ok()?;
+    Some(theirs != mine)
+}
+
+/// `ostrov greeter update`: this build put where the login screen runs it, root's password asked by pkexec (in
+/// ostrov's own dialog, it being the polkit agent).
+pub async fn update() -> Result<String, String> {
+    let me = std::env::current_exe().map_err(|e| e.to_string())?;
+    let argv = [std::ffi::OsStr::new("pkexec"), "install".as_ref(), "-m755".as_ref(), me.as_os_str(), AT.as_ref()];
+    let launcher = gio::SubprocessLauncher::new(gio::SubprocessFlags::STDERR_PIPE);
+    let p = launcher.spawn(&argv).map_err(|e| format!("pkexec: {e}"))?;
+    let (_, err) = p.communicate_utf8_future(None).await.map_err(|e| format!("pkexec: {e}"))?;
+    if !p.is_successful() {
+        return Err(format!("pkexec: {}", err.unwrap_or_default().trim().lines().last().unwrap_or("not done")));
+    }
+    Ok(format!("{AT}: this ostrov"))
+}
 
 /// The greeter: a GApplication of its own, not unique, for there is no session bus to be one on.
 pub fn run() -> glib::ExitCode {
