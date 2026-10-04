@@ -1,6 +1,6 @@
 //! The overview, macOS's Mission Control: `ostrov overview` (a key, three fingers up) lays every window out over
 //! the dimmed screen. Along the top the workspaces as small screens, their windows in miniature where they are,
-//! the current one ringed, a click going there; below, the current workspace's windows side by side in a grid,
+//! the current one ringed, a click going there; below, every workspace's windows side by side in a grid,
 //! each scaled down whole, its app's icon and title under it. A click on one focuses it, a click on nothing,
 //! Escape, `ostrov overview` again or `ostrov overview close` (three fingers down) leave things as they were;
 //! arrows (with Super or without) and Tab move the pick, Enter takes it. The layout is up at once with the apps'
@@ -437,9 +437,11 @@ impl Overview {
         }
         self.body.append(&strip);
 
-        // the current workspace's windows, in a grid under the strip (its tiles and their names, about 28 high)
+        // every workspace's windows, in a grid under the strip (its tiles and their names, about 28 high), the
+        // workspaces in their order, a workspace's windows as they lie on it
         let top = 24.0 + sh * k + 28.0 + margin;
-        let mine: Vec<usize> = (0..wins.len()).filter(|&i| wins[i].workspace == current).collect();
+        let mut mine: Vec<usize> = (0..wins.len()).collect();
+        mine.sort_by_key(|&i| wins[i].workspace);
         let sizes: Vec<(f64, f64)> = mine.iter().map(|&i| wins[i].size).collect();
         let rects = grid(&sizes, (sw - 2.0 * margin, sh - top - margin), GAP, FOOT);
         let area = gtk4::Fixed::new();
