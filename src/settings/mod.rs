@@ -449,9 +449,12 @@ fn own() -> Vec<Entry> {
                 Field::new("quiet_in_games", "Quiet in games", Kind::Bool)
                     .default(true)
                     .help("Their toasts kept back while a game of [games] has the focus."),
-                Field::new("quiet_from", "Quiet from", Kind::String).default("").help("A time of day, 23:00; empty: never."),
+                Field::new("quiet_from", "Quiet from", Kind::String)
+                    .default("")
+                    .help("A time of day, 23:00; empty: never."),
                 Field::new("quiet_to", "Quiet to", Kind::String).default("").help("08:00"),
-                Field::new("allow", "Let through", Kind::List).help("Apps whose toasts come all the same: Telegram Desktop."),
+                Field::new("allow", "Let through", Kind::List)
+                    .help("Apps whose toasts come all the same: Telegram Desktop."),
             ],
         )]),
         e("launcher", "Launcher", "system-search-symbolic", vec![Section::new("launcher", "Launcher", vec![
