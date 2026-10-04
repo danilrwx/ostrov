@@ -38,6 +38,8 @@ id = "counter"                 # on the grid as plugin.<id>.<widget id>: plugin.
 name = "Hello Counter"         # in the gallery, and its menu's title
 icon = "face-smile-symbolic"   # the plugin's if left out
 sizes = [[4, 1], [2, 1], [8, 1]]  # cells [w, h] the grid (8 wide) allows, the first the default; [[4, 1]] if none
+badge = true                   # a badge in its panel's face in the bar (see Badges); false if left out
+bar = "active"                 # when the badge shows: always, active (while it says so), never (the default)
 ```
 
 Unknown keys are ignored.
@@ -97,7 +99,7 @@ Two systematic differences from the WIT:
 | `on-config(json)`                        | `{"type":"on_config","json":{...}}`, right after hello, and on every change | –                                      |
 | `state() -> string`                      | `{"type":"state","call":N}`                                                 | `return` with `value`: any JSON        |
 | `run(args, input) -> result<string,string>` | `{"type":"run_request","id":N,"args":["set","5"],"input":null}`         | `{"type":"run_result","id":N,"ok":"5"}`/`{...,"err":"..."}` |
-| `render(widget) -> string`               | `{"type":"render","call":N,"widget":"counter"}`                             | `return` with a node tree, or `null`   |
+| `render(widget) -> string`               | `{"type":"render","call":N,"widget":"counter"}` (`"counter#bar"`: its badge) | `return` with a node tree, or `null`   |
 | `on-event(widget, node, event, value)`   | `{"type":"on_event","widget":"counter","node":"count","event":"toggle","value":"true"}` | –                          |
 | `on-timer(id)`                           | `{"type":"on_timer","id":7}`                                                | –                                      |
 | `on-state(json)`                         | `{"type":"on_state","json":{...}}`, with permission `state`                 | –                                      |
@@ -187,6 +189,24 @@ A toggle narrower than four cells is its icon alone.
 A tree like the one drawn before but in its values (a toggle's `on`, `sub`, `icon`; a slider's `value`; a label's
 `text`; a progress's `value`) updates the widgets in place, so a slider being dragged or an entry being typed into
 is not disturbed; anything else redraws the widget.
+
+## Badges
+
+A widget whose manifest says `badge = true` has a badge in its panel's face in the bar, as the built-in widgets
+do (a VPN's while it is up). ostrov renders it as one more widget, `render("<widget>#bar")`, after the widget's
+own render on every kick (or pushed: `{"type":"render","widget":"counter#bar","tree":...}`). Its tree is a small
+one, an `image` and a `label`, or a horizontal `box` of them, with one field more at its top, `"active"`:
+
+```json
+{"type": "box", "orientation": "horizontal", "active": true, "children": [
+  {"type": "image", "icon": "face-smile-symbolic"}, {"type": "label", "text": "12"}
+]}
+```
+
+When it shows is the manifest's `bar` unless the panel's Edit says otherwise (its eye): `always`, `active` (while
+the last badge rendered says `"active": true`), `never`. Until the plugin renders it, the badge is the widget's
+icon, inactive. A plugin that does not declare `badge` is never asked for `#bar`, so `api = 1` plugins written
+before badges work unchanged.
 
 ## Dialogs
 

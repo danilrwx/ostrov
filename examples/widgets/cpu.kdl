@@ -1,0 +1,15 @@
+// The load averages, polled every 5 s from a file its setting names (Settings, CPU Load), on a card; the battery
+// from ostrov's own state beside them.
+widget "cpu-load" name="CPU Load" icon="utilities-system-monitor-symbolic" sizes="4x1 2x1 8x1" {
+    setting "file" title="Read from" type="path" default="/proc/loadavg"
+    // {config.file} reaches sh quoted
+    poll "load" every="5s" exec="cut -d' ' -f1-3 {config.file}"
+    box orientation="horizontal" {
+        image icon="utilities-system-monitor-symbolic"
+        label text="{load}" class="bold"
+        if "{state.battery.percent}" {
+            label text="{state.battery.percent}%" class="dim"
+        }
+    }
+    badge text="{load}" show="never"
+}

@@ -12,6 +12,7 @@ gio-unix = "0.22"
 gtk4 = { version = "0.11.5", features = ["v4_14"] }
 gtk4-layer-shell = "0.8.1"
 gtk4-session-lock = { version = "0.4.1", features = ["v1_2"] }
+kdl = { version = "6.5.0", features = ["v1-fallback"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 system-tray = "0.8.9"

@@ -61,6 +61,11 @@ class Hello(Plugin):
                 self.kick()
 
     def render(self, widget):
+        if widget == "counter#bar":  # its badge in the bar (badge = true), shown while active (bar = "active")
+            return {"type": "box", "orientation": "horizontal", "active": self.on, "children": [
+                {"type": "image", "icon": "face-smile-symbolic"},
+                {"type": "label", "text": str(self.count)},
+            ]}
         token = self.secret("token")
         return {
             "type": "toggle", "id": "count", "icon": "face-smile-symbolic",

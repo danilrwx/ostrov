@@ -14,6 +14,8 @@ id = "counter"
 name = "Hello Counter"
 icon = "face-smile-symbolic"
 sizes = [[4, 1], [2, 1], [8, 1]]
+badge = true                   # its count in the bar, render("counter#bar")
+bar = "active"                 # while the toggle is on, unless the panel says otherwise
 
 [[commands]]
 name = "count"

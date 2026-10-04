@@ -136,7 +136,7 @@ pub struct Meta {
     pub bar: Show,
 }
 
-/// The widgets there are: the modules' and the plugins'. Made once, every panel's gallery the same.
+/// The widgets there are: the modules', the plugins', the user's KDL files'. Made once, every panel's gallery the same.
 pub fn registry() -> Rc<Vec<Meta>> {
     thread_local!(static REG: std::cell::OnceCell<Rc<Vec<Meta>>> = const { std::cell::OnceCell::new() });
     REG.with(|r| {
@@ -155,6 +155,8 @@ pub fn registry() -> Rc<Vec<Meta>> {
                 })
                 .collect();
             reg.extend(crate::plugins::metas());
+            let taken: Vec<&str> = reg.iter().map(|m| m.id).collect();
+            reg.extend(crate::widgets::metas(&taken));
             for m in &reg {
                 if let Some(schema) = m.settings {
                     crate::settings::register(&format!("widget.{}", m.id), m.name, m.icon, schema());

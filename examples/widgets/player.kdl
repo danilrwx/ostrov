@@ -1,0 +1,15 @@
+// The player now playing, followed by playerctl left running: each line it prints the new value, no polling.
+// {{ and }} are braces themselves, so playerctl gets its own {{artist}}.
+widget "player" name="Player" icon="multimedia-player-symbolic" sizes="4x1 8x1" {
+    listen "track" exec="playerctl --follow metadata --format '{{{{artist}}}} – {{{{title}}}}'"
+    listen "status" exec="playerctl --follow status"
+    toggle icon="multimedia-player-symbolic" title="{track || 'Nothing playing'}" sub="{status}" on="{status == 'Playing'}" {
+        // a toggle with an exec says what a click on its parent runs
+        toggle exec="playerctl play-pause"
+        menu {
+            row icon="media-skip-backward-symbolic" text="Previous" { click exec="playerctl previous" }
+            row icon="media-skip-forward-symbolic" text="Next" { click exec="playerctl next" }
+        }
+    }
+    badge icon="multimedia-player-symbolic" text="{track}" show="active" active="{status == 'Playing'}"
+}
