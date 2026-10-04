@@ -361,8 +361,8 @@ struct Tile {
 }
 
 /// The tile dragged in the editing: it as the drag found it, by its corner (sized) or not (moved), the layout
-/// the drag started from, the cells it was last put at, where it was in the grid (x, y, width, height).
-type Dragged = (Item, bool, Vec<Item>, (u8, u8, u8, u8), (f64, f64, f64, f64));
+/// the drag started from, the cells it was last put at.
+type Dragged = (Item, bool, Vec<Item>, (u8, u8, u8, u8));
 
 pub struct Panel {
     pub popup: Rc<Popup>,
@@ -580,8 +580,16 @@ impl Panel {
         }
         // a row's place in the grid: past the bands above it
         let above = |row: u8, or_at: bool| bands.iter().filter(|(b, _)| *b < row || or_at && *b == row).count() as i32;
-        // the shorter tiles attached first: GtkGrid shares a tall tile's height out over its rows in the order
-        // its children came, and a tall one first would hand rows a shorter one fills later more than a cell
+        // a row of the grid a cell high whatever its tiles: an empty strut in each, under the tiles, so GtkGrid
+        // never has a tall tile's height to share out over rows (which it does in its children's order, a tile
+        // left taller or shorter than its cells, a neighbour moved as another is dragged)
+        let height = items.iter().map(|i| i.y + i.h).max().unwrap_or(0);
+        for r in 0..height {
+            let strut = gtk4::Box::new(Orientation::Vertical, 0);
+            strut.set_size_request(-1, row);
+            strut.set_can_target(false);
+            self.grid.attach(&strut, 0, r as i32 + above(r, true), 1, 1);
+        }
         let mut order: Vec<&Item> = items.iter().collect();
         order.sort_by_key(|i| (i.h, i.y, i.x));
         for it in order {
@@ -952,27 +960,22 @@ impl Panel {
             p.place_ghost(at);
             p.ghost.set_visible(true);
             let last = (it.x, it.y, it.w, it.h);
-            *a.borrow_mut() = Some((it, corner, items, last, at));
+            *a.borrow_mut() = Some((it, corner, items, last));
         });
         let (me, a) = (Rc::downgrade(self), at.clone());
         drag.connect_drag_update(move |_, dx, dy| {
             let Some(p) = me.upgrade() else { return };
             let mut a = a.borrow_mut();
-            let Some((it, corner, start, last, at)) = a.as_mut() else { return };
-            let (x, y, w, h) = *at;
+            let Some((it, corner, start, last)) = a.as_mut() else { return };
             let Some(m) = p.reg.iter().find(|m| m.id == it.key) else { return };
             let (row, gap) = p.dims.get();
             let cw = (p.grid.width() + gap) as f64 / COLS as f64;
             let (fx, fy) = (dx / cw, dy / (row + gap) as f64);
             let (cx, cy) = (fx.round() as i32, fy.round() as i32);
             let next = if *corner {
-                // the frame the size it will be, from the cells: what is seen is what it takes
                 let (nw, nh) = toward(m.sizes, (it.w, it.h), (fx, fy));
-                let pitch = (row + gap) as f64;
-                p.place_ghost((x, y, nw as f64 * cw - gap as f64, nh as f64 * pitch - gap as f64));
                 (it.x, it.y, nw, nh)
             } else {
-                p.place_ghost((x + dx, y + dy, w, h));
                 let x = (it.x as i32 + cx).clamp(0, (COLS - it.w) as i32) as u8;
                 (x, (it.y as i32 + cy).max(0) as u8, it.w, it.h)
             };
@@ -982,6 +985,13 @@ impl Panel {
             *last = next;
             let mut items = start.clone();
             grid::place(&mut items, &it.key, next.0, next.1, next.2, next.3);
+            // the frame where the tile has gone, its cells after the grid made room and closed up: what is seen
+            // is what it takes
+            if let Some(at) = items.iter().find(|i| i.key == it.key) {
+                let pitch = (row + gap) as f64;
+                let (ax, ay) = (at.x as f64 * cw, at.y as f64 * pitch);
+                p.place_ghost((ax, ay, at.w as f64 * cw - gap as f64, at.h as f64 * pitch - gap as f64));
+            }
             *p.items.borrow_mut() = items;
             p.layout();
             p.faces();

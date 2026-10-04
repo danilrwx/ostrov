@@ -155,6 +155,21 @@ mod tests {
     }
 
     #[test]
+    fn moving_a_tile_anywhere_never_overlaps() {
+        let start = vec![it("media", 0, 0, 4, 2), it("notifications", 0, 2, 4, 6), it("month", 4, 0, 4, 5), it("agenda", 4, 5, 4, 3)];
+        for key in ["media", "notifications", "month", "agenda"] {
+            let (w, h) = start.iter().find(|i| i.key == key).map(|i| (i.w, i.h)).unwrap();
+            for x in 0..=(COLS - w) {
+                for y in 0..10 {
+                    let mut g = start.clone();
+                    place(&mut g, key, x, y, w, h);
+                    assert!(no_overlaps(&g), "{key} to {x},{y}: {g:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
     fn below_skips_tall_neighbours() {
         // a 1-high toggle beside a 2-high player: its menu goes under the player
         let g = vec![it("wifi", 0, 0, 4, 1), it("player", 4, 0, 4, 2), it("bright", 0, 2, 8, 1)];
