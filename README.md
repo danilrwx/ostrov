@@ -178,7 +178,8 @@ and `examples/plugins/google` (`g words`). ostrov's official plugins come with i
 true`: `night`, the night light (`ostrov plugin night on|off|toggle | mode off|on|time|sun | warmth K`);
 `caldav`, the calendar's CalDAV account and .ics links. The same document describes ostrov's D-Bus interface, `dev.ostrov.Shell`.
 
-Official plugins: [displays](plugins/displays/README.md), Win+P's quick modes and kanshi's profiles.
+Official plugins: [displays](plugins/displays/README.md), Win+P's quick modes and kanshi's profiles; `drives`, removable
+drives mounted, opened and ejected through udisks.
 
 ## Languages
 

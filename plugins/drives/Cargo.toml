@@ -1,0 +1,13 @@
+[package]
+name = "ostrov-plugin-drives"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+description = "ostrov's removable drives: USB sticks, SD cards and external disks mounted, opened and ejected through udisks"
+license = "MIT"
+publish = false
+
+[dependencies]
+ostrov-plugin = { path = "../../sdk" }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"

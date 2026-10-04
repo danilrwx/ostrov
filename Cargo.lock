@@ -1084,6 +1084,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ostrov-plugin-drives"
+version = "0.1.0"
+dependencies = [
+ "ostrov-plugin",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ostrov-plugin-games"
 version = "0.1.0"
 dependencies = [

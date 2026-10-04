@@ -45,4 +45,6 @@ The first release: the whole shell in one binary.
   from sunset to sunrise, its warmth in kelvin; a tile with its menu, a badge in the bar while warm.
 - Official plugin displays (plugins/displays): Win+P's quick modes (the laptop's screen, the external one, extend,
   mirror) through hyprctl on XF86Display and Super+P, kanshi's profiles while it runs.
+- Removable drives, an official plugin (`plugins/drives`): USB sticks, SD cards and external disks in a toast as
+  they are plugged in, mounted, opened and ejected through udisks from its tile's menu, a badge while one is in.
 - Shell completion for zsh, bash and fish, answered by the running ostrov.

@@ -54,7 +54,7 @@ screenshots and screen recording, a window switcher and an overview, the wallpap
 binary."""
 depends = "$auto, pipewire-bin, wireplumber"
 recommends = """\
-hyprland, iwd | network-manager, bluez, upower, power-profiles-daemon, polkitd, wf-recorder, wl-clipboard"""
+hyprland, iwd | network-manager, bluez, upower, power-profiles-daemon, polkitd, wf-recorder, wl-clipboard, udisks2"""
 suggests = "fd-find, unicode-data, gnome-keyring, kanshi"
 assets = [
     ["target/release/ostrov", "usr/bin/", "755"],
@@ -88,4 +88,7 @@ assets = [
     ["target/release/ostrov-plugin-displays", "usr/bin/", "755"],
     ["plugins/displays/manifest.toml", "usr/share/ostrov/plugins/displays/", "644"],
     ["plugins/displays/i18n/*", "usr/share/ostrov/plugins/displays/i18n/", "644"],
+    ["target/release/ostrov-plugin-drives", "usr/bin/", "755"],
+    ["plugins/drives/manifest.toml", "usr/share/ostrov/plugins/drives/", "644"],
+    ["plugins/drives/i18n/*", "usr/share/ostrov/plugins/drives/i18n/", "644"],
 ]

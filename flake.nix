@@ -24,7 +24,7 @@
 
           # the programs ostrov runs: the sound's; the plugins record's and games' (wf-recorder, powerprofilesctl)
           preFixup = ''
-            gappsWrapperArgs+=(--prefix PATH : ${pkgs.lib.makeBinPath (with pkgs; [ wireplumber pipewire wf-recorder wl-clipboard power-profiles-daemon ])})
+            gappsWrapperArgs+=(--prefix PATH : ${pkgs.lib.makeBinPath (with pkgs; [ wireplumber pipewire wf-recorder wl-clipboard power-profiles-daemon udisks ])})
           '';
 
           # NixOS reads no PAM file of a package's: security.pam.services.ostrov = {}; makes the lock screen's

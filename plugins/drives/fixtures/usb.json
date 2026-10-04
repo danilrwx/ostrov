@@ -1,0 +1,208 @@
+{
+ "blockdevices": [
+  {
+   "name": "sda",
+   "path": "/dev/sda",
+   "label": null,
+   "size": 15938355200,
+   "fstype": null,
+   "mountpoint": null,
+   "rm": true,
+   "hotplug": true,
+   "type": "disk",
+   "model": "DataTraveler 3.0",
+   "vendor": "Kingston",
+   "tran": "usb",
+   "children": [
+    {
+     "name": "sda1",
+     "path": "/dev/sda1",
+     "label": "STICK",
+     "size": 15000000000,
+     "fstype": "vfat",
+     "mountpoint": "/media/user/STICK",
+     "rm": true,
+     "hotplug": true,
+     "type": "part",
+     "model": null,
+     "vendor": null,
+     "tran": "usb"
+    },
+    {
+     "name": "sda2",
+     "path": "/dev/sda2",
+     "label": null,
+     "size": 938355200,
+     "fstype": "ext4",
+     "mountpoint": null,
+     "rm": true,
+     "hotplug": true,
+     "type": "part",
+     "model": null,
+     "vendor": null,
+     "tran": "usb"
+    },
+    {
+     "name": "sda3",
+     "path": "/dev/sda3",
+     "label": null,
+     "size": 1048576,
+     "fstype": "swap",
+     "mountpoint": null,
+     "rm": true,
+     "hotplug": true,
+     "type": "part",
+     "model": null,
+     "vendor": null,
+     "tran": "usb"
+    }
+   ]
+  },
+  {
+   "name": "mmcblk0",
+   "path": "/dev/mmcblk0",
+   "label": "SDCARD",
+   "size": 31914983424,
+   "fstype": "exfat",
+   "mountpoint": null,
+   "rm": false,
+   "hotplug": false,
+   "type": "disk",
+   "model": null,
+   "vendor": null,
+   "tran": "mmc"
+  },
+  {
+   "name": "sdb",
+   "path": "/dev/sdb",
+   "label": null,
+   "size": 0,
+   "fstype": null,
+   "mountpoint": null,
+   "rm": true,
+   "hotplug": true,
+   "type": "disk",
+   "model": "Card Reader",
+   "vendor": "Generic",
+   "tran": "usb"
+  },
+  {
+   "name": "loop0",
+   "path": "/dev/loop0",
+   "label": null,
+   "size": 4096,
+   "fstype": "squashfs",
+   "mountpoint": "/snap/x/1",
+   "rm": false,
+   "hotplug": false,
+   "type": "loop",
+   "model": null,
+   "vendor": null,
+   "tran": null
+  },
+  {
+   "name": "zram0",
+   "path": "/dev/zram0",
+   "label": null,
+   "size": 8589934592,
+   "fstype": "swap",
+   "mountpoint": "[SWAP]",
+   "rm": false,
+   "hotplug": false,
+   "type": "disk",
+   "model": null,
+   "vendor": null,
+   "tran": null
+  },
+  {
+   "name": "nvme0n1",
+   "path": "/dev/nvme0n1",
+   "label": null,
+   "size": 1024209543168,
+   "fstype": null,
+   "mountpoint": null,
+   "rm": false,
+   "hotplug": false,
+   "type": "disk",
+   "model": "KBG60ZNV1T02 KIOXIA",
+   "vendor": null,
+   "tran": "nvme",
+   "children": [
+    {
+     "name": "nvme0n1p1",
+     "path": "/dev/nvme0n1p1",
+     "label": null,
+     "size": 1127219200,
+     "fstype": "vfat",
+     "mountpoint": "/boot/efi",
+     "rm": false,
+     "hotplug": false,
+     "type": "part",
+     "model": null,
+     "vendor": null,
+     "tran": "nvme"
+    },
+    {
+     "name": "nvme0n1p2",
+     "path": "/dev/nvme0n1p2",
+     "label": null,
+     "size": 2147483648,
+     "fstype": "ext4",
+     "mountpoint": "/boot",
+     "rm": false,
+     "hotplug": false,
+     "type": "part",
+     "model": null,
+     "vendor": null,
+     "tran": "nvme"
+    },
+    {
+     "name": "nvme0n1p3",
+     "path": "/dev/nvme0n1p3",
+     "label": null,
+     "size": 1020932390912,
+     "fstype": "crypto_LUKS",
+     "mountpoint": null,
+     "rm": false,
+     "hotplug": false,
+     "type": "part",
+     "model": null,
+     "vendor": null,
+     "tran": "nvme",
+     "children": [
+      {
+       "name": "dm_crypt-0",
+       "path": "/dev/mapper/dm_crypt-0",
+       "label": null,
+       "size": 1020915613696,
+       "fstype": "LVM2_member",
+       "mountpoint": null,
+       "rm": false,
+       "hotplug": false,
+       "type": "crypt",
+       "model": null,
+       "vendor": null,
+       "tran": null,
+       "children": [
+        {
+         "name": "ubuntu--vg-ubuntu--lv",
+         "path": "/dev/mapper/ubuntu--vg-ubuntu--lv",
+         "label": null,
+         "size": 1020914565120,
+         "fstype": "ext4",
+         "mountpoint": "/",
+         "rm": false,
+         "hotplug": false,
+         "type": "lvm",
+         "model": null,
+         "vendor": null,
+         "tran": null
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

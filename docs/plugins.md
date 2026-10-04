@@ -517,6 +517,24 @@ ostrov before it had these keys in `[calendar]`: move them to `[plugin.caldav]` 
 the Settings page kept then is the keyring's `calendar.password`: type it again in Settings, or let
 `password_command = "secret-tool lookup app ostrov key calendar.password"` print it.
 
+### drives
+
+Removable drives as GNOME has them (`plugins/drives`): USB sticks, SD cards, external disks and phones' mass
+storage, found by `lsblk` whenever `udevadm monitor` says a block device came or went (every 3 s without udevadm);
+the machine's own disks, loop devices and zram are left out. A drive plugged in is said in a toast, its name and
+size. Mounting, unmounting and powering off are udisks' (`udisksctl`, which polkit allows the active session
+without root; what goes wrong in a toast), opening `gio open` (else `xdg-open`). Its tile `plugin.drives.drives`
+lists the drives in its menu, each with Open, Mount (Unmount when all is mounted) and Eject (its volumes unmounted,
+then the drive powered off, safe to pull out); a badge in the bar while one is plugged in. `ostrov plugin drives
+list` prints them as JSON; `mount|unmount|eject|open NAME` take a drive (`sdb`) or one volume (`sdb1`, a label).
+
+```toml
+[plugin.drives]
+enabled = true
+automount = false       # a drive's volumes mounted as it is plugged in
+open_on_mount = false   # and opened in the file manager, as Mount's are
+```
+
 ## D-Bus
 
 ostrov owns `dev.ostrov.Shell` on the session bus, object `/dev/ostrov/Shell`, interface `dev.ostrov.Shell`:
