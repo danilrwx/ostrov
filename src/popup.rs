@@ -13,8 +13,11 @@ use gtk4::prelude::*;
 use gtk4::{glib, Align, Orientation};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
-/// The bar's height, the strip the windows keep clear of.
-pub const BAR: i32 = 25;
+/// The bar's height in pixels, [appearance]'s bar_height as ostrov started (the bar's window sized by it once).
+pub fn bar() -> i32 {
+    static HEIGHT: std::sync::OnceLock<i32> = std::sync::OnceLock::new();
+    *HEIGHT.get_or_init(|| crate::config::load().appearance.bar_height.clamp(16, 64) as i32)
+}
 
 /// The bar's window: its mode (i3's bar mode toggle: docked, or hidden and shown over the windows while Super
 /// is held), the launcher in it, the popup open over it.
@@ -45,7 +48,7 @@ impl Host {
             .and_downcast::<gtk4::gdk::Monitor>()
             .map_or((1920, 1080), |m| (m.geometry().width(), m.geometry().height()));
         let col = gtk4::Box::new(Orientation::Vertical, 0);
-        strip.set_size_request(-1, BAR);
+        strip.set_size_request(-1, bar());
         col.append(strip);
         let layer = gtk4::Overlay::new();
         layer.set_child(Some(&col));
@@ -77,7 +80,7 @@ impl Host {
         let click = gtk4::GestureClick::new();
         let h = Rc::downgrade(&host);
         click.connect_released(move |_, _, _, y| {
-            if let Some(p) = h.upgrade().and_then(|h| h.popup()).filter(|p| y >= BAR as f64 && !p.contains(y)) {
+            if let Some(p) = h.upgrade().and_then(|h| h.popup()).filter(|p| y >= bar() as f64 && !p.contains(y)) {
                 p.close();
             }
         });
@@ -120,7 +123,7 @@ impl Host {
         let popup = self.popup();
         if self.docked.get() {
             self.win.set_layer(Layer::Top);
-            self.win.set_exclusive_zone(BAR);
+            self.win.set_exclusive_zone(bar());
         } else {
             self.win.set_layer(Layer::Overlay);
             self.win.set_exclusive_zone(0);
@@ -140,9 +143,9 @@ impl Host {
     fn region(&self, column: Option<(i32, i32)>) {
         let Some(surface) = self.win.surface() else { return };
         let (sw, sh) = self.screen;
-        let r = gtk4::cairo::Region::create_rectangle(&gtk4::cairo::RectangleInt::new(0, 0, sw, BAR));
+        let r = gtk4::cairo::Region::create_rectangle(&gtk4::cairo::RectangleInt::new(0, 0, sw, bar()));
         if let Some((x, w)) = column {
-            let _ = r.union_rectangle(&gtk4::cairo::RectangleInt::new(x, BAR, w, sh - BAR));
+            let _ = r.union_rectangle(&gtk4::cairo::RectangleInt::new(x, bar(), w, sh - bar()));
         }
         surface.set_input_region(Some(&r));
     }
@@ -214,7 +217,7 @@ impl Popup {
             Side::Right => Align::End,
             Side::Center => Align::Center,
         });
-        reveal.set_margin_top(BAR);
+        reveal.set_margin_top(bar());
         reveal.set_size_request(width, -1);
 
         // the shape: a top edge from the corners to the tab, open under it, then the body without a top edge
@@ -285,7 +288,7 @@ impl Popup {
 
     /// y in the window within the popup's shape.
     fn contains(&self, y: f64) -> bool {
-        y < BAR as f64 + self.shape.height() as f64
+        y < bar() as f64 + self.shape.height() as f64
     }
 
     /// f on every opening (the panel folds its menus, the calendar goes back to this month).

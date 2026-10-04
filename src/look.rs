@@ -46,6 +46,53 @@ pub fn radius(a: &Appearance, t: &Theme) -> u32 {
 
 /// The CSS's radii made the appearance's: a surface's 10 px r, what is on it 6 px r - 4. Only the radii
 /// change; any other 10px or 6px stays.
+/// The rules sized as [appearance] says: every font size scaled by font_size over the 11pt they are written for
+/// (the lock's clock and all), the family set if it says one; icons, the bar's icons, its blocks' padding.
+pub fn sizes(css: &str, a: &Appearance) -> String {
+    let k = a.font_size.clamp(6.0, 32.0) / 11.0;
+    let mut out = String::with_capacity(css.len() + 256);
+    let mut rest = css;
+    while let Some(i) = rest.find("font-size:") {
+        let (head, tail) = rest.split_at(i + "font-size:".len());
+        out.push_str(head);
+        let end = tail.find([';', '}']).unwrap_or(tail.len());
+        let v = tail[..end].trim();
+        match v.strip_suffix("pt").and_then(|n| n.parse::<f64>().ok()) {
+            Some(n) => out.push_str(&format!(" {:.1}pt", n * k)),
+            None => out.push_str(&tail[..end]),
+        }
+        rest = &tail[end..];
+    }
+    out.push_str(rest);
+    if !a.font.trim().is_empty() {
+        out.push_str(&format!("* {{ font-family: \"{}\"; }}\n", a.font.trim().replace(['"', '\\', ';', '{', '}'], "")));
+    }
+    out.push_str(&format!(
+        "image {{ -gtk-icon-size: {}px; }}\n.pill image {{ -gtk-icon-size: {}px; }}\n\
+         .pill {{ padding-left: {p}px; padding-right: {p}px; }}\n",
+        a.icon_size.clamp(8, 64),
+        a.bar_icon_size.clamp(8, 64),
+        p = a.bar_padding.min(48),
+    ));
+    out
+}
+
+#[cfg(test)]
+mod size_tests {
+    use super::*;
+
+    #[test]
+    fn fonts_scale_and_icons_follow() {
+        let a = Appearance { font_size: 13.2, font: "Inter".into(), bar_icon_size: 14, ..Appearance::default() };
+        let css = sizes(".a { font-size: 11pt; } .b { font-size: 8.5pt; color: x; } .c { font-size: 1em; }", &a);
+        assert!(css.contains(".a { font-size: 13.2pt; }"), "{css}");
+        assert!(css.contains("font-size: 10.2pt;"), "{css}");
+        assert!(css.contains("font-size: 1em;"), "{css}");
+        assert!(css.contains("font-family: \"Inter\""));
+        assert!(css.contains(".pill image { -gtk-icon-size: 14px; }"));
+    }
+}
+
 pub fn radii(css: &str, r: u32) -> String {
     let mut out = String::with_capacity(css.len());
     let mut rest = css;

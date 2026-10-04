@@ -97,7 +97,7 @@ impl Launcher {
         preview.add_css_class("preview");
         preview.set_halign(gtk4::Align::Start);
         preview.set_valign(gtk4::Align::Start);
-        preview.set_margin_top(crate::popup::BAR + 6);
+        preview.set_margin_top(crate::popup::bar() + 6);
         preview.set_visible(false);
         preview.set_can_target(false);
         let preview_text = gtk4::Label::new(None);

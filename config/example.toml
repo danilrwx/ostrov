@@ -39,6 +39,13 @@ animations = true
 # blur = true
 # blur_size = 8         # 1 to 20
 # blur_passes = 1       # 1 to 4
+font = ""               # a family (Inter, Iosevka...); "" GTK's own
+font_size = 11.0        # points; every text sized from it
+icon_size = 16          # px, on what opens
+bar_icon_size = 14      # px, in the bar
+bar_padding = 10        # px at a bar block's sides
+bar_spacing = 7         # px between a block's icons; taken at ostrov's start
+bar_height = 25         # px; taken at ostrov's start
 
 # Any of the palette's colours over the theme's (the names in src/style.rs): fg, dim, ink, accent, accent-rule,
 # accent-pressed, bar, surface, hover, raised, card, well, sunk, rule, idle, handle, urgent, recording, lock,

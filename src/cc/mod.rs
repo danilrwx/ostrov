@@ -1176,7 +1176,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     let (sc, h) = (scroll.clone(), Rc::downgrade(host));
     popup.on_open(move || {
         if let Some(h) = h.upgrade() {
-            sc.set_max_content_height((h.win.height() - crate::popup::BAR - 110).max(200));
+            sc.set_max_content_height((h.win.height() - crate::popup::bar() - 110).max(200));
             // no ring round what has the focus until a key moves it
             h.win.set_focus_visible(false);
         }

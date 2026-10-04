@@ -11,7 +11,7 @@ use gtk4::prelude::*;
 use gtk4::glib;
 
 use crate::hub::Hub;
-use crate::popup::{Host, Popup, Side, BAR};
+use crate::popup::{Host, Popup, Side};
 
 mod layout;
 mod panel;
@@ -81,7 +81,8 @@ fn block(name: &str, cx: &Rc<Ctx>, side: Side) -> Option<Block> {
 
 /// A block's pill: its content in a row, the ground lit under the pointer or as a tab.
 pub fn pill() -> gtk4::Box {
-    let b = gtk4::Box::new(gtk4::Orientation::Horizontal, 7);
+    let gap = crate::config::load().appearance.bar_spacing.min(32) as i32;
+    let b = gtk4::Box::new(gtk4::Orientation::Horizontal, gap);
     b.add_css_class("pill");
     b
 }
@@ -174,7 +175,7 @@ impl Bar {
         let b = Rc::downgrade(&bar);
         let host = cx.host.clone();
         click.connect_released(move |g, _, x, y| {
-            let (Some(b), Some(w)) = (b.upgrade(), g.widget().filter(|_| y < BAR as f64)) else { return };
+            let (Some(b), Some(w)) = (b.upgrade(), g.widget().filter(|_| y < crate::popup::bar() as f64)) else { return };
             let hit = w.pick(x, y, gtk4::PickFlags::DEFAULT);
             let on_popup_block = b.blocks.iter().any(|(_, k)| k.popup.is_some() && hit.as_ref().is_some_and(|h| h.is_ancestor(&k.widget) || *h == k.widget));
             if !on_popup_block {

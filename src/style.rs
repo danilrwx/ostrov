@@ -34,7 +34,7 @@ const CSS: &str = r#"
 @define-color shade rgba(0, 0, 0, 0.4);         /* the screen under a question (polkit's, askpass's), the overview */
 
 /* the shapes: a surface rounded 10, what is on it 6 */
-* { font-family: "Iosevka"; font-size: 11pt; color: @fg; }
+* { font-size: 11pt; color: @fg; }
 image { -gtk-icon-size: 16px; }
 window { background: transparent; }
 scrolledwindow { background: none; }
@@ -272,6 +272,7 @@ pub fn load() {
             let look = crate::look::palette(&cfg.appearance, &theme, &cfg.colors);
             let (palette, rules) = CSS.split_at(CSS.find("/* the shapes").unwrap_or(0));
             let rules = crate::look::radii(rules, crate::look::radius(&cfg.appearance, &theme));
+            let rules = crate::look::sizes(&rules, &cfg.appearance);
             let previews = crate::look::previews(&crate::theme::all());
             let all = format!("{palette}{look}{rules}{previews}{}", theme.css);
             css.load_from_string(&all.replace("ALPHA", &alpha.to_string()));

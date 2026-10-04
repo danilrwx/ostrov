@@ -145,6 +145,16 @@ pub struct Appearance {
     pub blur: Option<bool>,
     pub blur_size: Option<u32>,
     pub blur_passes: Option<u32>,
+    /// the text's family ("" GTK's own), its size in points, what the rest is sized from
+    pub font: String,
+    pub font_size: f64,
+    /// icons' size in pixels: on what opens, in the bar
+    pub icon_size: u32,
+    pub bar_icon_size: u32,
+    /// the bar's height, a block's padding at its sides, the gap between a block's icons, in pixels
+    pub bar_height: u32,
+    pub bar_padding: u32,
+    pub bar_spacing: u32,
 }
 
 impl Default for Appearance {
@@ -160,6 +170,13 @@ impl Default for Appearance {
             blur: None,
             blur_size: None,
             blur_passes: None,
+            font: String::new(),
+            font_size: 11.0,
+            icon_size: 16,
+            bar_icon_size: 14,
+            bar_height: 25,
+            bar_padding: 10,
+            bar_spacing: 7,
         }
     }
 }
