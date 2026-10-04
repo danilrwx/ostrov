@@ -7,6 +7,7 @@
 mod bar;
 mod calc;
 mod calendar;
+mod cc;
 mod clip;
 mod config;
 mod greet;
@@ -17,7 +18,6 @@ mod launcher;
 mod lock;
 mod notes;
 mod overview;
-mod panel;
 mod polkit;
 mod popup;
 mod prompt;
@@ -26,6 +26,7 @@ mod services;
 mod shot;
 mod style;
 mod switcher;
+mod ui;
 mod wallpaper;
 mod wm;
 

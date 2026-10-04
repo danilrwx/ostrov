@@ -1,4 +1,4 @@
-//! The status: Wi-Fi, the volume, the battery; a click unrolls the quick settings out of it (panel.rs). Its
+//! The status: Wi-Fi, the volume, the battery; a click unrolls the quick settings out of it (cc/). Its
 //! commands: ostrov status menu NAME, the quick settings with that menu unfolded.
 
 use std::rc::Rc;
@@ -45,12 +45,12 @@ pub fn build(cx: &Rc<Ctx>) -> Block {
         let b = &st["battery"];
         bat.set_visible(b["present"].as_bool().unwrap_or(false));
         bat.set_icon_name(b["icon"].as_str());
-        let t = crate::panel::battery_time(b);
+        let t = crate::ui::battery_time(b);
         let t = if t.is_empty() { t } else { format!(", {t}") };
         bat.set_tooltip_text(Some(&format!("{}%{t}", b["percent"].as_f64().unwrap_or(0.0).round())));
     });
 
-    let panel = crate::panel::build(&cx.host, &cx.hub, &s);
+    let panel = crate::cc::build(&cx.host, &cx.hub, &s);
     let click = gtk4::GestureClick::new();
     let p = panel.clone();
     click.connect_released(move |_, _, _, _| p.toggle());

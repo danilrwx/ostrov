@@ -184,7 +184,7 @@ pub fn battery(hub: &Rc<Hub>, notes: &Rc<Notes>, prompts: &Rc<crate::prompt::Pro
             "discharging" => {
                 let Some(level) = due(warned.get(), pct) else { return };
                 warned.set(level);
-                let left = crate::panel::battery_time(b);
+                let left = crate::ui::battery_time(b);
                 let pct = pct.round();
                 let body = if left.is_empty() { format!("{pct}%") } else { format!("{pct}%, {left}") };
                 if level > 5 {

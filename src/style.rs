@@ -75,11 +75,12 @@ button.round { background: @raised; border: 1px solid @rule; border-radius: 6px;
 button.arrow, button.flat-round { border-radius: 6px; min-width: 32px; min-height: 32px; }
 button.round:hover, button.arrow:hover, button.flat-round:hover, button.item:hover, button.chip:hover,
 calendar > header > button:hover, .hit:hover { background: @hover; }
-button.round.open, button.arrow.open, button.item.on, button.chip:checked, .hit.picked { background: @accent; }
-button.round.open image, button.arrow.open image, button.item.on label, button.item.on image,
+button.round.open, button.arrow.open, .tile.open button.round, .tile.open button.arrow:not(.toggle-side), button.item.on, button.chip:checked, .hit.picked { background: @accent; }
+button.round.open image, button.arrow.open image, .tile.open button.round image,
+.tile.open button.arrow:not(.toggle-side) image, button.item.on label, button.item.on image,
 button.chip:checked label, .hit.picked label, .hit.picked image { color: @ink; }
 button.arrow image { transition: -gtk-icon-transform 100ms; }
-button.arrow.open image { -gtk-icon-transform: rotate(90deg); }
+button.arrow.open image, .tile.open button.arrow image { -gtk-icon-transform: rotate(90deg); }
 button.item { padding: 0 10px; min-height: 34px; border-radius: 6px; }
 button.connect { background: @accent; padding: 0 10px; border-radius: 6px; min-height: 30px; }
 button.connect label { color: @ink; font-weight: bold; }
@@ -95,7 +96,16 @@ button.chip, togglebutton.chip { background: @raised; border: 1px solid @rule; b
 .toggle-sub { color: @dim; font-size: 8.5pt; }
 button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radius: 0 6px 6px 0; }
 .toggle.on button.toggle-side { border-left-color: @accent-rule; }
-.toggle.on button.toggle-side.open { background: @accent-pressed; }
+.toggle.on button.toggle-side.open, .tile.open .toggle.on button.toggle-side { background: @accent-pressed; }
+.toggle.small .toggle-main { padding: 0; }
+
+/* the control centre's grid (cc/): its tiles, and in its editing their minus and corner, the one dragged lifted */
+.cc .battery { min-height: 0; }
+.cc.editing .tile > :first-child { opacity: 0.85; }
+.tile.dragged > :first-child { opacity: 0.6; }
+button.tile-remove { background: @urgent; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
+button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }
+.tile-grip { color: @dim; -gtk-icon-size: 10px; margin: 3px; }
 
 scale { padding: 0 4px; }
 scale trough { min-height: 14px; border-radius: 6px; background: @well; }
