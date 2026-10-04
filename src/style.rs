@@ -110,13 +110,12 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 .cc .card, .cc .clock { background: @raised; border: 1px solid @rule; border-radius: 6px; }
 .cc.editing .tile > :first-child { opacity: 0.85; }
 .cc.editing { margin: 6px; }
-.tile.dragged > :first-child { opacity: 0.6; }
+.tile.dragged > :first-child { box-shadow: 0 0 0 2px @accent; border-radius: 6px; }
 button.tile-remove { background: @urgent; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
 button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }
 /* a plugin's widget drawn as anything but a toggle, a slider or a round button: on a card like the battery's */
 .plugin-card { background: @raised; border: 1px solid @rule; border-radius: 6px; padding: 4px 14px; }
 .tile.picked > :first-child { box-shadow: 0 0 0 2px @accent; border-radius: 6px; }
-.tile-ghost { border: 2px solid @accent; border-radius: 6px; background: alpha(@accent, 0.12); }
 .tile-grip { background: @handle; color: #ffffff; border-radius: 10px; min-width: 20px; min-height: 20px; margin: -5px; -gtk-icon-size: 12px; }
 .clock { padding: 0 14px; }
 .surface label.clock-time { font-size: 20pt; font-weight: bold; }

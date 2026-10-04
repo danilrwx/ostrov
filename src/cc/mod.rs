@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use gtk4::prelude::*;
-use gtk4::{glib, Align, Orientation};
+use gtk4::{Align, Orientation};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -378,8 +378,6 @@ pub struct Panel {
     /// a row's height and the gap between cells, in pixels, as the density says
     dims: Cell<(i32, i32)>,
     grid: gtk4::Grid,
-    /// the frame following the pointer while a tile is dragged, over the grid snapping under it
-    ghost: gtk4::Box,
     gallery: gtk4::Box,
     /// the widgets in the bar alone, under the grid in the editing
     shelf: gtk4::Box,
@@ -920,7 +918,7 @@ impl Panel {
 
     /// Dragging a tile in the editing: by its body to move it, by its corner to size it, a frame following the pointer
     /// as it goes and the grid taking the cells it comes to under it. The grid's own drag, in the grid's coordinates,
-    /// since the tile moves under the pointer. A press on a tile's minus is its own; a click, no drag, picks the tile.
+    /// since the tile moves under the pointer. The tile dragged ringed (style.rs), its minus and corner over the ring. A press on a tile's minus is its own; a click, no drag, picks the tile.
     fn drags(self: &Rc<Self>) {
         let drag = gtk4::GestureDrag::new();
         let at: Rc<RefCell<Option<Dragged>>> = Rc::default();
@@ -959,8 +957,6 @@ impl Panel {
                     pitch = ((b.width() as f64 + gap as f64) / it.w as f64, (b.height() as f64 + gap as f64) / it.h as f64);
                 }
             }
-            p.ghost_on(&it.key);
-            p.ghost.set_visible(true);
             let last = (it.x, it.y, it.w, it.h);
             *a.borrow_mut() = Some((it, corner, items, last, pitch));
         });
@@ -988,12 +984,10 @@ impl Panel {
             *p.items.borrow_mut() = items;
             p.layout();
             p.faces();
-            p.ghost_on(&it.key);
         });
         let (me, a) = (Rc::downgrade(self), at);
         drag.connect_drag_end(move |_, dx, dy| {
             let (Some(p), Some((it, ..))) = (me.upgrade(), a.borrow_mut().take()) else { return };
-            p.ghost.set_visible(false);
             // a click, not a drag: the tile picked (again: let go)
             if dx.abs() < 4.0 && dy.abs() < 4.0 {
                 let now = if *p.picked.borrow() == it.key { String::new() } else { it.key.clone() };
@@ -1004,20 +998,6 @@ impl Panel {
             }
         });
         self.grid.add_controller(drag);
-    }
-
-    /// The frame on the tile key exactly where it is laid out, once the grid has laid it out anew (an idle runs
-    /// after the frame's layout): what is seen is what it takes, whatever the grid's margins and columns.
-    fn ghost_on(self: &Rc<Self>, key: &str) {
-        let (me, key) = (Rc::downgrade(self), key.to_string());
-        glib::idle_add_local_once(move || {
-            let Some(p) = me.upgrade() else { return };
-            let (Some(over), Some(t)) = (p.ghost.parent(), p.tiles.borrow().get(&key).map(|t| t.wrap.clone())) else { return };
-            let Some(b) = t.compute_bounds(&over) else { return };
-            p.ghost.set_margin_start(b.x().max(0.0) as i32);
-            p.ghost.set_margin_top(b.y().max(0.0) as i32);
-            p.ghost.set_size_request(b.width() as i32, b.height() as i32);
-        });
     }
 }
 
@@ -1072,17 +1052,6 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     grid.set_column_homogeneous(true);
     grid.set_column_spacing(dims.1 as u32);
     grid.set_row_spacing(dims.1 as u32);
-    // the grid under the pointer's frame while a tile is dragged
-    let over = gtk4::Overlay::new();
-    over.set_child(Some(&grid));
-    let ghost = gtk4::Box::new(Orientation::Vertical, 0);
-    ghost.add_css_class("tile-ghost");
-    ghost.set_halign(Align::Start);
-    ghost.set_valign(Align::Start);
-    ghost.set_can_target(false);
-    ghost.set_visible(false);
-    over.add_overlay(&ghost);
-    over.set_clip_overlay(&ghost, false);
     // the grid and the gallery scrolled within the screen's height, the footer under them always in sight
     let body = gtk4::Box::new(Orientation::Vertical, 10);
     let scroll = gtk4::ScrolledWindow::new();
@@ -1091,7 +1060,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     scroll.set_propagate_natural_width(true);
     scroll.set_child(Some(&body));
     page.append(&scroll);
-    body.append(&over);
+    body.append(&grid);
 
     let gallery = gtk4::Box::new(Orientation::Vertical, 2);
     gallery.add_css_class("menu");
@@ -1162,7 +1131,6 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         settings,
         dims: Cell::new(dims),
         grid,
-        ghost,
         gallery,
         shelf,
         inspector,
