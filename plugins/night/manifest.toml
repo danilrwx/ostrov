@@ -5,7 +5,7 @@ name = "Night Light"
 version = "0.1.0"
 api = 1
 exec = "ostrov-plugin-night"
-icon = "night-light-symbolic"
+icon = "weather-clear-night-symbolic"
 description = "Warmer colours in the evening, through Hyprland's screen shader."
 permissions = []
 
