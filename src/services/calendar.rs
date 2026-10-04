@@ -464,8 +464,12 @@ fn base64(b: &[u8]) -> String {
         .collect()
 }
 
-/// The app password, what password_command prints (its last line break off).
+/// The app password: the one the Settings page keeps in the Secret Service, else what password_command prints
+/// (its last line break off).
 fn password(cmd: &str) -> Result<String, String> {
+    if let Some(p) = crate::settings::secret("calendar.password") {
+        return Ok(p);
+    }
     let out = std::process::Command::new("sh").args(["-c", cmd]).output().map_err(|e| e.to_string())?;
     if !out.status.success() || out.stdout.is_empty() {
         return Err(format!("password_command: {}", String::from_utf8_lossy(&out.stderr).trim()));
@@ -556,6 +560,14 @@ fn fetch(c: &Calendar) -> Result<Value, String> {
     }
     events.sort_by(|a, b| a["start"].as_str().cmp(&b["start"].as_str()));
     Ok(Value::Array(events))
+}
+
+/// The Settings page's Test: the calendars fetched as the config says now, how many events came or what failed;
+/// the calendar popup's fetched again too. Blocking.
+pub fn test() -> Result<String, String> {
+    let n = fetch(&crate::config::load().calendar)?.as_array().map_or(0, Vec::len);
+    REFRESH.notify_one();
+    Ok(format!("{n} events around this month"))
 }
 
 /// The events last fetched: [{title, start, end, all_day, location, color}], null while there is no calendar.

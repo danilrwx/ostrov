@@ -16,6 +16,7 @@ mod idle;
 mod keys;
 mod launcher;
 mod lock;
+mod look;
 mod notes;
 mod overview;
 mod polkit;
@@ -23,6 +24,7 @@ mod popup;
 mod prompt;
 mod record;
 mod services;
+mod settings;
 mod shot;
 mod style;
 mod switcher;
@@ -44,7 +46,7 @@ thread_local! {
     static PROMPTS: std::cell::RefCell<Option<Rc<prompt::Prompts>>> = Default::default();
 }
 
-const USAGE: &str = "usage: ostrov [panel | menu NAME | calendar | run | ask QUESTION | clip | windows [app] | overview [close] | lock | key NAME | awake | screenshot | \
+const USAGE: &str = "usage: ostrov [panel | menu NAME | settings [SECTION] | appearance | calendar | run | ask QUESTION | clip | windows [app] | overview [close] | lock | key NAME | awake | screenshot | \
 capture FILE | record [--audio] | bar toggle|peek|unpeek | state | dump | BLOCK ARGS | SERVICE ARGS]";
 
 fn activate(app: &gtk4::Application) {
@@ -112,6 +114,11 @@ fn activate(app: &gtk4::Application) {
                 ["panel"] => toggle("status")?,
                 ["calendar"] => toggle("clock")?,
                 ["menu", name] => return bar.command("status", &["menu", name]).unwrap_or(Err("no status block".into())),
+                // the control centre at its Settings (an entry's form: bar, calendar, widget.wallpaper...) or
+                // Appearance page
+                ["settings", ..] | ["appearance"] => {
+                    return bar.command("status", &args).unwrap_or(Err("no status block".into()));
+                }
                 ["run"] => launcher.toggle(false),
                 ["ask", ref question @ ..] if !question.is_empty() => {
                     let ctx = gtk4::gdk::Display::default().map(|d| d.app_launch_context());

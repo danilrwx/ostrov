@@ -106,6 +106,42 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 button.tile-remove { background: @urgent; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
 button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }
 .tile-grip { color: @dim; -gtk-icon-size: 10px; margin: 3px; }
+/* the tiles as tall as the density's rows (look.rs), not their own */
+.cc .toggle, .cc button.round { min-height: 0; }
+
+/* the control centre's pages (Appearance, Settings): a header with its back arrow; a form's fields, the title
+   over its help, the control beside or under them; the themes' cards, the accents' swatches */
+.page-title { font-weight: bold; font-size: 12pt; }
+.form-section { margin-top: 10px; }
+.field { padding: 6px 0; }
+.field-help { color: @dim; font-size: 8.5pt; }
+flowboxchild { padding: 0; }
+.page-body { margin-right: 10px; }
+scrollbar { background: none; border: none; }
+scrollbar slider { background: @well; border: none; border-radius: 999px; min-width: 4px; min-height: 24px; }
+button.chip.picked { background: @accent; border-color: @accent; }
+button.chip.picked label { color: @ink; }
+button.theme { border: 2px solid @rule; border-radius: 6px; min-height: 40px; padding: 4px 6px; }
+button.theme label { font-size: 9pt; }
+button.theme.picked { border-color: @accent; }
+.theme-dot { min-width: 10px; min-height: 10px; border-radius: 5px; }
+button.swatch { border: 2px solid @rule; border-radius: 999px; min-width: 20px; min-height: 20px; }
+button.swatch.picked { border-color: @fg; }
+colordialogbutton > button { background: @raised; border: 1px solid @rule; border-radius: 6px; padding: 3px; }
+colordialogbutton.swatch-custom > button { border: 2px solid @rule; border-radius: 999px; padding: 2px; }
+colordialogbutton.swatch-custom.picked > button { border-color: @fg; }
+colordialogbutton.swatch-custom colorswatch { border-radius: 999px; min-width: 18px; min-height: 18px; }
+switch { background: @well; border: none; border-radius: 999px; min-width: 40px; min-height: 22px; }
+switch:checked { background: @accent; }
+switch slider { background: @fg; border: none; border-radius: 999px; min-width: 18px; min-height: 18px; margin: 2px;
+                box-shadow: none; }
+switch:checked slider { background: @ink; }
+switch image { color: transparent; }
+spinbutton { background: @sunk; border: 1px solid @rule; border-radius: 6px; }
+spinbutton > text { padding: 0 6px; }
+spinbutton > button { min-width: 26px; border-radius: 6px; }
+spinbutton > button:hover { background: @hover; }
+scale value { color: @dim; font-size: 9pt; }
 
 scale { padding: 0 4px; }
 scale trough { min-height: 14px; border-radius: 6px; background: @well; }
@@ -182,7 +218,18 @@ dropdown.lock-entry > button { padding: 0 12px; }
 .greet-power image { -gtk-icon-size: 24px; }
 "#;
 
-/// The CSS on the display, the Adwaita icons, the bar's black reloaded as bin/theme changes it.
+thread_local! {
+    /// What follows the config as it changes, past the CSS (the control centre's density, the Settings' forms).
+    static WATCHERS: std::cell::RefCell<Vec<Box<dyn Fn()>>> = Default::default();
+}
+
+/// f on every change to the config (and to bin/theme's alpha), once the CSS has followed it.
+pub fn on_config(f: impl Fn() + 'static) {
+    WATCHERS.with(|w| w.borrow_mut().push(Box::new(f)));
+}
+
+/// The CSS on the display, the Adwaita icons, the bar's black reloaded as bin/theme changes it; the look as
+/// config.toml's [appearance] sets it (look.rs).
 pub fn load() {
     let Some(display) = gtk4::gdk::Display::default() else { return };
     let css = gtk4::CssProvider::new();
@@ -191,10 +238,16 @@ pub fn load() {
         let (css, f) = (css.clone(), alpha_file.clone());
         move || {
             let alpha = std::fs::read_to_string(&f).unwrap_or("1".into());
-            // the config's colours over the palette's, before the rules that take them
-            let own: String = crate::config::load().colors.iter().map(|(k, v)| format!("@define-color {k} {v};\n")).collect();
+            // the appearance's palette, then the config's colours over it, before the rules that take them
+            let cfg = crate::config::load();
+            let look = crate::look::palette(&cfg.appearance);
+            let own: String = cfg.colors.iter().map(|(k, v)| format!("@define-color {k} {v};\n")).collect();
             let (palette, rules) = CSS.split_at(CSS.find("/* the shapes").unwrap_or(0));
-            css.load_from_string(&format!("{palette}{own}{rules}").replace("ALPHA", alpha.trim()));
+            let rules = crate::look::radii(rules, cfg.appearance.radius);
+            let previews = crate::look::previews();
+            css.load_from_string(&format!("{palette}{look}{own}{rules}{previews}").replace("ALPHA", alpha.trim()));
+            crate::look::apply(&cfg.appearance);
+            WATCHERS.with(|w| w.borrow().iter().for_each(|f| f()));
         }
     };
     load();

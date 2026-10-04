@@ -23,6 +23,20 @@
 //!     [games]             # their windows focused, the power profile theirs (services/games.rs)
 //!     classes = ["dota2", "cs2", "steam_app_*"]
 //!     profile = "performance"
+//!
+//!     [appearance]        # the look (style.rs), taken as the file is saved; the control centre's Appearance
+//!     theme = "dark"      # dark, light, graphite, nord, solarized
+//!     accent = "#5e81ac"  # "" the theme's own
+//!     opacity = 0.75      # the surface's
+//!     radius = 10         # a surface's corners, what is on it 4 less
+//!     density = "normal"  # compact, normal, comfortable: the control centre's rows
+//!     blur = true         # Hyprland's blur, its blur_size and blur_passes: set only when given here
+//!
+//!     [widget.wallpaper]  # a control centre widget's own, as its schema says (settings/)
+//!     dir = "~/Pictures/wallpapers"
+//!
+//! The Settings page (settings/) edits this file in place, its comments and order kept; secrets (the calendar's
+//! password) go to the Secret Service, never here.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -71,7 +85,8 @@ impl Default for Games {
     }
 }
 
-/// The calendars: a CalDAV account (its password never here: a command prints it) and .ics links.
+/// The calendars: a CalDAV account (its password never here: in the Secret Service, else printed by a command)
+/// and .ics links.
 #[derive(Deserialize)]
 #[serde(default)]
 pub struct Calendar {
@@ -92,6 +107,40 @@ impl Default for Calendar {
     }
 }
 
+/// The look: a theme's palette, the accent and the surface over it, the shapes, the density, the motion.
+/// Hyprland's blur is set only from what is given, so a file without it leaves Hyprland's own.
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct Appearance {
+    pub theme: String,
+    pub accent: String,
+    pub surface: String,
+    pub opacity: f64,
+    pub radius: u32,
+    pub density: String,
+    pub animations: bool,
+    pub blur: Option<bool>,
+    pub blur_size: Option<u32>,
+    pub blur_passes: Option<u32>,
+}
+
+impl Default for Appearance {
+    fn default() -> Appearance {
+        Appearance {
+            theme: "dark".into(),
+            accent: String::new(),
+            surface: String::new(),
+            opacity: 0.75,
+            radius: 10,
+            density: "normal".into(),
+            animations: true,
+            blur: None,
+            blur_size: None,
+            blur_passes: None,
+        }
+    }
+}
+
 #[derive(Deserialize, Default)]
 #[serde(default)]
 pub struct Config {
@@ -100,6 +149,9 @@ pub struct Config {
     pub colors: BTreeMap<String, String>,
     pub calendar: Calendar,
     pub games: Games,
+    pub appearance: Appearance,
+    /// the control centre widgets' own sections, [widget.ID]
+    pub widget: BTreeMap<String, toml::Table>,
 }
 
 pub fn path() -> PathBuf {
