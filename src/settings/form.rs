@@ -11,6 +11,7 @@ use gtk4::{glib, Orientation};
 use serde_json::{Map, Value};
 
 use super::{check, entries, fmt_duration, off_thread, value, write, Cond, Field, Kind, Schema, Section};
+use crate::i18n::t;
 use crate::style::{clear, label};
 use crate::ui::{header, options, row, setting};
 
@@ -65,9 +66,9 @@ pub fn form(schema: &Schema) -> gtk4::Box {
     let bx = gtk4::Box::new(Orientation::Vertical, 0);
     for s in &schema.sections {
         if schema.sections.len() > 1 {
-            let t = label(&s.title, "title");
-            t.add_css_class("form-section");
-            bx.append(&t);
+            let h = label(t(&s.title), "title");
+            h.add_css_class("form-section");
+            bx.append(&h);
         }
         bx.append(&section(s));
     }
@@ -82,7 +83,7 @@ pub fn section(sec: &Section) -> gtk4::Box {
 fn fill(sec: &Section, answers: Option<Answers>) -> gtk4::Box {
     let bx = gtk4::Box::new(Orientation::Vertical, 0);
     if !sec.help.is_empty() {
-        let h = label(&sec.help, "field-help");
+        let h = label(t(&sec.help), "field-help");
         h.set_wrap(true);
         bx.append(&h);
     }
@@ -117,7 +118,7 @@ fn fill(sec: &Section, answers: Option<Answers>) -> gtk4::Box {
             }
             _ => control(f, &cur, &format!("{}.{}", sec.key, f.key), put, &err),
         };
-        let r = setting(&f.title, &f.help, &ctl, wide);
+        let r = setting(t(&f.title), t(&f.help), &ctl, wide);
         r.append(&err);
         if !f.actions.is_empty() && st.answers.is_none() {
             r.append(&actions(f, &st));
@@ -137,7 +138,7 @@ fn actions(f: &Field, st: &Rc<State>) -> gtk4::Box {
     let said = label("", "dim");
     said.set_ellipsize(gtk4::pango::EllipsizeMode::End);
     for a in &f.actions {
-        let b = gtk4::Button::with_label(&a.label);
+        let b = gtk4::Button::with_label(t(&a.label));
         b.add_css_class("chip");
         // named by its id (a plugin's host finds it so); without a run (a plugin's not wired yet) inert
         b.set_widget_name(&a.id);
@@ -153,7 +154,7 @@ fn actions(f: &Field, st: &Rc<State>) -> gtk4::Box {
             run(&v, Rc::new(move |r: Result<String, String>| {
                 b.set_sensitive(true);
                 match r {
-                    Ok(t) => said.set_text(&t),
+                    Ok(s) => said.set_text(&s),
                     Err(e) => {
                         said.set_text(&e);
                         said.add_css_class("error");
@@ -257,7 +258,8 @@ fn control(f: &Field, cur: &Value, secret_key: &str, put: Put, err: &gtk4::Label
                 .iter()
                 .map(|v| if multi { cur.as_array().is_some_and(|a| a.iter().any(|x| x == v)) } else { v == text })
                 .collect();
-            let names: Vec<&str> = opts.iter().map(|o| o.label()).collect();
+            // shown in the user's language, the value written as it is
+            let names: Vec<&str> = opts.iter().map(|o| t(o.label())).collect();
             let on = Rc::new(RefCell::new(picked.clone()));
             let fb = options(&names, &picked, multi, move |i, now| {
                 if !multi {
@@ -325,7 +327,7 @@ fn list(cur: &Value, put: Put) -> gtk4::Box {
     let rows = gtk4::Box::new(Orientation::Vertical, 2);
     col.append(&rows);
     let add = gtk4::Entry::new();
-    add.set_placeholder_text(Some("Add…"));
+    add.set_placeholder_text(Some(t("Add…")));
     col.append(&add);
     fn draw(rows: &gtk4::Box, items: &Rc<RefCell<Vec<String>>>, put: &Put) {
         clear(rows);
@@ -375,7 +377,7 @@ fn secret(key: &str, f: &Field, err: &gtk4::Label) -> gtk4::PasswordEntry {
     e.set_show_peek_icon(true);
     e.set_hexpand(true);
     let said = |e: &gtk4::PasswordEntry, kept: bool| {
-        e.set_placeholder_text(Some(if kept { "Kept in the keyring; type to replace" } else { "Not set" }));
+        e.set_placeholder_text(Some(if kept { t("Kept in the keyring; type to replace") } else { t("Not set") }));
     };
     let (k, e2) = (key.to_string(), e.clone());
     off_thread(move || super::secret::exists(&k), move |kept| said(&e2, kept));
@@ -433,7 +435,7 @@ impl Page {
         let root = gtk4::Box::new(Orientation::Vertical, 6);
         let me: Rc<RefCell<std::rc::Weak<Page>>> = Rc::default();
         let m = me.clone();
-        let (head, title) = header("Settings", move || {
+        let (head, title) = header(t("Settings"), move || {
             if let Some(p) = m.borrow().upgrade() {
                 p.back();
             }
@@ -487,7 +489,7 @@ impl Page {
     pub fn show(&self, id: Option<&str>) {
         let Some(id) = id.filter(|id| entries().iter().any(|e| e.id == *id)) else {
             *self.current.borrow_mut() = None;
-            self.title.set_text("Settings");
+            self.title.set_text(t("Settings"));
             self.stack.set_visible_child_name("list");
             return;
         };
@@ -509,7 +511,7 @@ impl Page {
     fn fill_form(&self, id: &str) {
         let Some(e) = entries().into_iter().find(|e| e.id == id) else { return };
         *self.current.borrow_mut() = Some(id.to_string());
-        self.title.set_text(&e.title);
+        self.title.set_text(t(&e.title));
         clear(&self.form);
         self.form.append(&form(&e.schema));
     }
@@ -522,13 +524,13 @@ impl Page {
         for e in all {
             let g = group(&e.id);
             if g != last {
-                let t = label(g, "dim");
-                t.add_css_class("form-section");
-                self.list.append(&t);
+                let h = label(t(g), "dim");
+                h.add_css_class("form-section");
+                self.list.append(&h);
                 last = g;
             }
             let (me, id) = (Rc::downgrade(self), e.id.clone());
-            self.list.append(&row(&e.icon, &e.title, "", false, move || {
+            self.list.append(&row(&e.icon, t(&e.title), "", false, move || {
                 if let Some(p) = me.upgrade() {
                     p.show(Some(&id));
                 }

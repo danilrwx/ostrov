@@ -13,6 +13,8 @@ use std::rc::Rc;
 use serde::Deserialize;
 use serde_json::Value;
 
+use crate::i18n::{fill, t};
+
 pub mod form;
 mod secret;
 mod store;
@@ -306,24 +308,24 @@ pub fn check(kind: &Kind, v: Value) -> Result<Value, String> {
     let text = v.as_str().unwrap_or("").trim().to_string();
     match kind {
         Kind::Number { min, max, .. } => {
-            let n = v.as_f64().ok_or("not a number")?;
+            let n = v.as_f64().ok_or(t("not a number"))?;
             if n < *min || n > *max {
-                return Err(format!("between {min} and {max}"));
+                return Err(fill(t("between {} and {}"), &[min, max]));
             }
         }
         Kind::Url if !text.is_empty() && !(text.starts_with("https://") || text.starts_with("http://")) => {
-            return Err("an http:// or https:// address".into());
+            return Err(t("an http:// or https:// address").into());
         }
         Kind::Color if !text.is_empty() && gtk4::gdk::RGBA::parse(text.as_str()).is_err() => {
-            return Err("a colour: #5e81ac, rgb(94, 129, 172), a name".into());
+            return Err(t("a colour: #5e81ac, rgb(94, 129, 172), a name").into());
         }
-        Kind::Path if !text.is_empty() && !expand(&text).exists() => return Err("no such file or directory".into()),
+        Kind::Path if !text.is_empty() && !expand(&text).exists() => return Err(t("no such file or directory").into()),
         Kind::Duration => {
-            let s = parse_duration(&text).ok_or("a duration: 90, 90s, 10m, 1h30m, 0 for never")?;
+            let s = parse_duration(&text).ok_or(t("a duration: 90, 90s, 10m, 1h30m, 0 for never"))?;
             return Ok(s.into());
         }
         Kind::Choice { options } if !options.iter().any(|o| o.value() == text) => {
-            return Err("not one of the options".into());
+            return Err(t("not one of the options").into());
         }
         Kind::List => {
             let items: Vec<Value> = v
@@ -467,7 +469,10 @@ fn own() -> Vec<Entry> {
 
 /// [appearance]: the Appearance page draws theme and accent its own way, the rest as this form.
 pub fn appearance() -> Vec<Section> {
-    let opts = |o: &[&str]| o.iter().map(|v| Opt::Plain(v.to_string())).collect();
+    // shown by their labels, in the user's language
+    let opts = |o: &[(&str, &str)]| {
+        o.iter().map(|(v, l)| Opt::Labeled { value: v.to_string(), label: l.to_string() }).collect()
+    };
     let slider = |min, max, step| Kind::Number { min, max, step, slider: true };
     // the blur's as Hyprland has it now, while the file says nothing of it
     let live = |k: &str, or: i64| {
@@ -493,13 +498,13 @@ pub fn appearance() -> Vec<Section> {
         Field::new("radius", "Corner radius", slider(0.0, 20.0, 1.0))
             .default(theme.radius.unwrap_or(10))
             .help("A surface's; what is on it 4 less."),
-        Field::new("density", "Density", Kind::Choice { options: opts(&["compact", "normal", "comfortable"]) })
+        Field::new("density", "Density", Kind::Choice { options: opts(&[("compact", "Compact"), ("normal", "Normal"), ("comfortable", "Comfortable")]) })
             .default(theme.density.unwrap_or("normal".into()))
             .help("The control centre's rows."),
-        Field::new("language", "Language", Kind::Choice { options: opts(&["", "en", "ru"]) })
+        Field::new("language", "Language", Kind::Choice { options: opts(&[("", "System"), ("en", "English"), ("ru", "Русский")]) })
             .default("")
             .help("Empty: the locale's. Taken as ostrov starts again."),
-        Field::new("tab", "Tab ground", Kind::Choice { options: opts(&["auto", "wallpaper", "bar"]) })
+        Field::new("tab", "Tab ground", Kind::Choice { options: opts(&[("auto", "Auto"), ("wallpaper", "Wallpaper"), ("bar", "Bar")]) })
             .default("auto")
             .help("Under a hovered block and a panel's tab. Auto: the wallpaper with blur, else the bar."),
         Field::new("animations", "Animations", Kind::Bool).default(true),
