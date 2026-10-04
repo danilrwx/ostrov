@@ -155,6 +155,10 @@ pub struct Appearance {
     pub bar_height: u32,
     pub bar_padding: u32,
     pub bar_spacing: u32,
+    /// a panel's row, the gap between its tiles, its padding, in pixels: over the density's when set
+    pub row_height: Option<u32>,
+    pub gap: Option<u32>,
+    pub panel_padding: Option<u32>,
 }
 
 impl Default for Appearance {
@@ -177,6 +181,9 @@ impl Default for Appearance {
             bar_height: 25,
             bar_padding: 10,
             bar_spacing: 7,
+            row_height: None,
+            gap: None,
+            panel_padding: None,
         }
     }
 }

@@ -64,6 +64,11 @@ pub fn sizes(css: &str, a: &Appearance) -> String {
         rest = &tail[end..];
     }
     out.push_str(rest);
+    if let Some(p) = a.panel_padding {
+        // what opens, its padding (an attached one's top kept small, under its tab)
+        let p = p.min(40);
+        out.push_str(&format!(".surface {{ padding: {p}px; }}\n.surface.attached {{ padding-top: 4px; }}\n"));
+    }
     if !a.font.trim().is_empty() {
         out.push_str(&format!("* {{ font-family: \"{}\"; }}\n", a.font.trim().replace(['"', '\\', ';', '{', '}'], "")));
     }
@@ -118,11 +123,13 @@ pub fn radii(css: &str, r: u32) -> String {
 /// The control centre's row height and gap: the appearance's density, else its theme's.
 pub fn density(a: &Appearance) -> (i32, i32) {
     let theirs = || crate::theme::get(&a.theme).density;
-    match a.density.clone().or_else(theirs).as_deref().unwrap_or("normal") {
+    let (row, gap) = match a.density.clone().or_else(theirs).as_deref().unwrap_or("normal") {
         "compact" => (40, 6),
         "comfortable" => (56, 10),
         _ => (48, 8),
-    }
+    };
+    // a row's height and the gap as set, over the density's
+    (a.row_height.map_or(row, |r| r.clamp(24, 96) as i32), a.gap.map_or(gap, |g| g.min(32) as i32))
 }
 
 /// The Appearance page's previews: each theme's card on its surface in its text's colour with its accent's dot,
