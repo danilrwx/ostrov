@@ -49,6 +49,10 @@ pub const KEYS: &[(&str, &str, &str, &str)] = &[
     ("play-pause", "bindl", ", XF86AudioPlay", "key play-pause"),
     ("next", "bindl", ", XF86AudioNext", "key next"),
     ("previous", "bindl", ", XF86AudioPrev", "key previous"),
+    // a laptop's vendor keys: its settings key, its notification centre's, the projection one
+    ("tools", "bind", ", XF86Tools", "settings"),
+    ("notifications", "bind", ", XF86NotificationCenter", "calendar"),
+    ("display", "bind", ", XF86Display", "menu displays"),
 ];
 
 /// The gestures it would have, the user's to add (Hyprland lists none to see whether they are free).
