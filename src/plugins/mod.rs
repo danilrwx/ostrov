@@ -202,6 +202,10 @@ fn parse_manifest(text: &str, dir: &str) -> Result<Manifest, String> {
         if w.sizes.is_empty() {
             w.sizes.push((4, 1));
         }
+        // a widget saying no icon of its own has its plugin's (its menu's head, its badge until drawn)
+        if w.icon.is_empty() {
+            w.icon = m.icon.clone();
+        }
     }
     Ok(m)
 }
