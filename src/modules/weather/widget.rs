@@ -9,11 +9,12 @@ use crate::hub::s;
 use crate::style::{clear, label};
 
 pub fn weather(_: &Ctx) -> Widget {
-    let card = gtk4::Box::new(Orientation::Vertical, 8);
+    let card = gtk4::Box::new(Orientation::Vertical, 4);
+    card.set_valign(Align::Center);
     card.add_css_class("card");
     let now = gtk4::Box::new(Orientation::Horizontal, 10);
     let icon = gtk4::Image::new();
-    icon.set_pixel_size(28);
+    icon.set_pixel_size(22);
     let col = gtk4::Box::new(Orientation::Vertical, 0);
     let temp = label("", "bold");
     let place = label("", "dim");
@@ -50,17 +51,17 @@ pub fn weather(_: &Ctx) -> Widget {
             temp.set_text(&format!("{}°  {}", w["temp"], s(w, &["text"])));
             place.set_text(&format!("{}   ↑{}° ↓{}°", s(w, &["place"]), w["high"], w["low"]));
             clear(&hours);
+            // an hour in two lines: its time over its sky and temperature side by side
             for h in w["hours"].as_array().into_iter().flatten() {
-                let col = gtk4::Box::new(Orientation::Vertical, 2);
-                let t = label(s(h, &["time"]), "dim");
+                let col = gtk4::Box::new(Orientation::Vertical, 0);
+                let t = label(s(h, &["time"]), "hour");
                 t.set_xalign(0.5);
-                let i = gtk4::Image::from_icon_name(s(h, &["icon"]));
-                let deg = label(&format!("{}°", h["temp"]), "");
-                deg.set_xalign(0.5);
+                let line = gtk4::Box::new(Orientation::Horizontal, 3);
+                line.set_halign(Align::Center);
+                line.append(&gtk4::Image::from_icon_name(s(h, &["icon"])));
+                line.append(&label(&format!("{}°", h["temp"]), ""));
                 col.append(&t);
-                col.append(&i);
-                col.append(&deg);
-                col.set_halign(Align::Fill);
+                col.append(&line);
                 hours.append(&col);
             }
         })
