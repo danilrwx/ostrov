@@ -223,6 +223,11 @@ pub fn register(id: &str, title: &str, icon: &str, mut schema: Schema) {
     });
 }
 
+/// Whether an entry of that id is registered (a KDL widget's, a plugin's, besides the modules' widgets).
+pub fn has(id: &str) -> bool {
+    REGISTERED.with(|r| r.borrow().iter().any(|e| e.id == id))
+}
+
 /// ostrov's own entries, then the registered ones.
 pub fn entries() -> Vec<Entry> {
     let mut all = own();

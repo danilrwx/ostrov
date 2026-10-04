@@ -8,7 +8,9 @@
 //!
 //! "Edit" turns the grid to its editing: a widget dragged goes where it is dropped, the ones in its way pushed
 //! down; dragged by its corner it takes the size nearest the pointer of those it allows; its minus takes it off;
-//! its eye says when its badge shows; the gallery under the grid puts back any widget not on it. The layouts are
+//! a click picks it, its inspector under the grid: its sizes, when its badge shows in the bar (always, while
+//! active, never), the bar alone (its tile off the panel), its settings, off; the gallery under it puts back any
+//! widget not on it. The layouts are
 //! kept in ~/.config/ostrov/panel.toml, a list of widgets a panel.
 //!
 //! Under the control centre's grid, beside Edit, a gear and a palette: the Settings page (settings/: a form for
@@ -73,21 +75,7 @@ pub enum Show {
 }
 
 impl Show {
-    fn next(self) -> Show {
-        match self {
-            Show::Always => Show::Active,
-            Show::Active => Show::Never,
-            Show::Never => Show::Always,
-        }
-    }
-
-    fn says(self) -> &'static str {
-        match self {
-            Show::Always => "In the bar: always",
-            Show::Active => "In the bar: while active",
-            Show::Never => "In the bar: never",
-        }
-    }
+    const ALL: [(Show, &'static str); 3] = [(Show::Always, "Always"), (Show::Active, "While active"), (Show::Never, "Never")];
 }
 
 impl Widget {
@@ -394,6 +382,9 @@ pub struct Panel {
     /// the frame following the pointer while a tile is dragged, over the grid snapping under it
     ghost: gtk4::Box,
     gallery: gtk4::Box,
+    /// in the editing, what can be done to the tile picked (a click on it): its size, its badge, its settings
+    inspector: gtk4::Box,
+    picked: RefCell<String>,
     edit_button: gtk4::Button,
     items: RefCell<Vec<Item>>,
     /// the widgets in the bar alone, kept where they were on the grid (their badges' order)
@@ -499,45 +490,7 @@ impl Panel {
         grip.add_css_class("tile-grip");
         grip.set_halign(Align::End);
         grip.set_valign(Align::End);
-        let mut marks = vec![remove.upcast::<gtk4::Widget>(), grip.upcast()];
-        // the eye: when its badge is in the bar, a click the next way
-        if widget.face.is_some() {
-            let eye = gtk4::Button::from_icon_name("view-reveal-symbolic");
-            eye.add_css_class("tile-eye");
-            eye.set_halign(Align::End);
-            eye.set_valign(Align::Start);
-            let show = self.show(key, m.bar);
-            eye.set_tooltip_text(Some(show.says()));
-            let me = Rc::downgrade(self);
-            let k = key.to_string();
-            let bar = m.bar;
-            eye.connect_clicked(move |e| {
-                let Some(p) = me.upgrade() else { return };
-                let next = p.show(&k, bar).next();
-                p.shows.borrow_mut().insert(k.clone(), next);
-                e.set_tooltip_text(Some(next.says()));
-                e.set_icon_name(if next == Show::Never { "view-conceal-symbolic" } else { "view-reveal-symbolic" });
-                p.faces();
-            });
-            if show == Show::Never {
-                eye.set_icon_name("view-conceal-symbolic");
-            }
-            marks.push(eye.upcast());
-            // up into the bar alone, its tile off the panel
-            let up = gtk4::Button::from_icon_name("go-top-symbolic");
-            up.add_css_class("tile-up");
-            up.set_tooltip_text(Some("In the bar only"));
-            up.set_halign(Align::Start);
-            up.set_valign(Align::End);
-            let me = Rc::downgrade(self);
-            let k = key.to_string();
-            up.connect_clicked(move |_| {
-                if let Some(p) = me.upgrade() {
-                    p.hide(&k);
-                }
-            });
-            marks.push(up.upcast());
-        }
+        let marks = [remove.upcast::<gtk4::Widget>(), grip.upcast()];
         for w in &marks {
             w.set_visible(self.editing.get());
             wrap.add_overlay(w);
@@ -684,7 +637,7 @@ impl Panel {
             t.widget.root.set_can_target(!on);
             let mut c = t.wrap.first_child();
             while let Some(w) = c {
-                if ["tile-remove", "tile-grip", "tile-eye", "tile-up"].iter().any(|k| w.has_css_class(k)) {
+                if w.has_css_class("tile-remove") || w.has_css_class("tile-grip") {
                     w.set_visible(on);
                 }
                 c = w.next_sibling();
@@ -695,11 +648,15 @@ impl Panel {
         } else {
             self.grid.remove_css_class("editing");
         }
+        self.pick("");
         self.fill_gallery();
         self.gallery.set_visible(on);
     }
 
     fn remove(self: &Rc<Self>, key: &str) {
+        if *self.picked.borrow() == key {
+            self.pick("");
+        }
         self.items.borrow_mut().retain(|i| i.key != key);
         self.hidden.borrow_mut().retain(|i| i.key != key);
         grid::compact(&mut self.items.borrow_mut());
@@ -709,9 +666,113 @@ impl Panel {
         self.fill_gallery();
     }
 
+    /// The tile picked in the editing ("" none): ringed, its inspector under the grid.
+    fn pick(self: &Rc<Self>, key: &str) {
+        *self.picked.borrow_mut() = key.to_string();
+        for (k, t) in self.tiles.borrow().iter() {
+            if k == key {
+                t.wrap.add_css_class("picked");
+            } else {
+                t.wrap.remove_css_class("picked");
+            }
+        }
+        self.inspect();
+    }
+
+    /// The picked tile's inspector: its sizes, when its badge is in the bar, the bar alone, its settings, off.
+    fn inspect(self: &Rc<Self>) {
+        clear(&self.inspector);
+        let key = self.picked.borrow().clone();
+        let it = self.items.borrow().iter().find(|i| i.key == key).cloned();
+        let (Some(it), Some(m)) = (it, self.reg.iter().find(|m| m.id == key)) else {
+            return self.inspector.set_visible(false);
+        };
+        self.inspector.set_visible(true);
+        let head = gtk4::Box::new(Orientation::Horizontal, 10);
+        let badge = gtk4::Image::from_icon_name(m.icon);
+        badge.add_css_class("badge");
+        head.append(&badge);
+        head.append(&label(m.name, "title"));
+        self.inspector.append(&head);
+
+        let line = |title: &str, w: &gtk4::Widget| {
+            let bx = gtk4::Box::new(Orientation::Horizontal, 8);
+            let l = label(title, "dim");
+            l.set_width_chars(10);
+            bx.append(&l);
+            bx.append(w);
+            self.inspector.append(&bx);
+        };
+        // its sizes, the one it has pressed
+        if m.sizes.len() > 1 {
+            let names: Vec<String> = m.sizes.iter().map(|(w, h)| format!("{w}×{h}")).collect();
+            let strs: Vec<&str> = names.iter().map(String::as_str).collect();
+            let at = m.sizes.iter().position(|&s| s == (it.w, it.h));
+            let (me, k, sizes) = (Rc::downgrade(self), key.clone(), m.sizes);
+            let chips = crate::ui::chips(&strs, at, move |i| {
+                let Some(p) = me.upgrade() else { return };
+                let Some(it) = p.items.borrow().iter().find(|x| x.key == k).cloned() else { return };
+                let (w, h) = sizes[i];
+                let mut items = p.items.borrow().clone();
+                grid::place(&mut items, &k, it.x, it.y, w, h);
+                *p.items.borrow_mut() = items;
+                p.layout();
+                p.faces();
+                p.inspect();
+            });
+            chips.set_margin_start(0);
+            line("Size", chips.upcast_ref());
+        }
+        // when its badge is in the bar, and the bar alone
+        if self.tiles.borrow().get(&key).is_some_and(|t| t.widget.face.is_some()) {
+            let now = self.show(&key, m.bar);
+            let names: Vec<&str> = Show::ALL.iter().map(|s| s.1).collect();
+            let at = Show::ALL.iter().position(|s| s.0 == now);
+            let (me, k) = (Rc::downgrade(self), key.clone());
+            let chips = crate::ui::chips(&names, at, move |i| {
+                if let Some(p) = me.upgrade() {
+                    p.shows.borrow_mut().insert(k.clone(), Show::ALL[i].0);
+                    p.faces();
+                    p.inspect();
+                }
+            });
+            chips.set_margin_start(0);
+            line("In the bar", chips.upcast_ref());
+        }
+        let acts = gtk4::Box::new(Orientation::Horizontal, 6);
+        let act = |text: &str, f: Box<dyn Fn(&Rc<Panel>)>| {
+            let b = gtk4::Button::with_label(text);
+            b.add_css_class("chip");
+            let me = Rc::downgrade(self);
+            b.connect_clicked(move |_| {
+                if let Some(p) = me.upgrade() {
+                    f(&p);
+                }
+            });
+            acts.append(&b);
+        };
+        if self.tiles.borrow().get(&key).is_some_and(|t| t.widget.face.is_some()) {
+            let k = key.clone();
+            act("In the Bar Only", Box::new(move |p| p.hide(&k)));
+        }
+        if m.settings.is_some() || crate::settings::has(&format!("widget.{key}")) {
+            let k = key.clone();
+            act("Settings…", Box::new(move |p| {
+                p.set_editing(false);
+                if let Some(c) = panel("control") {
+                    c.open_page("settings", Some(&format!("widget.{k}")));
+                }
+            }));
+        }
+        let k = key.clone();
+        act("Remove", Box::new(move |p| p.remove(&k)));
+        self.inspector.append(&acts);
+    }
+
     /// A widget's tile off the panel, its badge left in the bar (shown always, if it was never).
     fn hide(self: &Rc<Self>, key: &str) {
         let Some(it) = self.items.borrow().iter().find(|i| i.key == key).cloned() else { return };
+        self.pick("");
         self.items.borrow_mut().retain(|i| i.key != key);
         grid::compact(&mut self.items.borrow_mut());
         self.hidden.borrow_mut().push(it);
@@ -727,6 +788,7 @@ impl Panel {
     /// A widget in the bar alone back on the panel, in the first place its size fits.
     fn unhide(self: &Rc<Self>, key: &str) {
         let Some(mut it) = self.hidden.borrow().iter().find(|i| i.key == key).cloned() else { return };
+        self.pick("");
         self.hidden.borrow_mut().retain(|i| i.key != key);
         (it.x, it.y) = grid::free(&self.items.borrow(), it.w, it.h);
         self.items.borrow_mut().push(it);
@@ -788,7 +850,7 @@ impl Panel {
 
     /// Dragging a tile in the editing: by its body to move it, by its corner to size it, a frame following the
     /// pointer as it goes and the grid taking the cells it comes to under it. The grid's own drag, in the grid's
-    /// coordinates, since the tile moves under the pointer. A press on a tile's minus or eye is theirs.
+    /// coordinates, since the tile moves under the pointer. A press on a tile's minus is its own; a click, no drag, picks the tile.
     fn drags(self: &Rc<Self>) {
         let drag = gtk4::GestureDrag::new();
         let at: Rc<RefCell<Option<Dragged>>> = Rc::default();
@@ -801,7 +863,7 @@ impl Panel {
             let mut hit = p.grid.pick(x, y, gtk4::PickFlags::DEFAULT);
             let (mut corner, mut key) = (false, None);
             while let Some(w) = hit {
-                if w.has_css_class("tile-remove") || w.has_css_class("tile-eye") {
+                if w.has_css_class("tile-remove") {
                     g.set_state(gtk4::EventSequenceState::Denied);
                     return;
                 }
@@ -860,9 +922,14 @@ impl Panel {
             p.faces();
         });
         let (me, a) = (Rc::downgrade(self), at);
-        drag.connect_drag_end(move |_, _, _| {
+        drag.connect_drag_end(move |_, dx, dy| {
             let (Some(p), Some((it, ..))) = (me.upgrade(), a.borrow_mut().take()) else { return };
             p.ghost.set_visible(false);
+            // a click, not a drag: the tile picked (again: let go)
+            if dx.abs() < 4.0 && dy.abs() < 4.0 {
+                let now = if *p.picked.borrow() == it.key { String::new() } else { it.key.clone() };
+                p.pick(&now);
+            }
             if let Some(t) = p.tiles.borrow().get(&it.key) {
                 t.wrap.remove_css_class("dragged");
             }
@@ -953,6 +1020,10 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     let gallery = gtk4::Box::new(Orientation::Vertical, 2);
     gallery.add_css_class("menu");
     gallery.set_visible(false);
+    let inspector = gtk4::Box::new(Orientation::Vertical, 6);
+    inspector.add_css_class("menu");
+    inspector.set_visible(false);
+    body.append(&inspector);
     body.append(&gallery);
 
     // the footer: the control centre's gear to the Settings and palette to the Appearance, Edit
@@ -1012,6 +1083,8 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         grid,
         ghost,
         gallery,
+        inspector,
+        picked: RefCell::default(),
         edit_button: edit_button.clone(),
         items: RefCell::new(items),
         hidden: RefCell::new(hidden),
