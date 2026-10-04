@@ -225,6 +225,7 @@ fn capture(jobs: Vec<(usize, u32)>, tx: async_channel::Sender<Thumb>) -> Result<
             Err(e) => eprintln!("ostrov: overview: {e}"),
         }
     }
+    crate::hub::trim_heap();
     Ok(())
 }
 
@@ -374,6 +375,10 @@ impl Overview {
     pub fn close(&self) {
         self.opening.set(self.opening.get() + 1);
         self.win.set_visible(false);
+        // the windows' pictures let go of, not kept till the next opening
+        crate::style::clear(&self.body);
+        self.cards.borrow_mut().clear();
+        glib::idle_add_local_once(crate::hub::trim_heap);
     }
 
     fn open(self: &Rc<Self>) {

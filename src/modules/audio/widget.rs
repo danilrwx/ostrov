@@ -65,8 +65,11 @@ fn devices(memo: &Memo, key: &'static str, list: &Value, items: &gtk4::Box) {
     clear(items);
     for d in list.as_array().into_iter().flatten() {
         let id = d["id"].to_string();
-        items.append(&row("", s(d, &["name"]), "", d["def"].as_bool().unwrap_or(false), move || {
-            run(&["wpctl", "set-default", &id])
+        // one in another of its card's profiles: that profile switched to
+        let switch = d["card"].as_i64().zip(d["profile"].as_i64());
+        items.append(&row("", s(d, &["name"]), "", d["def"].as_bool().unwrap_or(false), move || match switch {
+            Some((card, profile)) => service(&["audio", "profile", &card.to_string(), &profile.to_string()]),
+            None => run(&["wpctl", "set-default", &id]),
         }));
     }
 }

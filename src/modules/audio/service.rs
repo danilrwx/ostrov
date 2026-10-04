@@ -10,12 +10,18 @@ use serde_json::Value;
 
 use crate::services::{Kick, Res};
 
-/// A PipeWire sink or source: its node id (for wpctl set-default), its name, whether it is the default.
+/// A PipeWire sink or source: its node id (for wpctl set-default), its name, whether it is the default. Or one
+/// of a card's outputs or inputs in a profile not on now (the speaker while the headphones' profile is: UCM
+/// has them in two): the card and the profile to switch to for it, its id 0.
 #[derive(Serialize)]
 struct Sound {
     id: i64,
     name: String,
     def: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    card: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    profile: Option<i64>,
 }
 
 /// An app recording: its stream's node id, the app's name.
@@ -187,7 +193,7 @@ fn parse(objs: &[Value]) -> Audio {
             name = str(p, &["node.description"]);
         }
         let list = if sink { &mut a.sinks } else { &mut a.sources };
-        list.push(Sound { id: num(o, &["id"]), name: name.into(), def });
+        list.push(Sound { id: num(o, &["id"]), name: name.into(), def, card: None, profile: None });
         // the default's level
         let pr = param(o, "Props");
         if def && !pr.is_null() {
@@ -197,6 +203,22 @@ fn parse(objs: &[Value]) -> Audio {
                 (a.volume, a.muted) = (level, mute);
             } else {
                 (a.mic, a.mic_muted) = (level, mute);
+            }
+        }
+    }
+    // the cards' outputs and inputs in their other profiles, not unplugged, as a switch to that profile
+    for d in routes.values().filter(|d| str(d, &["info", "props", "device.api"]) == "alsa") {
+        let now = num(param(d, "Profile"), &["index"]);
+        for r in params(d, "EnumRoute") {
+            let profiles: Vec<i64> = r["profiles"].as_array().into_iter().flatten().filter_map(Value::as_i64).collect();
+            let Some(&profile) = profiles.first().filter(|_| !profiles.contains(&now)) else { continue };
+            if str(r, &["available"]) == "no" {
+                continue;
+            }
+            let list = if str(r, &["direction"]) == "Output" { &mut a.sinks } else { &mut a.sources };
+            let name = str(r, &["description"]).to_string();
+            if !list.iter().any(|s| s.name == name) {
+                list.push(Sound { id: 0, name, def: false, card: Some(num(d, &["id"])), profile: Some(profile) });
             }
         }
     }
@@ -336,6 +358,17 @@ pub async fn events(kick: Kick) {
 /// audio volume ID LEVEL: a stream's level (0 to 1, as wpctl puts it), through wpctl. The state is read anew
 /// after: PipeWire's monitor tells a level's change to nothing watched.
 pub async fn cmd(args: &[&str]) -> Res {
+    // a card's profile switched (the speaker's, from the headphones'): what it holds the sinks and sources then
+    if let ["profile", card, profile] = args {
+        let (Ok(card), Ok(profile)) = (card.parse::<u32>(), profile.parse::<u32>()) else { return Err("audio profile: CARD PROFILE".into()) };
+        let status = tokio::process::Command::new("wpctl")
+            .args(["set-profile", &card.to_string(), &profile.to_string()])
+            .status()
+            .await
+            .map_err(|e| e.to_string())?;
+        STALE.store(true, std::sync::atomic::Ordering::Relaxed);
+        return if status.success() { Ok(()) } else { Err(status.to_string()) };
+    }
     let ["volume", id, v] = args else { return Err(super::MODULE.usage()) };
     let (Ok(id), Ok(v)) = (id.parse::<u32>(), v.parse::<f64>()) else { return Err("audio volume: ID LEVEL".into()) };
     let status = tokio::process::Command::new("wpctl")
@@ -434,6 +467,18 @@ mod tests {
                 {"id": 120, "name": "mpv", "icon": "mpv", "bin": "mpv", "volume": 0.5},
             ])
         );
+    }
+
+    #[test]
+    fn a_card_output_in_another_profile_is_a_switch() {
+        let card = serde_json::json!({"type": "PipeWire:Interface:Device", "id": 48, "info": {
+            "props": {"device.api": "alsa"},
+            "params": {"Profile": [{"index": 1}], "EnumRoute": [
+                {"direction": "Output", "description": "Headphones", "available": "yes", "profiles": [1]},
+                {"direction": "Output", "description": "Speaker", "available": "unknown", "profiles": [2]},
+                {"direction": "Output", "description": "HDMI", "available": "no", "profiles": [3]}]}}});
+        let v = serde_json::to_value(super::parse(&[card])).unwrap();
+        assert_eq!(v["sinks"], serde_json::json!([{"id": 0, "name": "Speaker", "def": false, "card": 48, "profile": 2}]));
     }
 
     #[test]

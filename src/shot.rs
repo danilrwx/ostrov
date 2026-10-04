@@ -197,6 +197,7 @@ pub fn capture(path: String) {
         if let Err(e) = r {
             eprintln!("ostrov: capture: {e}");
         }
+        crate::hub::trim_heap();
     });
 }
 
@@ -220,6 +221,8 @@ impl Shot {
             std::thread::spawn(move || {
                 let tex = gdk::MemoryTexture::new(w as i32, h as i32, format, &glib::Bytes::from_owned(rows), (w * 4) as usize);
                 let _ = tx.send_blocking(tex.save_to_png_bytes().to_vec());
+                drop(tex);
+                crate::hub::trim_heap();
             });
             glib::spawn_future_local(async move {
                 if let Ok(png) = rx.recv().await {
@@ -309,6 +312,8 @@ impl Shot {
                 let k = frame.width as f64 / win.width().max(1) as f64;
                 win.close();
                 me.busy.set(false);
+                // the frozen screen let go of once the window has gone
+                glib::timeout_add_local_once(std::time::Duration::from_secs(1), crate::hub::trim_heap);
                 let Some(region) = shot else { return };
                 let (x, y, w, h) = region.unwrap_or((0.0, 0.0, frame.width as f64 / k, frame.height as f64 / k));
                 let px = |v: f64| (v * k).round() as u32;

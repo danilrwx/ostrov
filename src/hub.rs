@@ -52,6 +52,18 @@ impl Hub {
     }
 }
 
+unsafe extern "C" {
+    fn malloc_trim(pad: usize) -> i32;
+}
+
+/// The heap's free memory given back to the system. glibc keeps what a big buffer freed (a window's or a screen's
+/// picture, tens of MB each), raising its threshold for big allocations as they go: done after such work, a
+/// bar stays the size of a bar.
+pub fn trim_heap() {
+    // SAFETY: malloc_trim only walks glibc's own arenas
+    unsafe { malloc_trim(0) };
+}
+
 pub fn home() -> PathBuf {
     PathBuf::from(std::env::var("HOME").unwrap_or_default())
 }
