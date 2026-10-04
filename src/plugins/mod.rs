@@ -942,7 +942,7 @@ mod tests {
         assert!(parse_manifest(&HELLO.replace("\" toggle \"", "\" \""), "hello").is_err());
         assert_eq!(m.widgets[0].sizes, [(4, 1), (2, 1)]);
         assert_eq!(m.widgets[1].sizes, [(4, 1)]);
-        assert_eq!(m.widgets[1].icon, "");
+        assert_eq!(m.widgets[1].icon, m.icon, "the plugin's when it says none");
         assert_eq!((m.widgets[0].badge, m.widgets[0].bar), (true, Show::Active));
         assert_eq!((m.widgets[1].badge, m.widgets[1].bar), (false, Show::Never));
         let u = usage(&m);
