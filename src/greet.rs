@@ -69,9 +69,9 @@ fn build(app: &gtk4::Application) {
         }
         win.set_exclusive_zone(-1);
         win.set_keyboard_mode(KeyboardMode::Exclusive);
-    } else {
-        win.fullscreen();
     }
+    // no fullscreen() asked of cage: it fills the screen with its one window itself, and a fullscreen asked before
+    // the window's first commit aborts it (wlroots' surface->initialized), the login falling back to tuigreet
 
     let (last_user, last_session) = remembered();
     let sessions = Rc::new(sessions());
