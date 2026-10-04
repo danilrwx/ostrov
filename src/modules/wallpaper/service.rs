@@ -70,9 +70,10 @@ fn keep(p: Pick) -> Res {
     std::fs::write(&f, serde_json::to_string(&p).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
     if let Some(hook) = own("on_change") {
         let shown = if p.on { p.path.as_str() } else { "" };
-        let spawned = std::process::Command::new("sh").args(["-c", &hook]).env("OSTROV_WALLPAPER", shown).spawn();
-        if let Err(e) = spawned {
-            eprintln!("ostrov: wallpaper on_change: {e}");
+        match std::process::Command::new("sh").args(["-c", &hook]).env("OSTROV_WALLPAPER", shown).spawn() {
+            // waited for, or it stays a zombie of ostrov's
+            Ok(mut child) => drop(std::thread::spawn(move || child.wait())),
+            Err(e) => eprintln!("ostrov: wallpaper on_change: {e}"),
         }
     }
     Ok(())

@@ -260,6 +260,39 @@ pub fn restart() {
     eprintln!("ostrov: restart: {e}");
 }
 
+unsafe extern "C" {
+    fn waitpid(pid: i32, status: *mut i32, options: i32) -> i32;
+}
+
+/// The children an ostrov before this one left: restart execs in place, so its plugins and commands are this one's
+/// now, unknown to what waits for children here, each a zombie as it ends. Found as ostrov starts, before it has
+/// any of its own, and waited for on a thread until every one has ended.
+fn adopt() {
+    let me = std::process::id().to_string();
+    let mut left: Vec<i32> = std::fs::read_dir("/proc")
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|e| {
+            let stat = std::fs::read_to_string(e.path().join("stat")).ok()?;
+            // pid (comm) state ppid ...: after the comm's last paren, its name being any text
+            let ppid = stat.rsplit_once(')')?.1.split_whitespace().nth(1)?;
+            (ppid == me).then(|| e.file_name().to_str()?.parse().ok())?
+        })
+        .collect();
+    if left.is_empty() {
+        return;
+    }
+    std::thread::spawn(move || {
+        const WNOHANG: i32 = 1;
+        while !left.is_empty() {
+            // SAFETY: waitpid on pids that are this process's children, a null status not written
+            left.retain(|&pid| unsafe { waitpid(pid, std::ptr::null_mut(), WNOHANG) } == 0);
+            std::thread::sleep(std::time::Duration::from_secs(5));
+        }
+    });
+}
+
 /// The questions ostrov puts, once built.
 pub fn prompts() -> Option<Rc<prompt::Prompts>> {
     PROMPTS.with(|p| p.borrow().clone())
@@ -315,6 +348,7 @@ fn askpass(cl: &gtk4::gio::ApplicationCommandLine, args: &[String]) {
 fn main() -> glib::ExitCode {
     // one ostrov: run again, it hands its arguments to the running one and exits
     // OSTROV_APP_ID: another id, a second ostrov beside the running one (a build tried out without stopping it)
+    adopt();
     let id = std::env::var("OSTROV_APP_ID").unwrap_or_else(|_| "dev.ostrov.Ostrov".into());
     i18n::follow_locale();
     // the shells' completion: the script printed here; its candidates by the running ostrov, nothing with none
