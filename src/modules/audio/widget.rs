@@ -66,9 +66,13 @@ fn devices(memo: &Memo, key: &'static str, list: &Value, items: &gtk4::Box) {
     for d in list.as_array().into_iter().flatten() {
         let id = d["id"].to_string();
         // one in another of its card's profiles: that profile switched to
-        let switch = d["card"].as_i64().zip(d["profile"].as_i64());
-        items.append(&row("", s(d, &["name"]), "", d["def"].as_bool().unwrap_or(false), move || match switch {
-            Some((card, profile)) => service(&["audio", "profile", &card.to_string(), &profile.to_string()]),
+        let port: Option<Vec<String>> = (|| {
+            let n = |k: &str| d[k].as_i64().map(|v| v.to_string());
+            let r = d["route"].as_array()?;
+            Some(vec![n("card")?, n("profile")?, r.first()?.to_string(), r.get(1)?.to_string()])
+        })();
+        items.append(&row("", s(d, &["name"]), "", d["def"].as_bool().unwrap_or(false), move || match &port {
+            Some(p) => service(&["audio", "port", &p[0], &p[1], &p[2], &p[3]]),
             None => run(&["wpctl", "set-default", &id]),
         }));
     }

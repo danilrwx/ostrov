@@ -12,7 +12,7 @@ use crate::services::{every, Ctx, Kick, Res};
 
 pub const MODULE: Module = Module {
     id: "audio",
-    forms: &["volume ID LEVEL", "profile CARD PROFILE"],
+    forms: &["volume ID LEVEL", "port CARD PROFILE ROUTE DEVICE"],
     // ID: the streams playing, by their app
     complete: Some(|st, _| super::values(&st["streams"], "id", |s| s["name"].as_str().unwrap_or("").into())),
     state: Some(state),

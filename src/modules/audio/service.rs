@@ -22,6 +22,9 @@ struct Sound {
     card: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     profile: Option<i64>,
+    /// its route on the card (index, device), put on after the profile: WirePlumber may leave none on
+    #[serde(skip_serializing_if = "Option::is_none")]
+    route: Option<(i64, i64)>,
 }
 
 /// An app recording: its stream's node id, the app's name.
@@ -193,7 +196,7 @@ fn parse(objs: &[Value]) -> Audio {
             name = str(p, &["node.description"]);
         }
         let list = if sink { &mut a.sinks } else { &mut a.sources };
-        list.push(Sound { id: num(o, &["id"]), name: name.into(), def, card: None, profile: None });
+        list.push(Sound { id: num(o, &["id"]), name: name.into(), def, card: None, profile: None, route: None });
         // the default's level
         let pr = param(o, "Props");
         if def && !pr.is_null() {
@@ -217,8 +220,10 @@ fn parse(objs: &[Value]) -> Audio {
             }
             let list = if str(r, &["direction"]) == "Output" { &mut a.sinks } else { &mut a.sources };
             let name = str(r, &["description"]).to_string();
+            let device = r["devices"].as_array().and_then(|ds| ds.first()).and_then(Value::as_i64).unwrap_or(0);
             if !list.iter().any(|s| s.name == name) {
-                list.push(Sound { id: 0, name, def: false, card: Some(num(d, &["id"])), profile: Some(profile) });
+                let route = Some((num(r, &["index"]), device));
+                list.push(Sound { id: 0, name, def: false, card: Some(num(d, &["id"])), profile: Some(profile), route });
             }
         }
     }
@@ -358,16 +363,22 @@ pub async fn events(kick: Kick) {
 /// audio volume ID LEVEL: a stream's level (0 to 1, as wpctl puts it), through wpctl. The state is read anew
 /// after: PipeWire's monitor tells a level's change to nothing watched.
 pub async fn cmd(args: &[&str]) -> Res {
-    // a card's profile switched (the speaker's, from the headphones'): what it holds the sinks and sources then
-    if let ["profile", card, profile] = args {
-        let (Ok(card), Ok(profile)) = (card.parse::<u32>(), profile.parse::<u32>()) else { return Err("audio profile: CARD PROFILE".into()) };
-        let status = tokio::process::Command::new("wpctl")
-            .args(["set-profile", &card.to_string(), &profile.to_string()])
-            .status()
-            .await
-            .map_err(|e| e.to_string())?;
+    // a card's profile switched (the speaker's, from the headphones'), then the port asked for put on in it:
+    // WirePlumber restores the routes it saved for the profile, which may hold no output at all
+    if let ["port", card, profile, route, device] = args {
+        let n = |s: &str| s.parse::<u32>().map_err(|_| "audio port: CARD PROFILE ROUTE DEVICE".to_string());
+        let (card, profile, route, device) = (n(card)?, n(profile)?, n(route)?, n(device)?);
+        let run = |prog: &'static str, args: Vec<String>| async move {
+            let status = tokio::process::Command::new(prog).args(&args).status().await.map_err(|e| e.to_string())?;
+            if status.success() { Ok(()) } else { Err(format!("{prog}: {status}")) }
+        };
+        run("wpctl", vec!["set-profile".into(), card.to_string(), profile.to_string()]).await?;
+        // the profile's nodes made before its route is set
+        tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+        let param = format!("{{ index: {route}, device: {device}, save: true }}");
+        run("pw-cli", vec!["set-param".into(), card.to_string(), "Route".into(), param]).await?;
         STALE.store(true, std::sync::atomic::Ordering::Relaxed);
-        return if status.success() { Ok(()) } else { Err(status.to_string()) };
+        return Ok(());
     }
     let ["volume", id, v] = args else { return Err(super::MODULE.usage()) };
     let (Ok(id), Ok(v)) = (id.parse::<u32>(), v.parse::<f64>()) else { return Err("audio volume: ID LEVEL".into()) };
@@ -475,10 +486,10 @@ mod tests {
             "props": {"device.api": "alsa"},
             "params": {"Profile": [{"index": 1}], "EnumRoute": [
                 {"direction": "Output", "description": "Headphones", "available": "yes", "profiles": [1]},
-                {"direction": "Output", "description": "Speaker", "available": "unknown", "profiles": [2]},
+                {"index": 1, "direction": "Output", "description": "Speaker", "available": "unknown", "profiles": [2], "devices": [3]},
                 {"direction": "Output", "description": "HDMI", "available": "no", "profiles": [3]}]}}});
         let v = serde_json::to_value(super::parse(&[card])).unwrap();
-        assert_eq!(v["sinks"], serde_json::json!([{"id": 0, "name": "Speaker", "def": false, "card": 48, "profile": 2}]));
+        assert_eq!(v["sinks"], serde_json::json!([{"id": 0, "name": "Speaker", "def": false, "card": 48, "profile": 2, "route": [1, 3]}]));
     }
 
     #[test]
