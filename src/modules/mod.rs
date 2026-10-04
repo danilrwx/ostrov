@@ -36,17 +36,37 @@ pub type Fut<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 pub struct Module {
     /// its key in the state, its command's first word
     pub id: &'static str,
-    /// its command, the id and the words after it, for ostrov help and a command it does not know
-    pub usage: &'static str,
+    /// its commands' forms, the words after the id in forms.rs's grammar: for ostrov help, a command it does not
+    /// know, the shells' completion
+    pub forms: &'static [&'static str],
     pub state: Option<for<'a> fn(&'a Ctx) -> Fut<'a, Value>>,
     pub run: Option<for<'a> fn(&'a Ctx, Vec<String>, Option<String>) -> Fut<'a, Res>>,
     pub worker: Option<fn(Arc<Ctx>, Kick) -> Fut<'static, ()>>,
     pub widgets: &'static [WidgetDef],
+    /// its placeholders' values for completion (an SSID, an ADDR), each with what it is, from its state
+    pub complete: Option<fn(&Value, &str) -> Vec<(String, String)>>,
 }
 
 impl Module {
     /// A module of nothing yet, the base the others are written over.
-    pub const NONE: Module = Module { id: "", usage: "", state: None, run: None, worker: None, widgets: &[] };
+    pub const NONE: Module =
+        Module { id: "", forms: &[], state: None, run: None, worker: None, widgets: &[], complete: None };
+
+    /// What a command it does not know gets.
+    pub fn usage(&self) -> String {
+        crate::forms::usage(self.id, self.forms)
+    }
+}
+
+/// Values of a placeholder from a list in a module's state: each item's field `word` (the item itself if ""), what
+/// it is by `about`.
+pub fn values(list: &Value, word: &str, about: impl Fn(&Value) -> String) -> Vec<(String, String)> {
+    let items = list.as_array().map(Vec::as_slice).unwrap_or_default();
+    let word = |v: &Value| {
+        let f = if word.is_empty() { v } else { &v[word] };
+        f.as_str().map(String::from).or_else(|| f.as_u64().map(|n| n.to_string()))
+    };
+    items.iter().filter_map(|v| Some((word(v)?, about(v)))).collect()
 }
 
 /// A widget a module offers: its id, how the gallery shows it, the sizes it allows (the first its default), how

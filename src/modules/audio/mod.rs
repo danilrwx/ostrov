@@ -9,11 +9,11 @@ use std::time::Duration;
 use super::{widget, words, Fut, Module, SLIDER, TOGGLE};
 use crate::services::{every, Ctx, Kick, Res};
 
-pub const USAGE: &str = "audio volume ID LEVEL";
-
 pub const MODULE: Module = Module {
     id: "audio",
-    usage: USAGE,
+    forms: &["volume ID LEVEL"],
+    // ID: the streams playing, by their app
+    complete: Some(|st, _| super::values(&st["streams"], "id", |s| s["name"].as_str().unwrap_or("").into())),
     state: Some(state),
     run: Some(run),
     worker: Some(worker),
@@ -25,7 +25,7 @@ pub const MODULE: Module = Module {
 };
 
 /// The headset's mode flipped, handsfree (with its mic) or headphones.
-pub const HEADSET: Module = Module { id: "headset", usage: "headset", run: Some(headset), ..Module::NONE };
+pub const HEADSET: Module = Module { id: "headset", forms: &[""], run: Some(headset), ..Module::NONE };
 
 fn state(_: &Ctx) -> Fut<'_, serde_json::Value> {
     Box::pin(service::state())

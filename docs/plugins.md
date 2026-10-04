@@ -142,7 +142,7 @@ must answer every call it is sent (an `error` return is fine).
 stderr with exit status 1. What is piped to `ostrov` is `input` (`echo text | ostrov plugin hello-python note`);
 `null` from a terminal or when nothing is piped. D-Bus `Run(["plugin", id, ...])` does the same, with no input.
 
-The manifest lists the commands for help; the plugin reads its words itself:
+The manifest lists the commands for help and the shells' completion; the plugin reads its words itself:
 
 ```toml
 [[commands]]
@@ -150,6 +150,11 @@ name = "set"
 usage = "set N"               # its words after the id; its name if left out
 help = "the count set to N"
 ```
+
+`usage` is in the grammar of ostrov's own commands (`src/forms.rs`): words separated by spaces, `a|b|c`
+alternatives at one place, an UPPERCASE word a placeholder, `[X]` optional, a trailing `...` repeating
+(`mode on|off|auto`, `note [TEXT...]`). The words complete in the shell (`ostrov completions zsh|bash|fish`),
+`help` as their description; placeholders complete to nothing.
 
 `ostrov plugin <id>` or `ostrov plugin <id> help` prints them, `ostrov plugin` every plugin's, `ostrov help`
 ostrov's own and every plugin's.

@@ -3,7 +3,6 @@ use serde::Serialize;
 use serde_json::Value;
 use zbus::zvariant::{self, OwnedValue};
 
-use super::USAGE;
 use crate::services::{Ctx, Res};
 
 /// power-profiles-daemon, by its old name, which every version still answers to.
@@ -41,7 +40,7 @@ async fn get(c: &Ctx, prop: &str) -> zbus::Result<OwnedValue> {
 
 /// power set PROFILE.
 pub async fn cmd(c: &Ctx, args: &[&str]) -> Res {
-    let ["set", profile] = args else { return Err(USAGE.into()) };
+    let ["set", profile] = args else { return Err(super::MODULE.usage()) };
     let body = (PPD, "ActiveProfile", zvariant::Value::from(*profile));
     c.system.call_method(Some(PPD), PATH, Some(PROPS), "Set", &body).await.map(drop).map_err(crate::services::dbus::err)
 }

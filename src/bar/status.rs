@@ -19,6 +19,8 @@ fn volume_icon(v: f64, muted: bool) -> &'static str {
     }
 }
 
+const FORMS: &[&str] = &["menu NAME", "settings [SECTION]", "appearance"];
+
 pub fn build(cx: &Rc<Ctx>) -> Block {
     let status = pill();
     let wifi = gtk4::Image::from_icon_name("network-wireless-offline-symbolic");
@@ -73,8 +75,9 @@ pub fn build(cx: &Rc<Ctx>) -> Block {
                 p.open_page("appearance", None);
                 Ok(String::new())
             }
-            _ => Err("usage: ostrov status menu NAME | settings [SECTION] | appearance".into()),
+            _ => Err(crate::forms::usage("status", FORMS)),
         })),
+        forms: FORMS,
         ..Block::new(&s)
     }
 }

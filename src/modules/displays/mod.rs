@@ -3,19 +3,29 @@
 mod service;
 mod widget;
 
-use super::{widget, words, Fut, Module, TOGGLE};
-use crate::services::{Ctx, Kick, Res};
+use serde_json::Value;
 
-pub const USAGE: &str = "displays set NAME MODE POSITION SCALE|on NAME|off NAME|mirror NAME OF|save NAME|load NAME|delete NAME";
+use super::{values, widget, words, Fut, Module, TOGGLE};
+use crate::services::{Ctx, Kick, Res};
 
 pub const MODULE: Module = Module {
     id: "displays",
-    usage: USAGE,
+    forms: &["set NAME MODE POSITION SCALE", "on|off NAME", "mirror NAME OF", "save|load|delete PROFILE"],
     state: Some(state),
     run: Some(run),
     worker: Some(worker),
     widgets: &[widget("displays", "Displays", "video-display-symbolic", TOGGLE, widget::displays)],
+    complete: Some(complete),
 };
+
+/// NAME, OF: the monitors, by their description; PROFILE: the profiles saved.
+fn complete(st: &Value, ph: &str) -> Vec<(String, String)> {
+    match ph {
+        "NAME" | "OF" => values(&st["monitors"], "name", |m| m["description"].as_str().unwrap_or("").into()),
+        "PROFILE" => values(&st["profiles"], "", |_| String::new()),
+        _ => Vec::new(),
+    }
+}
 
 fn state(_: &Ctx) -> Fut<'_, serde_json::Value> {
     Box::pin(async { service::state() })

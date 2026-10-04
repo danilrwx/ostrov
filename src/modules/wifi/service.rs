@@ -6,7 +6,6 @@ use zbus::zvariant::{self, OwnedObjectPath, OwnedValue};
 
 use crate::services::dbus::{call, err, managed, prop, Objects};
 use crate::services::rfkill;
-use super::USAGE;
 use crate::services::{Ctx, Res};
 
 const IWD: &str = "net.connman.iwd";
@@ -136,7 +135,7 @@ pub async fn cmd(c: &Ctx, args: &[&str], input: Option<String>) -> Res {
             let _ = server.remove::<Agent, _>(AGENT_PATH).await;
             res
         }
-        _ => Err(USAGE.into()),
+        _ => Err(super::MODULE.usage()),
     }
 }
 

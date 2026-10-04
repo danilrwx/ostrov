@@ -76,6 +76,24 @@ pub struct Meta {
     pub settings: Option<fn() -> crate::settings::Schema>,
 }
 
+/// The old panel's names for widgets' menus, `ostrov menu NAME` still takes them.
+const ALIASES: &[(&str, &str)] = &[
+    ("system", "session"),
+    ("outs", "volume"),
+    ("ins", "mic"),
+    ("night", "brightness"),
+    ("theme", "wallpaper"),
+];
+
+/// What `ostrov menu NAME` takes, for completion: the widgets (the plugins' too) by name, the old names, "edit".
+pub fn menus() -> Vec<(String, String)> {
+    let own = crate::modules::ALL.iter().flat_map(|m| m.widgets).map(|d| (d.id.to_string(), d.name.to_string()));
+    let mut all: Vec<_> = own.chain(crate::plugins::widgets()).collect();
+    all.extend(ALIASES.iter().map(|(old, key)| (old.to_string(), format!("{key}'s"))));
+    all.push(("edit".into(), "the grid, edited".into()));
+    all
+}
+
 /// A widget placed on the grid, as panel.toml keeps it.
 #[derive(Serialize, Deserialize)]
 struct Placed {
@@ -201,14 +219,7 @@ impl Panel {
         if name == "edit" {
             return self.set_editing(true);
         }
-        let key = match name {
-            "system" => "session",
-            "outs" => "volume",
-            "ins" => "mic",
-            "night" => "brightness",
-            "theme" => "wallpaper",
-            n => n,
-        };
+        let key = ALIASES.iter().find(|(old, _)| *old == name).map_or(name, |(_, key)| key);
         self.set_open(key);
     }
 

@@ -20,8 +20,11 @@ const STEP: i64 = 2;
 const LEVEL_MS: u64 = 1000;
 const WORD_MS: u64 = 1500;
 
-pub const USAGE: &str = "usage: ostrov key vol-up|vol-down|vol-mute|mic-up|mic-down|mic|bright-up|bright-down|\
-touchpad-on|touchpad-off|touchpad-toggle|profile|camera|play-pause|next|previous";
+/// The keys' names, `ostrov key NAME`'s.
+pub const NAMES: &[&str] = &[
+    "vol-up", "vol-down", "vol-mute", "mic-up", "mic-down", "mic", "bright-up", "bright-down", "touchpad-on",
+    "touchpad-off", "touchpad-toggle", "profile", "camera", "play-pause", "next", "previous",
+];
 
 pub struct Keys {
     hub: Rc<Hub>,
@@ -85,7 +88,7 @@ impl Keys {
                 k.notes.osd(icon, &format!("Camera  {word}"), None, WORD_MS);
             }),
             "play-pause" | "next" | "previous" => crate::hub::service(&["media", name]),
-            _ => return Err(USAGE.into()),
+            _ => return Err(crate::forms::usage("key", &[&NAMES.join("|")])),
         }
         Ok(())
     }

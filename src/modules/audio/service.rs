@@ -336,7 +336,7 @@ pub async fn events(kick: Kick) {
 /// audio volume ID LEVEL: a stream's level (0 to 1, as wpctl puts it), through wpctl. The state is read anew
 /// after: PipeWire's monitor tells a level's change to nothing watched.
 pub async fn cmd(args: &[&str]) -> Res {
-    let ["volume", id, v] = args else { return Err("usage: audio volume ID LEVEL".into()) };
+    let ["volume", id, v] = args else { return Err(super::MODULE.usage()) };
     let (Ok(id), Ok(v)) = (id.parse::<u32>(), v.parse::<f64>()) else { return Err("audio volume: ID LEVEL".into()) };
     let status = tokio::process::Command::new("wpctl")
         .args(["set-volume", &id.to_string(), &format!("{:.2}", v.clamp(0.0, 1.0))])

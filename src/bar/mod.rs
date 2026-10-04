@@ -45,11 +45,13 @@ pub struct Block {
     pub widget: gtk4::Widget,
     pub popup: Option<Rc<Popup>>,
     pub command: Option<Command>,
+    /// its command's forms (forms.rs), for its usage and the shells' completion
+    pub forms: &'static [&'static str],
 }
 
 impl Block {
     pub fn new(widget: &impl IsA<gtk4::Widget>) -> Block {
-        Block { widget: widget.clone().upcast(), popup: None, command: None }
+        Block { widget: widget.clone().upcast(), popup: None, command: None, forms: &[] }
     }
 }
 
@@ -185,6 +187,11 @@ impl Bar {
     /// A block's command (ostrov BLOCK ARGS); None when there is no such block or it has none.
     pub fn command(&self, name: &str, args: &[&str]) -> Option<Result<String, String>> {
         self.blocks.iter().find(|(n, _)| n == name).and_then(|(_, b)| b.command.as_ref()).map(|c| c(args))
+    }
+
+    /// The blocks with commands, and their forms.
+    pub fn forms(&self) -> Vec<(String, &'static [&'static str])> {
+        self.blocks.iter().filter(|(_, b)| !b.forms.is_empty()).map(|(n, b)| (n.clone(), b.forms)).collect()
     }
 
     /// The span between the left's blocks and the right's, the launcher's place: its start and end from the

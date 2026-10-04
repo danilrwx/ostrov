@@ -5,11 +5,9 @@ pub mod service;
 use super::{words, Fut, Module};
 use crate::services::{Ctx, Kick, Res};
 
-pub const USAGE: &str = "calendar refresh";
-
 pub const MODULE: Module = Module {
     id: "calendar",
-    usage: USAGE,
+    forms: &["refresh"],
     state: Some(state),
     run: Some(run),
     worker: Some(worker),

@@ -14,7 +14,6 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use super::USAGE;
 use crate::services::{Kick, Res};
 use crate::wm::{hypr_socket, hyprctl};
 
@@ -268,7 +267,7 @@ pub async fn cmd(args: &[&str]) -> Res {
     match args {
         ["set", name, mode, pos, scale] => {
             known(name)?;
-            let scale: f64 = scale.parse().map_err(|_| USAGE.to_string())?;
+            let scale: f64 = scale.parse().map_err(|_| super::MODULE.usage())?;
             keyword(&rule(name, mode, &place(pos, main_of(&mons, name), mode, scale), scale))
         }
         ["on", name] => {
@@ -301,7 +300,7 @@ pub async fn cmd(args: &[&str]) -> Res {
             ps.remove(*name).ok_or(format!("no profile {name}"))?;
             store(&ps)
         }
-        _ => Err(USAGE.into()),
+        _ => Err(super::MODULE.usage()),
     }
 }
 

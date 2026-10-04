@@ -8,7 +8,6 @@ use serde::Serialize;
 use serde_json::Value;
 use zbus::zvariant::{self, OwnedValue};
 
-use super::USAGE;
 use crate::services::{Ctx, Kick, Res};
 
 const MPRIS: &str = "org.mpris.MediaPlayer2";
@@ -129,7 +128,7 @@ pub async fn cmd(c: &Ctx, args: &[&str]) -> Res {
         ["play-pause"] => "PlayPause",
         ["next"] => "Next",
         ["previous"] => "Previous",
-        _ => return Err(USAGE.into()),
+        _ => return Err(super::MODULE.usage()),
     };
     let m = media_state(c).await;
     if m.name.is_empty() {

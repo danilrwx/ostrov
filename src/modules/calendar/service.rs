@@ -14,7 +14,6 @@ use gtk4::glib;
 use serde_json::{json, Value};
 
 use crate::modules::night::service::{civil, days, local, now_ns};
-use super::USAGE;
 use crate::services::{Kick, Res};
 use crate::config::Calendar;
 
@@ -583,7 +582,7 @@ pub async fn cmd(args: &[&str]) -> Res {
             REFRESH.notify_one();
             Ok(())
         }
-        _ => Err(USAGE.into()),
+        _ => Err(super::MODULE.usage()),
     }
 }
 

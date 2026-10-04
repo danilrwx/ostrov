@@ -8,7 +8,6 @@ use zbus::zvariant::ObjectPath;
 
 use crate::services::rfkill;
 use crate::services::dbus::{call, err, managed, prop, set_property};
-use super::USAGE;
 use crate::services::{Ctx, Res};
 
 const BLUEZ: &str = "org.bluez";
@@ -119,7 +118,7 @@ pub async fn cmd(c: &Ctx, args: &[&str]) -> Res {
             let path = ObjectPath::try_from(path.as_str()).map_err(|e| e.to_string())?;
             call(&c.system, BLUEZ, &adapter, "org.bluez.Adapter1.RemoveDevice", &(path,)).await
         }
-        _ => Err(USAGE.into()),
+        _ => Err(super::MODULE.usage()),
     }
 }
 

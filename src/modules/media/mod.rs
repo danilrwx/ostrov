@@ -5,11 +5,9 @@ mod service;
 use super::{words, Fut, Module};
 use crate::services::{Ctx, Kick, Res};
 
-pub const USAGE: &str = "media play-pause|next|previous";
-
 pub const MODULE: Module = Module {
     id: "media",
-    usage: USAGE,
+    forms: &["play-pause|next|previous"],
     state: Some(state),
     run: Some(run),
     worker: Some(worker),
