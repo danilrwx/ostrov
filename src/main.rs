@@ -59,7 +59,8 @@ const FORMS: &[&str] = &[
     "panel", "menu NAME", "settings [SECTION]", "appearance", "calendar", "run", "clip",
     "windows [app]", "overview [close]", "lock", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "record [--audio]",
     "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
-    "plugin [ID] [ARGS...]", "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor",
+    "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID",
+    "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor",
 ];
 
 fn usage() -> String {
@@ -326,7 +327,16 @@ fn main() -> glib::ExitCode {
         .build();
     app.connect_activate(activate);
     app.connect_command_line(|app, cl| {
-        let args: Vec<String> = cl.arguments().iter().skip(1).map(|a| a.to_string_lossy().into_owned()).collect();
+        let mut args: Vec<String> = cl.arguments().iter().skip(1).map(|a| a.to_string_lossy().into_owned()).collect();
+        // a plugin's path to install from is the asking shell's, relative to its directory
+        if let [p, i, src] = &mut args[..]
+            && p == "plugin"
+            && i == "install"
+            && !plugins::is_url(src)
+            && let Some(cwd) = cl.cwd()
+        {
+            *src = cwd.join(&*src).to_string_lossy().into_owned();
+        }
         if COMMAND.with(|c| c.borrow().is_none()) {
             // a completion that found the ostrov it asked gone by now: answered by nothing here either
             if args.first().is_some_and(|a| a == "complete") {

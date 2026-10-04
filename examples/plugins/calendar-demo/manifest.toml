@@ -1,0 +1,10 @@
+# ostrov's example calendar: one event today, merged with the calendars of [calendar]
+id = "calendar-demo"
+name = "Calendar Demo"
+version = "0.1.0"
+api = 1
+exec = "python3 main.py"
+icon = "x-office-calendar-symbolic"
+description = "A calendar with one event, today at noon."
+permissions = ["calendar"]
+calendar = true                # ostrov calls calendar_events(from, to) as it fetches its calendars

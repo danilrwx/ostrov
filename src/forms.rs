@@ -136,8 +136,10 @@ pub fn complete(k: &Known, words: &[&str]) -> Candidates {
                 let forms: Vec<_> = forms.iter().map(pair).collect();
                 return candidates(&forms, rest, partial, &own);
             }
-            if let ("plugin", [id, rest @ ..]) = (*first, rest) {
-                let Some(p) = k.plugins.iter().find(|p| p.id == *id) else { return Vec::new() };
+            // a plugin's own commands; `plugin install|remove` ostrov's
+            if let ("plugin", [id, rest @ ..]) = (*first, rest)
+                && let Some(p) = k.plugins.iter().find(|p| p.id == *id)
+            {
                 let forms: Vec<_> = p.commands.iter().map(|(f, h)| (f.as_str(), h.as_str())).collect();
                 return candidates(&forms, rest, partial, &|_, _| Vec::new());
             }
@@ -271,7 +273,9 @@ mod tests {
         assert_eq!(words(&c(&["status", "menu", "w"])), ["wifi"]);
         assert_eq!(words(&c(&["settings", ""])), ["bar"]);
         assert_eq!(words(&c(&["key", "vol-m"])), ["vol-mute"]);
-        assert_eq!(c(&["plugin", ""]), [("hello".into(), "Hello".into())]);
+        assert_eq!(words(&c(&["plugin", ""])), ["hello", "install", "remove"]);
+        assert_eq!(c(&["plugin", "remove", ""]), [("hello".into(), "Hello".into())]);
+        assert!(c(&["plugin", "install", ""]).is_empty());
         assert_eq!(c(&["plugin", "hello", ""]), [
             ("set".into(), "the count set".into()),
             ("mode".into(), String::new())

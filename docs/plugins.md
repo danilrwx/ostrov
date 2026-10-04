@@ -13,13 +13,22 @@ Besides plugins, ostrov has a D-Bus face for scripts: see [D-Bus](#d-bus) at the
     ~/.local/share/ostrov/plugins/<id>/manifest.toml
     ~/.local/share/ostrov/plugins/<id>/...            # whatever exec runs
 
-ostrov reads the plugins as it starts (restart it for a new one). Try the example:
+ostrov reads the plugins as it starts. Try the example:
 
-    cp -rL examples/plugins/hello-python ~/.local/share/ostrov/plugins/
+    ostrov plugin install examples/plugins/hello-python
 
-then **Edit** in the control centre, and pick "Hello Counter" from the gallery. `ostrov plugins` lists what was
+`ostrov plugin install PATH|GIT-URL` copies a plugin's directory there, its symlinks resolved (the examples link
+the SDK), or `git clone --depth 1`s a URL first (`https://...`, `git@host:path`), its `.git` left behind. The
+manifest is checked, and a dialog says what its permissions let it do before anything is copied; a no installs
+nothing. The plugin starts at once: its commands, keys, launcher modes, events and calendar work without a
+restart, its widgets join the gallery after `ostrov restart`. Installed again over one that runs, it is replaced
+on disk and runs as new after `ostrov restart`. `ostrov plugin remove ID` ends its process, takes its keys, modes
+and calendar away and deletes its directory (its widgets and settings leave at the next restart). Copying the
+directory by hand works too (`cp -rL`), read at the next start.
+
+Then **Edit** in the control centre, and pick "Hello Counter" from the gallery. `ostrov plugins` lists what was
 found: the manifests, each plugin's state, its settings' schema. A manifest that does not read is said on ostrov's
-stderr and skipped.
+stderr and skipped. `install` and `remove` are no plugin's id.
 
 ## Manifest
 
@@ -45,6 +54,13 @@ bar = "active"                 # when the badge shows: always, active (while it 
 prefix = "?"                   # what is typed starting with it is the plugin's (see Launcher modes)
 name = "Ask"                   # the launcher's prompt while in it
 icon = "dialog-question-symbolic"
+
+events = ["window", "power"]   # ostrov's events it is sent, "*" for all (permission events; see Events)
+calendar = true                # a calendar of the calendar's (permission calendar; see Calendars)
+
+[[keys]]
+combo = "SUPER, F12"           # as Hyprland's binds write it: "MODS, KEY" (see Keys)
+command = "toggle"             # its own command's words: `ostrov plugin <id> toggle`
 ```
 
 Unknown keys are ignored.
@@ -110,6 +126,8 @@ Two systematic differences from the WIT:
 | `on-state(json)`                         | `{"type":"on_state","json":{...}}`, with permission `state`                 | –                                      |
 | `query(mode, text) -> string`            | `{"type":"query","call":N,"mode":"?","text":"why"}`                         | `return` with a list of hits, or `null` |
 | `pick(mode, id, text)`                   | `{"type":"pick","mode":"?","id":"1","text":"why"}`                          | –                                      |
+| `on-shell-event(name, json)`             | `{"type":"on_shell_event","name":"window","json":{"class":"foot","title":"~"}}`, with permission `events` | – |
+| `calendar-events(from, to) -> string`    | `{"type":"calendar_events","call":N,"from":"2026-09-24T00:00:00","to":"2026-11-08T00:00:00"}`, with permission `calendar` | `return` with a list of events, or `null` |
 
 ### Imports: the plugin calls ostrov
 
@@ -188,6 +206,53 @@ The launcher's own prefixes come first, and a plugin's may not overlap them (`:`
 files), nor another plugin's (the first by id keeps it): neither may start with the other. A prefix that may not
 is said on ostrov's stderr and left out. A prefix may end in a space (`g `), so `gimp` still runs as an app. A
 mode comes before the calculator and the apps: a prefix of letters takes what is typed from them.
+
+## Events
+
+A plugin with permission `events` is sent `on_shell_event(name, json)` for each of ostrov's events its manifest's
+`events` lists (`["*"]`: all of them), the ones D-Bus's `Event` signal carries (src/events.rs):
+
+| name        | payload                                   | when                                        |
+|-------------|-------------------------------------------|---------------------------------------------|
+| `window`    | `{"class", "title"}` (`""` for none)      | a window focused                            |
+| `workspace` | `{}`                                      | a workspace made, gone, focused             |
+| `lock`, `unlock` | `{}`                                 | the screen locked, unlocked                 |
+| `wallpaper` | `{"on", "path"}`                          | the wallpaper picked                        |
+| `network`   | `{"on", "ssid"}`                          | Wi-Fi on or off, a network joined or left   |
+| `power`     | `{"state", "plugged", "percent"}`         | the battery charging, discharging, full     |
+| `bluetooth` | `{"on", "connected"}`                     | Bluetooth on or off, a device connected     |
+| `output`    | `{"name"}`                                | the default sound output                    |
+| `media`     | `{"playing", "title", "artist"}`          | the player playing or not, a new track      |
+
+Without the permission, or with an empty `events`, none is sent.
+
+## Keys
+
+A `[[keys]]` of the manifest (permission `keys`) is a key in Hyprland bound to the plugin's own command: `combo`
+as Hyprland's binds write it (`"SUPER, F12"`, `"SUPER SHIFT, K"`, `", XF86Launch1"`), `command` the words after
+`ostrov plugin <id>`. ostrov binds it as it binds its own keys: only where the combination is free (a bind of the
+user's, ostrov's own and an earlier plugin's, by id, come first), as the plugin starts, and again after every
+reload of Hyprland's config; removed, the plugin's binds go. `ostrov hyprland` prints them as hyprland.conf lines
+with ostrov's own, `ostrov doctor` says which are bound and which taken by something else. `[hyprland] binds =
+false` binds none.
+
+## Calendars
+
+A plugin whose manifest says `calendar = true` (permission `calendar`) is one of the calendar's calendars, beside
+`[calendar]`'s CalDAV and .ics ones. As the calendar fetches (as ostrov starts, every 15 min, on `ostrov calendar
+refresh`, and when the plugin starts), ostrov calls `calendar_events(from, to)`, the span it shows (this month and
+a week either side) as local ISO times, and the plugin answers with its events in it:
+
+```json
+[{"title": "Lunch", "start": "2026-10-05T12:00:00", "end": "2026-10-05T13:00:00", "all_day": false,
+  "location": "the kitchen", "color": "#e5a50a"}]
+```
+
+Times are local, ISO 8601 without a zone, as the calendar's own; a day's event starts at its day's midnight and
+ends at the next, `all_day` true. `title` and `start` are needed (an event without them is dropped); `end` is the
+start if left out, `all_day` false, `location` and `color` empty (the theme's). The events are merged with the
+other calendars' and sorted by their starts. A plugin that fails or does not answer in 10 s is said on stderr,
+the others' events kept. See `examples/plugins/calendar-demo`.
 
 ## Nodes
 
@@ -271,7 +336,9 @@ once and asks later (`set_timer(0, id)`, then `ask` from `on_timer`; see the exa
 `api = 1` is this protocol. Within it, both sides ignore what they do not know: unknown fields, unknown message
 types, unknown node types (drawn as nothing). New things come as new optional fields, new messages, new node types;
 a change that breaks plugins is a new `api`, and a plugin asking for an API ostrov does not speak is not run.
-Launcher modes (`[[launcher]]`, `query`, `pick`) came so, within `api = 1`.
+Launcher modes (`[[launcher]]`, `query`, `pick`) came so, within `api = 1`, and so did events (`events`,
+`on_shell_event`), keys (`[[keys]]`) and calendars (`calendar`, `calendar_events`): a plugin written before them
+is never sent them, and an older ostrov ignores them in a manifest.
 
 ## Permissions
 
@@ -284,6 +351,11 @@ Declared in the manifest, shown by `ostrov plugins`, and kept to where ostrov ca
 | `secrets`  | the `secret` import                                    | `null`                               |
 | `dialogs`  | the `ask` import                                       | `null`                               |
 | `state`    | `on_state`: the desktop's state (`ostrov dump`)        | never sent                           |
+| `events`   | `on_shell_event`: the events its manifest lists        | never sent                           |
+| `keys`     | its `[[keys]]` bound in Hyprland                       | not bound                            |
+| `calendar` | `calendar_events`: its events in the calendar          | never called                         |
+
+`ostrov plugin install` shows them in its dialog before it installs anything.
 
 A process is not sandboxed: it can do whatever its user can, whatever its manifest says. Under WebAssembly the
 permissions would be which imports the component is linked with.
@@ -292,8 +364,9 @@ permissions would be which imports the component is linked with.
 
 `sdk/python/ostrov_plugin.py`: subclass `Plugin`, override the exports, call `log`, `host_run`, `ask`, `secret`,
 `http_get`, `set_timer`, `kick`, `set_settings_schema` (and `push_render`, `push_state`), run `main()`. See
-`examples/plugins/hello-python/main.py`; a launcher mode in
-`examples/plugins/claude/main.py` and `examples/plugins/google/main.py`.
+`examples/plugins/hello-python/main.py` (with an event, `on_shell_event`, and a key); a launcher mode in
+`examples/plugins/claude/main.py` and `examples/plugins/google/main.py`; a calendar, `calendar_events`, in
+`examples/plugins/calendar-demo/main.py`.
 
 ## D-Bus
 

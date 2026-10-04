@@ -1,5 +1,6 @@
 //! `ostrov doctor`: what ostrov finds of what it works with, and what to do about what is missing. The compositor
-//! (Hyprland and its version, its blur, which of ostrov's keys are bound and which taken by something else),
+//! (Hyprland and its version, its blur, which of ostrov's keys and the plugins' are bound and which taken by
+//! something else),
 //! the services on the buses (Wi-Fi's, Bluetooth's, the power profiles', the battery's, the session's, the
 //! keyring), the programs it runs, its PAM profile. A line each: ✓ there, ! missing and what that costs, · for
 //! information.
@@ -46,12 +47,16 @@ fn compositor(out: &mut Vec<Line>) {
         return;
     }
     let binds: Vec<Value> = serde_json::from_str(&hyprctl("j/binds")).unwrap_or_default();
-    let me = std::env::args().next().unwrap_or_default();
-    for (_, at, line, by) in crate::modules::hyprland::keys(&binds) {
-        let cmd = line.rsplit(&format!("{me} ")).next().unwrap_or("").to_string();
-        match by {
-            Some(b) if b.contains("ostrov") => out.push(('✓', format!("{at}: {cmd}"))),
-            Some(b) => out.push(('!', format!("{at} is {b}, not ostrov {cmd}: move it in [hyprland.keys]"))),
+    for k in crate::modules::hyprland::keys(&binds) {
+        let (at, cmd) = (k.at, k.cmd);
+        // a plugin's key is where its manifest says: freed, or left unbound
+        let plugin = cmd.starts_with("plugin ");
+        let fix = if plugin { "the plugin's key left unbound" } else { "move it in [hyprland.keys]" };
+        match k.by {
+            Some(b) if b.contains("ostrov") && b.ends_with(&format!(" {cmd}")) => {
+                out.push(('✓', format!("{at}: {cmd}")))
+            }
+            Some(b) => out.push(('!', format!("{at} is {b}, not ostrov {cmd}: {fix}"))),
             None => out.push(('·', format!("{at}: ostrov {cmd} (bound at the next start)"))),
         }
     }

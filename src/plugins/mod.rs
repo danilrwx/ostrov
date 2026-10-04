@@ -1,22 +1,28 @@
 //! Plugins: programs putting widgets on the control centre, written in any language (docs/plugins.md). Each
 //! lives in ~/.local/share/ostrov/plugins/<id>/ by its manifest.toml, and speaks wit/ostrov-plugin.wit: its
-//! exports called by ostrov (state, run, render, on-event, on-timer, on-config, on-state), ostrov's imports
-//! called by it (log, run, ask, secret, http-get, set-timer, kick, set-settings-schema), whatever carries the
-//! calls. Its launcher modes ([[launcher]], a prefix typed) are answered by its query and pick.
+//! exports called by ostrov (state, run, render, on-event, on-timer, on-config, on-state, on-shell-event,
+//! calendar-events), ostrov's imports called by it (log, run, ask, secret, http-get, set-timer, kick,
+//! set-settings-schema), whatever carries the calls. Its launcher modes ([[launcher]], a prefix typed) are
+//! answered by its query and pick; its keys ([[keys]]) bound by hyprland.rs where free; its calendar a source of
+//! the calendar's. Installed and removed while ostrov runs by install.rs.
 //! Its transport is a Backend (backend.rs) that Draws besides: a process talking JSON lines now (process.rs), a
 //! WebAssembly component the same way another time. Its widgets are trees of ui.rs's kit (node.rs), pulled with
 //! render once it kicks, or pushed; they join the control centre's registry as plugin.<id>.<widget>. Its
 //! permissions are kept to where ostrov can: "run" for ostrov's commands, "dialogs" for ask, "network" for
-//! http-get, "secrets" for secret, "state" for the desktop's state; the rest are said, for the user.
+//! http-get, "secrets" for secret, "state" for the desktop's state, "events" for ostrov's events, "keys" for its
+//! keys, "calendar" for its calendar; the rest are said, for the user.
 
+mod install;
 pub mod node;
 mod process;
+
+pub use install::is_url;
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::{Rc, Weak};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use gtk4::prelude::*;
 use gtk4::{gio, glib};
@@ -50,6 +56,41 @@ pub struct Manifest {
     pub commands: Vec<CommandDecl>,
     #[serde(default)]
     pub launcher: Vec<ModeDecl>,
+    /// ostrov's events it follows (src/events.rs's names, "*" for all), with permission "events"
+    #[serde(default)]
+    pub events: Vec<String>,
+    /// its keys, with permission "keys"
+    #[serde(default)]
+    pub keys: Vec<KeyDecl>,
+    /// a calendar for the calendar's events, with permission "calendar"
+    #[serde(default)]
+    pub calendar: bool,
+}
+
+impl Manifest {
+    fn allows(&self, what: &str) -> bool {
+        self.permissions.iter().any(|p| p == what)
+    }
+
+    /// Whether it is sent an event of that name.
+    fn follows(&self, event: &str) -> bool {
+        self.allows("events") && self.events.iter().any(|e| e == "*" || e == event)
+    }
+
+    /// Its keys for Hyprland, as hyprland.rs takes them: none without "keys".
+    fn hypr_keys(&self) -> Vec<crate::modules::hyprland::PluginKey> {
+        let keys = self.keys.iter().filter(|_| self.allows("keys"));
+        keys.map(|k| (self.id.clone(), k.combo.trim().to_string(), k.command.trim().to_string())).collect()
+    }
+}
+
+/// One of its keys: a combination as Hyprland's binds write it ("SUPER, F12"), bound where free to
+/// `ostrov plugin <id> <command>`.
+#[derive(Deserialize, Debug, PartialEq)]
+pub struct KeyDecl {
+    pub combo: String,
+    /// its own command's words
+    pub command: String,
 }
 
 /// One of its launcher modes: what is typed starting with prefix is the plugin's to answer, its name the
@@ -118,14 +159,24 @@ fn never() -> Show {
     Show::Never
 }
 
+/// Whether s is an id's word, of [a-z0-9-].
+fn word(s: &str) -> bool {
+    !s.is_empty() && s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+}
+
+/// `ostrov plugin`'s words of its own, no plugin's id.
+const RESERVED: &[&str] = &["install", "remove"];
+
 /// A manifest read and checked: its id its directory's name (so one plugin to an id), of [a-z0-9-] (it goes
-/// into the command line, the widgets' ids and the config's section), an API this ostrov speaks, sizes within the
-/// grid.
+/// into the command line, the widgets' ids and the config's section) and none of RESERVED, an API this ostrov
+/// speaks, keys at combinations, sizes within the grid.
 fn parse_manifest(text: &str, dir: &str) -> Result<Manifest, String> {
     let mut m: Manifest = toml::from_str(text).map_err(|e| e.to_string())?;
-    let word = |s: &str| !s.is_empty() && s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
     if m.id != dir || !word(&m.id) {
         return Err(format!("id {:?}: not its directory's name, or not of [a-z0-9-]", m.id));
+    }
+    if RESERVED.contains(&m.id.as_str()) {
+        return Err(format!("id {:?}: one of `ostrov plugin`'s own words", m.id));
     }
     if m.api != API {
         return Err(format!("api {}: this ostrov speaks {API}", m.api));
@@ -135,6 +186,9 @@ fn parse_manifest(text: &str, dir: &str) -> Result<Manifest, String> {
     }
     if let Some(l) = m.launcher.iter().find(|l| l.prefix.trim_start() != l.prefix || l.prefix.is_empty()) {
         return Err(format!("launcher prefix {:?}: empty, or starting with a space", l.prefix));
+    }
+    if let Some(k) = m.keys.iter().find(|k| !k.combo.contains(',') || k.command.trim().is_empty()) {
+        return Err(format!("key {:?}: not \"MODS, KEY\", or no command", k.combo));
     }
     for w in &mut m.widgets {
         if !word(&w.id) {
@@ -180,6 +234,10 @@ pub trait Draws: Backend {
     fn query(&self, mode: &str, text: &str) -> BoxFut<Result<Value, String>>;
     /// One of its hits picked, what was typed beside it.
     fn pick(&self, mode: &str, id: &str, text: &str);
+    /// One of ostrov's events (src/events.rs) it follows.
+    fn on_shell_event(&self, name: &str, payload: &Value);
+    /// Its calendar's events between two local ISO times, as JSON.
+    fn calendar_events(&self, from: &str, to: &str) -> BoxFut<Result<Value, String>>;
 }
 
 /// What a plugin's transport hands GTK's thread: ostrov's commands it runs (their outcome back through the
@@ -207,6 +265,8 @@ pub struct Plugin {
     settings: RefCell<Option<Value>>,
     /// a dialog of its asked and not answered yet
     asking: Cell<bool>,
+    /// its worker on the plugins' runtime, stopped (its process killed) when it is removed
+    task: Option<tokio::task::AbortHandle>,
 }
 
 /// A widget drawn from node trees (a plugin's, a KDL file's) made for the grid: the box its tree is drawn into,
@@ -300,6 +360,8 @@ thread_local! {
 /// A plugin's launcher mode, its prefix claimed.
 pub struct Mode {
     pub decl: ModeDecl,
+    /// its plugin's id
+    id: String,
     backend: Arc<dyn Draws>,
 }
 
@@ -481,61 +543,81 @@ fn discover(dir: &Path) -> Vec<(PathBuf, Manifest)> {
     found
 }
 
-/// Every plugin found started, their workers on a Tokio thread of their own; the desktop's state sent on to
-/// those that may have it, the config to each whose section changed. Before the control centre is built, which
-/// takes their widgets (metas).
-pub fn start(hub: &Rc<Hub>) {
-    let cfg = crate::config::load();
-    let mut workers = Vec::new();
-    let plugins: Vec<Rc<Plugin>> = discover(&dir())
-        .into_iter()
-        .map(|(dir, m)| {
-            let (up, ups) = async_channel::unbounded();
-            let (kick, kicks) = async_channel::unbounded();
-            let backend = Arc::new(process::Process::new(&m, dir.clone(), config(&cfg, &m.id), up));
-            workers.push(backend.worker(kick));
-            let p = Rc::new(Plugin {
-                config: RefCell::new(config(&cfg, &m.id)),
-                m,
-                dir,
-                backend,
-                trees: RefCell::default(),
-                badges: RefCell::default(),
-                views: RefCell::default(),
-                state: RefCell::default(),
-                settings: RefCell::default(),
-                asking: Cell::new(false),
-            });
-            p.clone().listen(kicks, ups);
-            p
-        })
-        .collect();
-    if !workers.is_empty() {
-        std::thread::spawn(move || {
-            match tokio::runtime::Builder::new_multi_thread().worker_threads(1).enable_all().build() {
-                Ok(rt) => rt.block_on(futures_util::future::join_all(workers)),
-                Err(e) => return eprintln!("ostrov: plugins: {e}"),
-            };
-        });
-    }
-    let mut taken: Vec<String> = crate::launcher::PREFIXES.iter().map(|p| p.to_string()).collect();
-    let mut modes = Vec::new();
-    for p in &plugins {
+/// The plugins' Tokio runtime, a thread of its own, made as the first plugin starts.
+fn rt() -> Option<&'static tokio::runtime::Runtime> {
+    static RT: OnceLock<Option<tokio::runtime::Runtime>> = OnceLock::new();
+    RT.get_or_init(|| {
+        let rt = tokio::runtime::Builder::new_multi_thread().worker_threads(1).enable_all().build();
+        rt.map_err(|e| eprintln!("ostrov: plugins: {e}")).ok()
+    })
+    .as_ref()
+}
+
+/// A plugin started: its worker on the plugins' runtime, its kicks and messages listened to, its launcher modes
+/// claimed where their prefixes are free, its calendar a source of the calendar's.
+fn load(dir: PathBuf, m: Manifest, cfg: &crate::config::Config) -> Rc<Plugin> {
+    let (up, ups) = async_channel::unbounded();
+    let (kick, kicks) = async_channel::unbounded();
+    let backend = Arc::new(process::Process::new(&m, dir.clone(), config(cfg, &m.id), up));
+    let task = rt().map(|rt| rt.spawn(backend.worker(kick)).abort_handle());
+    let p = Rc::new(Plugin {
+        config: RefCell::new(config(cfg, &m.id)),
+        m,
+        dir,
+        backend,
+        trees: RefCell::default(),
+        badges: RefCell::default(),
+        views: RefCell::default(),
+        state: RefCell::default(),
+        settings: RefCell::default(),
+        asking: Cell::new(false),
+        task,
+    });
+    p.clone().listen(kicks, ups);
+    MODES.with(|ms| {
+        let mut ms = ms.borrow_mut();
+        let mut taken: Vec<String> = crate::launcher::PREFIXES.iter().map(|p| p.to_string()).collect();
+        taken.extend(ms.iter().map(|m| m.decl.prefix.clone()));
         for decl in &p.m.launcher {
             if !free(&decl.prefix, &taken) {
                 p.log(&format!("launcher prefix {:?}: taken", decl.prefix));
                 continue;
             }
             taken.push(decl.prefix.clone());
-            modes.push(Rc::new(Mode { decl: decl.clone(), backend: p.backend.clone() }));
+            ms.push(Rc::new(Mode { decl: decl.clone(), id: p.m.id.clone(), backend: p.backend.clone() }));
         }
+    });
+    if p.m.calendar && p.m.allows("calendar") {
+        let b = p.backend.clone();
+        let source: crate::modules::calendar::service::Source = Arc::new(move |from, to| b.calendar_events(&from, &to));
+        crate::modules::calendar::service::source(&p.m.id, Some(source));
     }
-    MODES.with(|ms| *ms.borrow_mut() = modes);
+    p
+}
+
+/// Every plugin's keys handed to hyprland.rs, bound where free; those of a plugin gone unbound.
+fn bind_keys(gone: Option<&Manifest>) {
+    let all = PLUGINS.with(|ps| ps.borrow().iter().flat_map(|p| p.m.hypr_keys()).collect());
+    crate::modules::hyprland::plugin_keys(all, gone.map(Manifest::hypr_keys).unwrap_or_default());
+}
+
+/// Every plugin found started; the desktop's state sent on to those that may have it, ostrov's events to those
+/// following them, the config to each whose section changed; their keys bound. Before the control centre is
+/// built, which takes their widgets (metas).
+pub fn start(hub: &Rc<Hub>) {
+    let cfg = crate::config::load();
+    let plugins: Vec<Rc<Plugin>> = discover(&dir()).into_iter().map(|(dir, m)| load(dir, m, &cfg)).collect();
     PLUGINS.with(|ps| *ps.borrow_mut() = plugins);
+    bind_keys(None);
     hub.on(|st| {
         if !st.is_null() {
             PLUGINS.with(|ps| ps.borrow().iter().for_each(|p| p.backend.on_state(st)));
         }
+    });
+    crate::events::on(|name, payload| {
+        PLUGINS.with(|ps| {
+            ps.borrow().iter().filter(|p| p.m.follows(name)).for_each(|p| p.backend.on_shell_event(name, payload))
+        });
     });
     let file = gio::File::for_path(crate::config::path());
     if let Ok(mon) = file.monitor_file(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE) {
@@ -594,6 +676,8 @@ pub fn list() -> String {
                     "widgets": m.widgets.iter().map(|w| format!("plugin.{}.{}", m.id, w.id)).collect::<Vec<_>>(),
                     "settings": *p.settings.borrow(),
                     "launcher": m.launcher.iter().map(|l| &l.prefix).collect::<Vec<_>>(),
+                    "events": m.events, "calendar": m.calendar,
+                    "keys": m.keys.iter().map(|k| json!({"combo": k.combo, "command": k.command})).collect::<Vec<_>>(),
                 })
             })
             .collect()
@@ -652,9 +736,17 @@ pub fn help() -> String {
 }
 
 /// `ostrov plugin ID ARGS`: the plugin's own command (its export run), input what was piped to ostrov; with no
-/// ARGS or help its commands, with no ID every plugin's.
+/// ARGS or help its commands, with no ID every plugin's. `install SOURCE` and `remove ID` install.rs's.
 pub fn run(args: &[String], input: Option<String>) -> crate::Reply {
     let ready = |r| -> crate::Reply { Box::pin(std::future::ready(r)) };
+    match args {
+        [w, src] if w == "install" => return Box::pin(install::install(src.clone())),
+        [w, id] if w == "remove" => return ready(install::remove(id)),
+        [w, ..] if RESERVED.contains(&w.as_str()) => {
+            return ready(Err("ostrov plugin install SOURCE | remove ID".into()));
+        }
+        _ => {}
+    }
     let Some((id, rest)) = args.split_first() else { return ready(Ok(help())) };
     let Some(p) = PLUGINS.with(|ps| ps.borrow().iter().find(|p| p.m.id == *id).cloned()) else {
         return ready(Err(format!("no plugin {id}; the plugins:\n{}", help())));
@@ -676,8 +768,14 @@ mod tests {
         api = 1
         exec = "python3 main.py"
         icon = "face-smile-symbolic"
-        permissions = ["state", "secrets"]
+        permissions = ["state", "secrets", "events", "keys"]
         homepage = "https://example.org"   # unknown: ignored
+        events = ["window", "power"]
+        calendar = true
+
+        [[keys]]
+        combo = "SUPER, F12"
+        command = " toggle "
 
         [[widgets]]
         id = "counter"
@@ -709,7 +807,17 @@ mod tests {
     fn manifest_reads() {
         let m = parse_manifest(HELLO, "hello").unwrap();
         assert_eq!((m.id.as_str(), m.api, m.exec.as_str()), ("hello", 1, "python3 main.py"));
-        assert_eq!(m.permissions, ["state", "secrets"]);
+        assert_eq!(m.permissions, ["state", "secrets", "events", "keys"]);
+        assert!(m.calendar && !m.allows("calendar"));
+        assert!(m.follows("window") && m.follows("power") && !m.follows("lock"));
+        assert_eq!(m.hypr_keys(), [("hello".to_string(), "SUPER, F12".to_string(), "toggle".to_string())]);
+        // what the permissions do not give is not had
+        let bare = parse_manifest(&HELLO.replace(", \"events\", \"keys\"", ""), "hello").unwrap();
+        assert!(!bare.follows("window") && bare.hypr_keys().is_empty());
+        let all = parse_manifest(&HELLO.replace("[\"window\", \"power\"]", "[\"*\"]"), "hello").unwrap();
+        assert!(all.follows("lock"));
+        assert!(parse_manifest(&HELLO.replace("\"SUPER, F12\"", "\"F12\""), "hello").is_err());
+        assert!(parse_manifest(&HELLO.replace("\" toggle \"", "\" \""), "hello").is_err());
         assert_eq!(m.widgets[0].sizes, [(4, 1), (2, 1)]);
         assert_eq!(m.widgets[1].sizes, [(4, 1)]);
         assert_eq!(m.widgets[1].icon, "");
@@ -723,6 +831,8 @@ mod tests {
         assert!(parse_manifest(&HELLO.replace("prefix = \"?\"", "prefix = \" a\""), "hello").is_err());
         let bare = parse_manifest("id = \"x\"\nname = \"X\"\napi = 1\nexec = \"x\"", "x").unwrap();
         assert!(bare.launcher.is_empty());
+        assert!(bare.events.is_empty() && bare.keys.is_empty() && !bare.calendar);
+        assert!(parse_manifest("id = \"install\"\nname = \"X\"\napi = 1\nexec = \"x\"", "install").is_err());
     }
 
     #[test]

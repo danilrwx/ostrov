@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""ostrov's example plugin: a toggle counting its clicks by a step picked in its menu, with a reset and a level."""
+"""ostrov's example plugin: a toggle counting its clicks by a step picked in its menu, with a reset and a level; the
+window focused (one of ostrov's events) in its menu, a key flipping it."""
 
 import os
 import sys
@@ -20,7 +21,7 @@ SCHEMA = {"sections": [{"title": "Hello", "fields": [
 
 
 class Hello(Plugin):
-    count, on, step, level, note, title = 0, False, 0, 0.5, "", ""
+    count, on, step, level, note, title, window = 0, False, 0, 0.5, "", "", ""
 
     def on_config(self, config):
         self.set_settings_schema(SCHEMA)
@@ -35,6 +36,8 @@ class Hello(Plugin):
                 return str(self.count)
             case ["set", n]:
                 self.count = int(n)
+            case ["toggle"]:  # its key's command, Super+F12 ([[keys]])
+                self.on = not self.on
             case ["reset"]:
                 self.count = 0
             case ["note"]:
@@ -60,6 +63,11 @@ class Hello(Plugin):
                 self.title = t
                 self.kick()
 
+    def on_shell_event(self, name, payload):
+        if name == "window":  # the window focused, as the manifest's events asks
+            self.window = payload.get("class", "")
+            self.kick()
+
     def render(self, widget):
         if widget == "counter#bar":  # its badge in the bar (badge = true), shown while active (bar = "active")
             return {"type": "box", "orientation": "horizontal", "active": self.on, "children": [
@@ -78,6 +86,7 @@ class Hello(Plugin):
                 {"type": "slider", "id": "level", "icon": "weather-clear-symbolic", "value": self.level},
                 {"type": "progress", "value": min(self.count / 50, 1)},
                 {"type": "label", "text": self.note or "echo text | ostrov plugin hello-python note"},
+                {"type": "row", "icon": "window-new-symbolic", "text": self.window or "no window", "note": "focused"},
                 {"type": "label", "class": "dim",
                  "text": "a token is set" if token else "no token: Settings, Hello"},
             ]},

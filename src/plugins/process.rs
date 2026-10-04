@@ -210,6 +210,17 @@ impl Inner {
     }
 }
 
+/// The worker stopped (the plugin removed, its task aborted): its stdin closed, so the plugin's own process ends
+/// as its stdin does, not only sh (killed as the child is dropped); the calls waiting failed.
+struct Stop(Arc<Inner>);
+
+impl Drop for Stop {
+    fn drop(&mut self) {
+        *lock(&self.0.stdin) = None;
+        lock(&self.0.calls).clear();
+    }
+}
+
 impl Backend for Process {
     fn state(&self) -> BoxFut<Value> {
         let r = self.0.call(json!({"type": "state"}), "call");
@@ -231,6 +242,7 @@ impl Backend for Process {
     fn worker(&self, kick: Kick) -> BoxFut<()> {
         let me = self.0.clone();
         Box::pin(async move {
+            let _stop = Stop(me.clone());
             *lock(&me.rt) = Some(tokio::runtime::Handle::current());
             let mut wait = Duration::from_secs(1);
             loop {
@@ -326,5 +338,13 @@ impl Draws for Process {
 
     fn pick(&self, mode: &str, id: &str, text: &str) {
         self.0.send(json!({"type": "pick", "mode": mode, "id": id, "text": text}));
+    }
+
+    fn on_shell_event(&self, name: &str, payload: &Value) {
+        self.0.send(json!({"type": "on_shell_event", "name": name, "json": payload}));
+    }
+
+    fn calendar_events(&self, from: &str, to: &str) -> BoxFut<Result<Value, String>> {
+        self.0.call(json!({"type": "calendar_events", "from": from, "to": to}), "call")
     }
 }
