@@ -90,21 +90,44 @@ fn swaymsg(kind: u32, payload: &str) -> String {
     sway_read(&mut s).map(|r| r.1).unwrap_or_default()
 }
 
-/// The workspaces past the special ones, in order, and the focused one.
-pub fn workspaces() -> (Vec<i64>, Option<i64>) {
-    let (list, key) = match wm() {
-        Wm::Hyprland => (hyprctl("j/workspaces"), "id"),
-        Wm::Sway => (swaymsg(1, ""), "num"),
+/// The workspaces past the special ones, in order, and the focused one: those on monitor (its name, eDP-1) and the
+/// one shown there, or with None all of them and the focused one.
+pub fn workspaces(monitor: Option<&str>) -> (Vec<i64>, Option<i64>) {
+    let (list, key, on) = match wm() {
+        Wm::Hyprland => (hyprctl("j/workspaces"), "id", "monitor"),
+        Wm::Sway => (swaymsg(1, ""), "num", "output"),
         Wm::Other => return (vec![], None),
     };
     let list: Value = serde_json::from_str(&list).unwrap_or_default();
-    let mut ids: Vec<i64> = list.as_array().into_iter().flatten().filter_map(|w| w[key].as_i64()).filter(|i| *i > 0).collect();
+    let ws = || list.as_array().into_iter().flatten().filter(|w| monitor.is_none_or(|m| w[on] == m));
+    let mut ids: Vec<i64> = ws().filter_map(|w| w[key].as_i64()).filter(|i| *i > 0).collect();
     ids.sort();
-    let focused = match wm() {
-        Wm::Hyprland => serde_json::from_str::<Value>(&hyprctl("j/activeworkspace")).ok().and_then(|a| a["id"].as_i64()),
-        _ => list.as_array().into_iter().flatten().find(|w| w["focused"] == true).and_then(|w| w[key].as_i64()),
+    let focused = match (wm(), monitor) {
+        (Wm::Hyprland, Some(m)) => {
+            monitors().into_iter().find(|o| o["name"] == m).and_then(|o| o["activeWorkspace"]["id"].as_i64())
+        }
+        (Wm::Hyprland, None) => {
+            serde_json::from_str::<Value>(&hyprctl("j/activeworkspace")).ok().and_then(|a| a["id"].as_i64())
+        }
+        (_, Some(_)) => ws().find(|w| w["visible"] == true).and_then(|w| w[key].as_i64()),
+        _ => ws().find(|w| w["focused"] == true).and_then(|w| w[key].as_i64()),
     };
     (ids, focused)
+}
+
+/// The compositor's monitors (sway's outputs), as its IPC says them.
+fn monitors() -> Vec<Value> {
+    let list = match wm() {
+        Wm::Hyprland => hyprctl("j/monitors"),
+        Wm::Sway => swaymsg(3, ""),
+        Wm::Other => return vec![],
+    };
+    serde_json::from_str::<Value>(&list).ok().and_then(|v| v.as_array().cloned()).unwrap_or_default()
+}
+
+/// The monitor focused now, by its name (eDP-1); None under a compositor that does not say.
+pub fn focused_monitor() -> Option<String> {
+    monitors().into_iter().find(|o| o["focused"] == true).and_then(|o| o["name"].as_str().map(String::from))
 }
 
 pub fn go(id: i64) {
@@ -127,7 +150,9 @@ pub fn events(tx: async_channel::Sender<Event>) {
                         let (class, title) = data.split_once(',').unwrap_or((data, ""));
                         Event::Window(class.into(), title.into())
                     }
-                    "workspace" | "createworkspace" | "destroyworkspace" | "urgent" | "focusedmon" => Event::Workspaces,
+                    "workspace" | "createworkspace" | "destroyworkspace" | "urgent" | "focusedmon" | "moveworkspace" => {
+                        Event::Workspaces
+                    }
                     "workspacev2" | "focusedmonv2" | "activewindowv2" | "openwindow" | "closewindow" | "movewindowv2"
                     | "changefloatingmode" | "fullscreen" => Event::Done,
                     _ => continue,

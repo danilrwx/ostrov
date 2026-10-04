@@ -5,7 +5,7 @@
 //! whose black goes while it is hovered or a tab.
 
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use gtk4::prelude::*;
 use gtk4::glib;
@@ -20,6 +20,11 @@ mod tray;
 mod widget;
 mod window;
 mod workspaces;
+
+thread_local! {
+    /// every bar's blocks, for the compositor's events: one connection to it, started with the first bar
+    static BARS: RefCell<Option<Vec<Weak<Ctx>>>> = const { RefCell::new(None) };
+}
 
 /// What a block is built with.
 pub struct Ctx {
@@ -105,6 +110,7 @@ pub fn slot(w: &impl IsA<gtk4::Widget>) -> gtk4::Box {
 
 pub struct Bar {
     pub strip: gtk4::CenterBox,
+    cx: Rc<Ctx>,
     left: gtk4::Box,
     center: gtk4::Box,
     right: gtk4::Box,
@@ -152,47 +158,41 @@ impl Bar {
         strip.set_center_widget(Some(&center));
         strip.set_end_widget(Some(&right));
 
-        let bar = Rc::new(Bar { strip, left, center, right, blocks });
-
-        // the compositor's events to the blocks; a Super combination done ends a peek
-        let (tx, rx) = async_channel::unbounded();
-        std::thread::spawn(move || crate::wm::events(tx));
-        let (cx2, host) = (cx.clone(), host.clone());
-        glib::spawn_future_local(async move {
-            while let Ok(e) = rx.recv().await {
-                for f in cx2.wm.borrow().iter() {
-                    f(&e);
-                }
-                match &e {
-                    crate::wm::Event::Window(class, title) => {
-                        crate::events::emit("window", serde_json::json!({"class": class, "title": title}))
-                    }
-                    crate::wm::Event::Workspaces => crate::events::emit("workspace", serde_json::json!({})),
-                    crate::wm::Event::Done => {}
-                }
-                if matches!(e, crate::wm::Event::Done) && host.peeking.get() {
-                    host.peeking.set(false);
-                    host.apply();
-                }
-            }
+        let bar = Rc::new(Bar { strip, cx: cx.clone(), left, center, right, blocks });
+        let first = BARS.with(|b| {
+            let mut b = b.borrow_mut();
+            let first = b.is_none();
+            let all = b.get_or_insert_default();
+            all.retain(|w| w.strong_count() > 0);
+            all.push(Rc::downgrade(&cx));
+            first
         });
+        if first {
+            listen();
+        }
 
         // a click elsewhere in the bar than a block with a popup closes the one open
         let click = gtk4::GestureClick::new();
         let b = Rc::downgrade(&bar);
-        let host = cx.host.clone();
         click.connect_released(move |g, _, x, y| {
             let (Some(b), Some(w)) = (b.upgrade(), g.widget().filter(|_| y < crate::popup::bar() as f64)) else { return };
             let hit = w.pick(x, y, gtk4::PickFlags::DEFAULT);
             let on_popup_block = b.blocks.iter().any(|(_, k)| k.popup.is_some() && hit.as_ref().is_some_and(|h| h.is_ancestor(&k.widget) || *h == k.widget));
             if !on_popup_block {
-                if let Some(p) = host.popup() {
+                if let Some(p) = b.cx.host.popup() {
                     p.close();
                 }
             }
         });
         cx.host.win.add_controller(click);
         bar
+    }
+
+    /// Its blocks told their monitor changed (the workspaces': that monitor's).
+    pub fn moved(&self) {
+        for f in self.cx.wm.borrow().iter() {
+            f(&crate::wm::Event::Workspaces);
+        }
     }
 
     /// The name of the block whose popup is open.
@@ -203,6 +203,11 @@ impl Bar {
     /// A block's command (ostrov BLOCK ARGS); None when there is no such block or it has none.
     pub fn command(&self, name: &str, args: &[&str]) -> Option<Result<String, String>> {
         self.blocks.iter().find(|(n, _)| n == name).and_then(|(_, b)| b.command.as_ref()).map(|c| c(args))
+    }
+
+    /// Whether it has a block of that name with a command.
+    pub fn has_command(&self, name: &str) -> bool {
+        self.blocks.iter().any(|(n, b)| n == name && b.command.is_some())
     }
 
     /// The blocks with commands, and their forms.
@@ -231,4 +236,31 @@ impl Bar {
             c = w.next_sibling();
         }
     }
+}
+
+/// The compositor's events to every bar's blocks, and said once (events.rs); a Super combination done ends a peek.
+fn listen() {
+    let (tx, rx) = async_channel::unbounded();
+    std::thread::spawn(move || crate::wm::events(tx));
+    glib::spawn_future_local(async move {
+        while let Ok(e) = rx.recv().await {
+            let bars: Vec<Rc<Ctx>> = BARS.with(|b| b.borrow().iter().flatten().filter_map(Weak::upgrade).collect());
+            for cx in &bars {
+                for f in cx.wm.borrow().iter() {
+                    f(&e);
+                }
+                if matches!(e, crate::wm::Event::Done) && cx.host.peeking.get() {
+                    cx.host.peeking.set(false);
+                    cx.host.apply();
+                }
+            }
+            match &e {
+                crate::wm::Event::Window(class, title) => {
+                    crate::events::emit("window", serde_json::json!({"class": class, "title": title}))
+                }
+                crate::wm::Event::Workspaces => crate::events::emit("workspace", serde_json::json!({})),
+                crate::wm::Event::Done => {}
+            }
+        }
+    });
 }

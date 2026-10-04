@@ -6,6 +6,7 @@
 //!     left = ["workspaces"]
 //!     center = ["panel.calendar"]  # a panel: its widgets' badges, the panel unrolled out of them
 //!     right = ["record", "privacy", "layout", "tray", "panel.control"]
+//!     monitors = "all"            # "primary", or the ones named: ["eDP-1", "DP-2"]
 //!
 //!     [idle]
 //!     lock = 600          # seconds idle to the lock, 0 never
@@ -55,6 +56,24 @@ pub struct Bar {
     pub left: Vec<String>,
     pub center: Vec<String>,
     pub right: Vec<String>,
+    /// the monitors with a bar (bars.rs)
+    pub monitors: Monitors,
+}
+
+/// Which monitors have a bar: "all", "primary" (the one Hyprland has focused as ostrov starts, else the first), or
+/// the ones named (["eDP-1", "DP-2"]), the first named the launcher's.
+#[derive(Deserialize, Debug, PartialEq)]
+#[serde(untagged)]
+pub enum Monitors {
+    Which(Which),
+    Named(Vec<String>),
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum Which {
+    All,
+    Primary,
 }
 
 impl Default for Bar {
@@ -64,6 +83,7 @@ impl Default for Bar {
             left: v(&["workspaces", "window"]),
             center: v(&["panel.calendar"]),
             right: v(&["record", "privacy", "layout", "tray", "panel.control"]),
+            monitors: Monitors::Which(Which::All),
         }
     }
 }
@@ -268,10 +288,21 @@ mod tests {
         let c: super::Config = toml::from_str(include_str!("../config/example.toml")).expect("example.toml");
         let d = super::Config::default();
         assert_eq!((c.bar.left, c.bar.center, c.bar.right), (d.bar.left, d.bar.center, d.bar.right));
+        assert_eq!(c.bar.monitors, d.bar.monitors);
         assert_eq!((c.idle.lock, c.idle.screens_off), (d.idle.lock, d.idle.screens_off));
         assert_eq!((c.appearance.theme, c.appearance.opacity, c.appearance.radius), (d.appearance.theme, 0.75, None));
         assert_eq!((c.games.classes, c.games.profile), (d.games.classes, d.games.profile));
         assert_eq!(c.launcher.search, d.launcher.search);
         assert!(c.hyprland.rules && c.hyprland.binds && c.hyprland.keys.is_empty() && c.panels.is_empty());
+    }
+
+    #[test]
+    fn monitors_read() {
+        use super::{Monitors, Which};
+        let m = |t: &str| toml::from_str::<super::Bar>(t).map(|b| b.monitors).ok();
+        assert_eq!(m(r#"monitors = "primary""#), Some(Monitors::Which(Which::Primary)));
+        assert_eq!(m(r#"monitors = ["DP-2", "eDP-1"]"#), Some(Monitors::Named(vec!["DP-2".into(), "eDP-1".into()])));
+        assert_eq!(m(""), Some(Monitors::Which(Which::All)));
+        assert_eq!(m(r#"monitors = "some""#), None);
     }
 }

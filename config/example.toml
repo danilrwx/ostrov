@@ -18,6 +18,9 @@
 left = ["workspaces", "window"]
 center = ["panel.calendar"]
 right = ["record", "privacy", "layout", "tray", "panel.control"]
+# the monitors with a bar: "all", "primary" (the one Hyprland has focused as ostrov starts, else the first), or the
+# ones named, ["eDP-1", "DP-2"], the first named the launcher's. A command (ostrov panel...) opens on the focused one's.
+monitors = "all"
 
 # Idle, as the compositor reports it (ext-idle-notify; inhibitors such as a playing video are honoured). The screen
 # is also locked before the machine sleeps and on `loginctl lock-session`. Seconds; 0 never. The Settings page

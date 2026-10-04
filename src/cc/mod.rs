@@ -368,8 +368,8 @@ pub struct Panel {
     pub popup: Rc<Popup>,
     spec: Spec,
     reg: Rc<Vec<Meta>>,
-    /// its face in the bar: its widgets' badges, else its icon
-    face: gtk4::Box,
+    /// its face in the bar: its widgets' badges, else its icon (the other bars show it as drawn)
+    pub face: gtk4::Box,
     face_icon: gtk4::Image,
     shows: RefCell<HashMap<String, Show>>,
     /// the grid's page, the Settings', the Appearance's
@@ -1177,9 +1177,9 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     // are now: Keep Awake flips from outside the state too
     let me = Rc::downgrade(&p);
     // as tall as the screen lets it be, under the bar, its edges and footer
-    let (sc, h) = (scroll.clone(), Rc::downgrade(host));
+    let (sc, pw) = (scroll.clone(), Rc::downgrade(&popup));
     popup.on_open(move || {
-        if let Some(h) = h.upgrade() {
+        if let Some(h) = pw.upgrade().and_then(|p| p.host()) {
             sc.set_max_content_height((h.win.height() - crate::popup::bar() - 110).max(200));
             // no ring round what has the focus until a key moves it
             h.win.set_focus_visible(false);

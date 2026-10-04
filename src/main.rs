@@ -7,6 +7,7 @@
 mod api;
 mod backend;
 mod bar;
+mod bars;
 mod calc;
 mod cc;
 mod clip;
@@ -70,9 +71,6 @@ fn usage() -> String {
 }
 
 fn activate(app: &gtk4::Application) {
-    // the bar's window, the popups laid over it (popup.rs); the bar and the launcher over it its strip
-    let over = gtk4::Overlay::new();
-    let host = popup::Host::new(app, &over);
     style::load();
     wallpaper::start(app);
     clip::start();
@@ -84,12 +82,10 @@ fn activate(app: &gtk4::Application) {
     events::watch(&hub);
     plugins::start(&hub);
     api::start(&hub);
-    fn names(v: &[String]) -> Vec<&str> {
-        v.iter().map(String::as_str).collect()
-    }
-    let (l, c, r) = (names(&cfg.bar.left), names(&cfg.bar.center), names(&cfg.bar.right));
-    let bar = bar::Bar::build(&host, &hub, [&l, &c, &r]);
-    over.set_child(Some(&bar.strip));
+    // a bar on every monitor (bars.rs), each its window with the popups laid over it (popup.rs); the launcher over
+    // the first's strip
+    let bars = bars::Bars::start(app, &hub, cfg.bar);
+    let (host, bar, over) = bars.first();
 
     // the launcher, over the bar between the left's blocks and the right's, the middle's hidden under it; the
     // clipboard entry picked shown under it
@@ -165,12 +161,15 @@ fn activate(app: &gtk4::Application) {
                 ["record", "--audio"] => record::toggle(true),
                 ["key", name] => keys.key(name)?,
                 ["bar", what @ ("toggle" | "peek" | "unpeek")] => {
-                    match what {
-                        "toggle" => host.docked.set(!host.docked.get()),
-                        "peek" => host.peeking.set(true),
-                        _ => host.peeking.set(false),
+                    let docked = !host.docked.get();
+                    for (h, ..) in bars.all.borrow().iter() {
+                        match what {
+                            "toggle" => h.docked.set(docked),
+                            "peek" => h.peeking.set(true),
+                            _ => h.peeking.set(false),
+                        }
+                        h.apply();
                     }
-                    host.apply();
                 }
                 // the services' state, as JSON
                 ["dump"] => return Ok(hub.state().to_string()),
@@ -195,7 +194,8 @@ fn activate(app: &gtk4::Application) {
                 }
                 // what is open, and the bar's mode: for a script, a test
                 ["state"] => {
-                    let mut words: Vec<&str> = bar.open().into_iter().collect();
+                    let all = bars.all.borrow();
+                    let mut words: Vec<&str> = all.iter().find_map(|(_, b, _)| b.open()).into_iter().collect();
                     words.push(if host.docked.get() { "docked" } else { "hidden" });
                     if launcher.is_open() {
                         words.push("launcher");
@@ -205,8 +205,9 @@ fn activate(app: &gtk4::Application) {
                     }
                     return Ok(words.join(" "));
                 }
-                [block, ref rest @ ..] if bar.command(block, rest).is_some() => {
-                    return bar.command(block, rest).unwrap_or(Ok(String::new()));
+                // the focused monitor's bar's
+                [block, ref rest @ ..] if bar.has_command(block) => {
+                    return bars.focused().command(block, rest).unwrap_or(Ok(String::new()));
                 }
                 // the modules' commands: their outcome said by the running ostrov
                 [first, ..] if services::is_command(first) => hub::service(&args),

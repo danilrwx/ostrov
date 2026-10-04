@@ -5,6 +5,10 @@
 //! corners to the tab and is open under it, so tab and popup are one shape, one ground, one blur. It unrolls
 //! down out of the tab as it opens and rolls back up as it closes, GNOME's way and short. A click anywhere else
 //! (Hyprland's focus grab tells), its tab again, or Escape closes it.
+//!
+//! A bar on every monitor (bars.rs), a window each. A panel's popup is one, its block in every bar a tab of it: a
+//! click opens it under the tab clicked, moved there from another bar's; a command (ostrov panel) under the focused
+//! monitor's.
 
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
@@ -13,7 +17,11 @@ use gtk4::prelude::*;
 use gtk4::{glib, Align, Orientation};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
-thread_local!(static HEIGHT: Cell<i32> = Cell::new(height()));
+thread_local! {
+    static HEIGHT: Cell<i32> = Cell::new(height());
+    /// the bars' windows, the first the launcher's
+    static HOSTS: RefCell<Vec<Weak<Host>>> = RefCell::default();
+}
 
 /// The bar's height in pixels as [appearance]'s bar_height says it now, kept as the config changes (Host::new).
 pub fn bar() -> i32 {
@@ -32,15 +40,15 @@ pub struct Host {
     pub docked: Cell<bool>,
     pub peeking: Cell<bool>,
     pub launching: Cell<bool>,
-    /// the screen's size, the window's from the start (its own known only once laid out)
-    screen: (i32, i32),
+    /// its monitor's size, the window's from the start (its own known only once laid out)
+    screen: Cell<(i32, i32)>,
     open: RefCell<Option<Weak<Popup>>>,
     grab: RefCell<Option<crate::wm::Grab>>,
 }
 
 impl Host {
-    /// The bar's window over the whole screen, strip (the bar) at its top.
-    pub fn new(app: &gtk4::Application, strip: &impl IsA<gtk4::Widget>) -> Rc<Host> {
+    /// The bar's window over the whole of a monitor (the compositor's pick with None), strip (the bar) at its top.
+    pub fn new(app: &gtk4::Application, strip: &impl IsA<gtk4::Widget>, monitor: Option<&gtk4::gdk::Monitor>) -> Rc<Host> {
         let win = gtk4::ApplicationWindow::new(app);
         win.init_layer_shell();
         win.set_namespace(Some("ostrov"));
@@ -48,10 +56,8 @@ impl Host {
         for e in [Edge::Top, Edge::Left, Edge::Right] {
             win.set_anchor(e, true);
         }
-        let screen = gtk4::gdk::Display::default()
-            .and_then(|d| d.monitors().item(0))
-            .and_downcast::<gtk4::gdk::Monitor>()
-            .map_or((1920, 1080), |m| (m.geometry().width(), m.geometry().height()));
+        win.set_monitor(monitor);
+        let screen = size(monitor);
         let col = gtk4::Box::new(Orientation::Vertical, 0);
         strip.set_size_request(-1, bar());
         col.append(strip);
@@ -82,11 +88,12 @@ impl Host {
             docked: Cell::new(true),
             peeking: Cell::new(false),
             launching: Cell::new(false),
-            screen,
+            screen: Cell::new(screen),
             open: RefCell::default(),
             grab: RefCell::default(),
         });
         *me.borrow_mut() = Rc::downgrade(&host);
+        HOSTS.with(|h| h.borrow_mut().push(Rc::downgrade(&host)));
 
         // Escape, a click under the bar beside or under the popup: closed
         let keys = gtk4::EventControllerKey::new();
@@ -129,14 +136,38 @@ impl Host {
         host
     }
 
+    /// Moved to another monitor (one gone, the bars one fewer); whether it was elsewhere.
+    pub fn set_monitor(&self, monitor: &gtk4::gdk::Monitor) -> bool {
+        if self.win.monitor().as_ref() == Some(monitor) {
+            return false;
+        }
+        self.win.set_monitor(Some(monitor));
+        self.screen.set(size(Some(monitor)));
+        self.layer.set_size_request(-1, self.screen.get().1);
+        self.apply();
+        true
+    }
+
+    /// Its monitor's name (eDP-1).
+    pub fn connector(&self) -> Option<String> {
+        self.win.monitor().and_then(|m| m.connector()).map(|c| c.to_string())
+    }
+
+    /// Gone with its monitor.
+    pub fn destroy(&self) {
+        HOSTS.with(|h| h.borrow_mut().retain(|w| w.upgrade().is_some_and(|h| !std::ptr::eq(&*h, self))));
+        self.win.destroy();
+    }
+
     /// A widget laid over the window, drawn but taking no input (the launcher's preview).
     pub fn overlay(&self, w: &impl IsA<gtk4::Widget>) {
         self.layer.add_overlay(w);
     }
 
-    /// The popup open, if one is.
+    /// The popup open, if one is (here: not moved to another bar since).
     pub fn popup(&self) -> Option<Rc<Popup>> {
-        self.open.borrow().as_ref().and_then(Weak::upgrade).filter(|p| p.is_open())
+        let here = |p: &Rc<Popup>| std::ptr::eq(p.host.borrow().as_ptr(), self);
+        self.open.borrow().as_ref().and_then(Weak::upgrade).filter(|p| p.is_open() && here(p))
     }
 
     /// The window set for its mode and what is open in it: its layer and strip, the keyboard (the launcher's
@@ -164,7 +195,7 @@ impl Host {
     /// Input over the strip and a popup's column (x, width) down to the screen's bottom.
     fn region(&self, column: Option<(i32, i32)>) {
         let Some(surface) = self.win.surface() else { return };
-        let (sw, sh) = self.screen;
+        let (sw, sh) = self.screen.get();
         let r = gtk4::cairo::Region::create_rectangle(&gtk4::cairo::RectangleInt::new(0, 0, sw, bar()));
         if let Some((x, w)) = column {
             let _ = r.union_rectangle(&gtk4::cairo::RectangleInt::new(x, bar(), w, sh - bar()));
@@ -206,6 +237,23 @@ impl Host {
     }
 }
 
+/// A monitor's size, a guess without one.
+fn size(monitor: Option<&gtk4::gdk::Monitor>) -> (i32, i32) {
+    monitor.map_or((1920, 1080), |m| (m.geometry().width(), m.geometry().height()))
+}
+
+/// The bar of the monitor focused, the first without a compositor that says.
+pub fn focused() -> Option<Rc<Host>> {
+    let hosts: Vec<Rc<Host>> = HOSTS.with(|h| h.borrow().iter().filter_map(Weak::upgrade).collect());
+    let names: Vec<Option<String>> = hosts.iter().map(|h| h.connector()).collect();
+    hosts.into_iter().nth(pick(&names, crate::wm::focused_monitor().as_deref()))
+}
+
+/// Of the bars' monitors' names, the focused one's place, else the first's.
+fn pick(names: &[Option<String>], focused: Option<&str>) -> usize {
+    focused.and_then(|f| names.iter().position(|n| n.as_deref() == Some(f))).unwrap_or(0)
+}
+
 /// Where the popup hangs: its left edge under its tab's (a panel at the bar's left), its right edge under its
 /// tab's (the bar's right end, the tray), or in the middle.
 #[derive(Clone, Copy, PartialEq)]
@@ -216,7 +264,7 @@ pub enum Side {
 }
 
 pub struct Popup {
-    host: Weak<Host>,
+    host: RefCell<Weak<Host>>,
     reveal: gtk4::Revealer,
     shape: gtk4::Box,
     /// the bar's block it grows out of; the tray's menu changes it to the icon clicked
@@ -225,6 +273,8 @@ pub struct Popup {
     gap: gtk4::Box,
     on_open: RefCell<Vec<Box<dyn Fn()>>>,
     closed: Cell<Option<std::time::Instant>>,
+    /// its block in every bar, a panel's: where a command opens it
+    tabs: RefCell<Vec<(Weak<Host>, gtk4::Widget)>>,
 }
 
 impl Popup {
@@ -277,7 +327,7 @@ impl Popup {
         host.layer.add_overlay(&reveal);
 
         let popup = Rc::new(Popup {
-            host: Rc::downgrade(host),
+            host: RefCell::new(Rc::downgrade(host)),
             reveal: reveal.clone(),
             shape,
             tab: RefCell::new(tab.clone().upcast()),
@@ -285,13 +335,14 @@ impl Popup {
             gap,
             on_open: RefCell::default(),
             closed: Cell::default(),
+            tabs: RefCell::default(),
         });
         // rolled up: the tab a block again, the input back to the strip
         let p = Rc::downgrade(&popup);
         reveal.connect_child_revealed_notify(move |r| {
             let Some(p) = p.upgrade().filter(|_| !r.is_child_revealed() && !r.reveals_child()) else { return };
             p.tab.borrow().remove_css_class("tab");
-            if let Some(h) = p.host.upgrade().filter(|h| h.popup().is_none()) {
+            if let Some(h) = p.host().filter(|h| h.popup().is_none()) {
                 h.closed();
             }
         });
@@ -302,9 +353,14 @@ impl Popup {
         self.reveal.reveals_child()
     }
 
+    /// The bar's window it is in.
+    pub fn host(&self) -> Option<Rc<Host>> {
+        self.host.borrow().upgrade()
+    }
+
     /// Its column in the window: x and width.
     fn column(&self) -> (i32, i32) {
-        let Some(b) = self.host.upgrade().and_then(|h| self.reveal.compute_bounds(&h.win)) else { return (0, 0) };
+        let Some(b) = self.host().and_then(|h| self.reveal.compute_bounds(&h.win)) else { return (0, 0) };
         (b.x() as i32, b.width() as i32)
     }
 
@@ -318,9 +374,46 @@ impl Popup {
         self.on_open.borrow_mut().push(Box::new(f));
     }
 
-    /// Opened, any other popup closed.
+    /// A bar's block it may hang from: a command opens it under the focused monitor's.
+    pub fn add_tab(&self, host: &Rc<Host>, tab: &impl IsA<gtk4::Widget>) {
+        self.tabs.borrow_mut().push((Rc::downgrade(host), tab.clone().upcast()));
+    }
+
+    /// Hung from a tab in another bar's window: closed in the one it was in, laid over this one.
+    fn hang(&self, host: &Rc<Host>, tab: &gtk4::Widget) {
+        let old = self.host();
+        if !old.as_ref().is_some_and(|o| Rc::ptr_eq(o, host)) {
+            if self.is_open() {
+                self.tab.borrow().remove_css_class("tab");
+                self.reveal.set_reveal_child(false);
+                if let Some(o) = &old {
+                    o.closed();
+                }
+            }
+            if let Some(o) = self.reveal.parent().and_downcast::<gtk4::Overlay>() {
+                o.remove_overlay(&self.reveal);
+            }
+            host.layer.add_overlay(&self.reveal);
+            *self.host.borrow_mut() = Rc::downgrade(host);
+        }
+        self.set_tab(tab);
+    }
+
+    /// Opened, any other popup closed; closed, under the focused monitor's tab if it has one there.
     pub fn open(self: &Rc<Self>) {
-        let Some(host) = self.host.upgrade() else { return };
+        let here = crate::popup::focused().and_then(|f| {
+            let tabs = self.tabs.borrow();
+            tabs.iter().find(|(h, _)| h.upgrade().is_some_and(|h| Rc::ptr_eq(&h, &f))).map(|(_, t)| (f, t.clone()))
+        });
+        if let Some((h, t)) = here.filter(|_| !self.is_open()) {
+            self.hang(&h, &t);
+        }
+        self.show();
+    }
+
+    /// Opened where it hangs, any other popup there closed.
+    fn show(self: &Rc<Self>) {
+        let Some(host) = self.host() else { return };
         if let Some(other) = host.popup().filter(|o| !Rc::ptr_eq(o, self)) {
             other.close();
         }
@@ -353,7 +446,7 @@ impl Popup {
     /// The gap as wide as the tab's border box (width() is its content alone); at the right, the popup's right
     /// edge under the tab's.
     fn place(&self) {
-        let Some(host) = self.host.upgrade() else { return };
+        let Some(host) = self.host() else { return };
         self.reveal.set_margin_top(bar());
         let tab = self.tab.borrow();
         let Some(b) = tab.compute_bounds(&host.win) else { return };
@@ -381,8 +474,41 @@ impl Popup {
     pub fn toggle(self: &Rc<Self>) {
         if self.is_open() {
             self.close()
-        } else if !self.closed.get().is_some_and(|t| t.elapsed() < std::time::Duration::from_millis(300)) {
+        } else if !self.just_closed() {
             self.open()
         }
+    }
+
+    /// Toggled by a click on one of its tabs: opened under it, from another bar's moved there.
+    pub fn toggle_at(self: &Rc<Self>, host: &Rc<Host>, tab: &impl IsA<gtk4::Widget>) {
+        let tab = tab.clone().upcast::<gtk4::Widget>();
+        if self.tab() != tab {
+            self.hang(host, &tab);
+            self.show();
+        } else if self.is_open() {
+            self.close()
+        } else if !self.just_closed() {
+            self.show()
+        }
+    }
+
+    fn just_closed(&self) -> bool {
+        self.closed.get().is_some_and(|t| t.elapsed() < std::time::Duration::from_millis(300))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::pick;
+
+    #[test]
+    fn a_command_opens_on_the_focused_monitor() {
+        let names = [Some("eDP-1".to_string()), Some("DP-2".to_string()), None];
+        assert_eq!(pick(&names, Some("DP-2")), 1);
+        assert_eq!(pick(&names, Some("eDP-1")), 0);
+        // a monitor without a bar, no compositor saying, no bar: the first
+        assert_eq!(pick(&names, Some("HDMI-A-1")), 0);
+        assert_eq!(pick(&names, None), 0);
+        assert_eq!(pick(&[], Some("DP-2")), 0);
     }
 }

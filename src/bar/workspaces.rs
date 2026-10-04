@@ -1,7 +1,8 @@
 //! The workspaces as GNOME's dots: a dot each, the focused one a longer pill, a click to go there. A dot is made
 //! once and kept, so the focused one's growing and the last one's shrinking can be drawn: every frame a step of
 //! each dot's width towards its own (28 focused, 8 not), about 100 ms in all, the frame clock
-//! let go once there (a CSS transition misses a dot made focused).
+//! let go once there (a CSS transition misses a dot made focused). Its monitor's workspaces, the one shown there
+//! focused.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -51,10 +52,10 @@ pub fn build(cx: &Rc<Ctx>) -> Block {
         }
     };
     let draw = {
-        let dots = dots.clone();
+        let (dots, host) = (dots.clone(), cx.host.clone());
         let made: Rc<RefCell<Vec<(i64, gtk4::Box)>>> = Rc::default();
         move || {
-            let (ids, active) = wm::workspaces();
+            let (ids, active) = wm::workspaces(host.connector().as_deref());
             let mut made = made.borrow_mut();
             // gone workspaces out, new ones in at their place
             made.retain(|(id, dot)| {

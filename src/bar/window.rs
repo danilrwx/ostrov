@@ -1,4 +1,5 @@
-//! The window focused: its app's icon and its title, as the compositor says on every change.
+//! The window focused: its app's icon and its title, as the compositor says on every change; on the bar of the
+//! monitor focused, the others keeping the one last focused on theirs.
 
 use std::rc::Rc;
 
@@ -17,8 +18,12 @@ pub fn build(cx: &Rc<Ctx>) -> Block {
     p.append(&title);
     p.set_visible(false);
     let s = slot(&p);
+    let host = cx.host.clone();
     cx.on_wm(move |e| {
         let Event::Window(class, t) = e else { return };
+        if !crate::popup::focused().is_some_and(|f| Rc::ptr_eq(&f, &host)) {
+            return;
+        }
         p.set_visible(!class.is_empty() || !t.is_empty());
         match crate::switcher::icon(class) {
             Some(g) => icon.set_from_gicon(&g),

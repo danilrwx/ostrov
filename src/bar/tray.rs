@@ -1,7 +1,8 @@
 //! The tray: StatusNotifierItem through the system-tray crate on a Tokio runtime of its own. A click activates
 //! an item; a right click (or any, for an item that is only a menu) unrolls its DBusMenu out of its icon, a popup
-//! like the others shared by all the icons.
+//! like the others shared by all the icons. One client for every bar's tray.
 
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use gtk4::prelude::*;
@@ -116,6 +117,34 @@ fn fill(
     }
 }
 
+/// The one tray client's, every bar's tray drawn from it: the items as last sent, where activations go, each bar's
+/// tray's drawing (false once its bar is gone).
+struct Shared {
+    items: Vec<Entry>,
+    act: tokio::sync::mpsc::UnboundedSender<ActivateRequest>,
+    draws: Vec<Box<dyn Fn(&[Entry]) -> bool>>,
+}
+
+thread_local!(static SHARED: RefCell<Option<Shared>> = const { RefCell::new(None) });
+
+/// The tray client started, its items drawn by every bar's tray as they change.
+fn start() -> Shared {
+    let (tx, rx) = async_channel::unbounded::<Vec<Entry>>();
+    let (act, act_rx) = tokio::sync::mpsc::unbounded_channel::<ActivateRequest>();
+    std::thread::spawn(move || serve(tx, act_rx));
+    glib::spawn_future_local(async move {
+        while let Ok(items) = rx.recv().await {
+            SHARED.with(|s| {
+                if let Some(s) = s.borrow_mut().as_mut() {
+                    s.items = items;
+                    s.draws.retain(|d| d(&s.items));
+                }
+            });
+        }
+    });
+    Shared { items: vec![], act, draws: vec![] }
+}
+
 pub fn build(cx: &Rc<Ctx>) -> Block {
     let tray = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     let body = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
@@ -123,41 +152,45 @@ pub fn build(cx: &Rc<Ctx>) -> Block {
     body.add_css_class("tray-menu");
     let pop = Popup::new(&cx.host, &tray, Side::Right, -1, &body);
 
-    let (tx, rx) = async_channel::unbounded::<Vec<Entry>>();
-    let (act_tx, act_rx) = tokio::sync::mpsc::unbounded_channel::<ActivateRequest>();
-    std::thread::spawn(move || serve(tx, act_rx));
+    let act_tx = SHARED.with(|s| s.borrow_mut().get_or_insert_with(start).act.clone());
     let (t, p) = (tray.clone(), pop.clone());
-    glib::spawn_future_local(async move {
-        while let Ok(items) = rx.recv().await {
-            crate::style::clear(&t);
-            for e in items {
-                let cell = pill();
-                cell.add_css_class("tray-item");
-                cell.append(&icon(&e.item));
-                cell.set_cursor_from_name(Some("pointer"));
-                let cell_slot = slot(&cell);
-                let click = gtk4::GestureClick::new();
-                click.set_button(0);
-                let (act, cs, pop, body) = (act_tx.clone(), cell_slot.clone(), p.clone(), body.clone());
-                click.connect_released(move |g, _, _, _| {
-                    if g.current_button() != 3 && !e.item.item_is_menu {
-                        let _ = act.send(ActivateRequest::Default { address: e.address.clone(), x: 0, y: 0 });
-                        return;
-                    }
-                    let Some(menu) = &e.menu else { return };
-                    // the same icon again closes it
-                    if pop.is_open() && pop.tab() == cs.clone().upcast::<gtk4::Widget>() {
-                        return pop.close();
-                    }
-                    crate::style::clear(&body);
-                    let path = e.item.menu.clone().unwrap_or_default();
-                    fill(&body, &menu.submenus, 0, (&e.address, &path), &act, &pop);
-                    pop.set_tab(&cs);
-                    pop.open();
-                });
-                cell.add_controller(click);
-                t.append(&cell_slot);
-            }
+    let draw = move |items: &[Entry]| {
+        crate::style::clear(&t);
+        for e in items.iter().cloned() {
+            let cell = pill();
+            cell.add_css_class("tray-item");
+            cell.append(&icon(&e.item));
+            cell.set_cursor_from_name(Some("pointer"));
+            let cell_slot = slot(&cell);
+            let click = gtk4::GestureClick::new();
+            click.set_button(0);
+            let (act, cs, pop, body) = (act_tx.clone(), cell_slot.clone(), p.clone(), body.clone());
+            click.connect_released(move |g, _, _, _| {
+                if g.current_button() != 3 && !e.item.item_is_menu {
+                    let _ = act.send(ActivateRequest::Default { address: e.address.clone(), x: 0, y: 0 });
+                    return;
+                }
+                let Some(menu) = &e.menu else { return };
+                // the same icon again closes it
+                if pop.is_open() && pop.tab() == cs.clone().upcast::<gtk4::Widget>() {
+                    return pop.close();
+                }
+                crate::style::clear(&body);
+                let path = e.item.menu.clone().unwrap_or_default();
+                fill(&body, &menu.submenus, 0, (&e.address, &path), &act, &pop);
+                pop.set_tab(&cs);
+                pop.open();
+            });
+            cell.add_controller(click);
+            t.append(&cell_slot);
+        }
+        // its bar's window gone with its monitor
+        t.root().is_some()
+    };
+    SHARED.with(|s| {
+        if let Some(s) = s.borrow_mut().as_mut() {
+            draw(&s.items);
+            s.draws.push(Box::new(draw));
         }
     });
     Block { popup: Some(pop), ..Block::new(&tray) }
