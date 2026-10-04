@@ -1,12 +1,11 @@
-//! The overview, macOS's Mission Control: `ostrov overview` (a key, three fingers up) lays every window out over
-//! the dimmed screen. Along the top the workspaces as small screens, their windows in miniature where they are,
-//! the current one ringed, a click going there; below, every workspace's windows side by side in a grid,
-//! each scaled down whole, its app's icon and title under it. A click on one focuses it, a click on nothing,
-//! Escape, `ostrov overview` again or `ostrov overview close` (three fingers down) leave things as they were;
-//! arrows (with Super or without) and Tab move the pick, Enter takes it. The layout is up at once with the apps'
-//! icons, the windows' pictures filling in as Hyprland hands them over (hyprland-toplevel-export, on a Wayland
-//! connection of its own off GTK's thread, as shot.rs takes the screen); windows on other workspaces too, which
-//! Hyprland renders for the export.
+//! The overview, macOS's Mission Control: `ostrov overview` (a key, three fingers up) lays every window of every
+//! workspace out in a grid over the blurred screen, each scaled down whole, its app's icon and title under it. A
+//! click on one focuses it (its workspace with it), a click on nothing, Escape, `ostrov overview` again or `ostrov
+//! overview close` (three fingers down) leave things as they were; the arrows, hjkl (Super with them or not),
+//! Tab and Ctrl+N/P move the pick, Enter takes it. The layout is up at once with the apps' icons, the windows'
+//! pictures filling in as Hyprland hands them over (hyprland-toplevel-export, on a Wayland connection of its own
+//! off GTK's thread, as shot.rs takes the screen); windows on other workspaces too, which Hyprland renders for the
+//! export.
 
 use std::cell::{Cell, RefCell};
 use std::os::fd::AsFd;
@@ -84,22 +83,6 @@ fn monitor(monitors: &str) -> Option<(String, Rect, i64)> {
         std::mem::swap(&mut w, &mut h);
     }
     Some((m["name"].as_str()?.to_string(), (f("x"), f("y"), w, h), m["activeWorkspace"]["id"].as_i64()?))
-}
-
-/// The workspaces past the special ones in order: id, name, the window last focused on it.
-fn workspaces(list: &str) -> Vec<(i64, String, String)> {
-    let list: Value = serde_json::from_str(list).unwrap_or_default();
-    let mut ws: Vec<(i64, String, String)> = list
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|w| {
-            let s = |k: &str| w[k].as_str().unwrap_or_default().to_string();
-            Some((w["id"].as_i64().filter(|i| *i > 0)?, s("name"), s("lastwindow")))
-        })
-        .collect();
-    ws.sort();
-    ws
 }
 
 /// Where windows of these sizes go in an area (w, h): a grid of as many columns as shows them largest, each
@@ -349,9 +332,16 @@ impl Overview {
         let keys = gtk4::EventControllerKey::new();
         keys.set_propagation_phase(gtk4::PropagationPhase::Capture);
         let me = Rc::downgrade(&o);
-        keys.connect_key_pressed(move |_, k, _, _| {
+        keys.connect_key_pressed(move |_, k, _, m| {
             let Some(me) = me.upgrade() else { return glib::Propagation::Proceed };
+            let ctrl = m.contains(gdk::ModifierType::CONTROL_MASK);
             match k {
+                Key::n if ctrl => me.step(1),
+                Key::p if ctrl => me.step(-1),
+                Key::h => me.go_way((-1.0, 0.0)),
+                Key::l => me.go_way((1.0, 0.0)),
+                Key::k => me.go_way((0.0, -1.0)),
+                Key::j => me.go_way((0.0, 1.0)),
                 Key::Escape => me.close(),
                 Key::Return | Key::KP_Enter => me.pick(me.picked.get()),
                 Key::Tab => me.step(1),
@@ -387,9 +377,8 @@ impl Overview {
     }
 
     fn open(self: &Rc<Self>) {
-        let Some((name, (mx, my, sw, sh), current)) = monitor(&crate::wm::hyprctl("j/monitors")) else { return };
+        let Some((name, (_, _, sw, sh), current)) = monitor(&crate::wm::hyprctl("j/monitors")) else { return };
         let wins = windows(&crate::wm::hyprctl("j/clients"));
-        let spaces = workspaces(&crate::wm::hyprctl("j/workspaces"));
         let on_screen = gdk::Display::default().map(|d| d.monitors()).and_then(|ms| {
             ms.iter::<gdk::Monitor>().flatten().find(|m| m.connector().as_deref() == Some(name.as_str()))
         });
@@ -398,48 +387,11 @@ impl Overview {
         // every window's pictures: its card's, its miniature's
         let mut pics: Vec<Vec<gtk4::Picture>> = vec![vec![]; wins.len()];
 
-        // the workspaces: small screens in a row, no wider together than the screen
         let margin = 48.0;
-        let n = spaces.len().max(1) as f64;
-        let tw = (sw * 0.12).min((sw - 2.0 * margin - 16.0 * (n - 1.0)) / n);
-        let k = tw / sw;
-        let strip = gtk4::Box::new(Orientation::Horizontal, 16);
-        strip.set_halign(Align::Center);
-        strip.set_margin_top(24);
-        for (id, ws_name, last) in &spaces {
-            let tile = gtk4::Fixed::new();
-            tile.add_css_class("ov-ws");
-            tile.set_size_request(tw.round() as i32, (sh * k).round() as i32);
-            tile.set_overflow(gtk4::Overflow::Hidden);
-            tile.set_cursor_from_name(Some("pointer"));
-            if *id == current {
-                tile.add_css_class("current");
-            }
-            for (i, w) in wins.iter().enumerate().filter(|(_, w)| w.workspace == *id) {
-                let (mini, _, pic) = frame(w.size.0 * k, w.size.1 * k, "ov-mini");
-                tile.put(&mini, (w.at.0 - mx) * k, (w.at.1 - my) * k);
-                pics[i].push(pic);
-            }
-            let (me, id, last) = (Rc::downgrade(self), *id, last.clone());
-            on_click(&tile, move || {
-                let Some(me) = me.upgrade() else { return };
-                me.close();
-                if id != current && !last.is_empty() && last != "0x0" {
-                    after_close(format!("dispatch focuswindow address:{last}"));
-                }
-            });
-            let col = gtk4::Box::new(Orientation::Vertical, 4);
-            col.append(&tile);
-            let l = label(ws_name, "dim");
-            l.set_halign(Align::Center);
-            col.append(&l);
-            strip.append(&col);
-        }
-        self.body.append(&strip);
 
-        // every workspace's windows, in a grid under the strip (its tiles and their names, about 28 high), the
-        // workspaces in their order, a workspace's windows as they lie on it
-        let top = 24.0 + sh * k + 28.0 + margin;
+        // every workspace's windows in a grid over the whole screen, the workspaces in their order, a
+        // workspace's windows as they lie on it
+        let top = margin;
         let mut mine: Vec<usize> = (0..wins.len()).collect();
         mine.sort_by_key(|&i| wins[i].workspace);
         let sizes: Vec<(f64, f64)> = mine.iter().map(|&i| wins[i].size).collect();
