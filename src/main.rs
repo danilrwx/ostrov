@@ -11,6 +11,7 @@ mod calc;
 mod cc;
 mod clip;
 mod config;
+mod doctor;
 mod forms;
 mod greet;
 mod hub;
@@ -56,7 +57,7 @@ const FORMS: &[&str] = &[
     "panel", "menu NAME", "settings [SECTION]", "appearance", "calendar", "run", "ask QUESTION...", "clip",
     "windows [app]", "overview [close]", "lock", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "record [--audio]",
     "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
-    "plugin [ID] [ARGS...]", "help", "complete [WORD...]", "completions zsh|bash|fish",
+    "plugin [ID] [ARGS...]", "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor",
 ];
 
 fn usage() -> String {
@@ -223,6 +224,7 @@ pub type Reply = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Strin
 fn command(args: &[String], input: Option<String>) -> Reply {
     match args {
         [first, rest @ ..] if first == "plugin" => return plugins::run(rest, input),
+        [first] if first == "doctor" => return Box::pin(doctor::report()),
         [first, rest @ ..] if first == "dialog" => {
             let spec = rest.join(" ");
             return Box::pin(async move {
