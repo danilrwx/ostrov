@@ -107,6 +107,7 @@ button.tile-remove { background: @urgent; border-radius: 9px; min-width: 18px; m
 button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }
 /* a plugin's widget drawn as anything but a toggle, a slider or a round button: on a card like the battery's */
 .plugin-card { background: @raised; border: 1px solid @rule; border-radius: 6px; padding: 4px 14px; }
+.tile-ghost { border: 2px solid @accent; border-radius: 6px; background: alpha(@accent, 0.12); }
 .tile-grip { color: @dim; -gtk-icon-size: 12px; min-width: 28px; min-height: 28px; }
 button.tile-eye { background: @raised; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
 button.tile-eye image { -gtk-icon-size: 12px; }

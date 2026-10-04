@@ -355,8 +355,8 @@ struct Tile {
 }
 
 /// The tile dragged in the editing: it as the drag found it, by its corner (sized) or not (moved), the layout
-/// the drag started from, the cells it was last put at.
-type Dragged = (Item, bool, Vec<Item>, (u8, u8, u8, u8));
+/// the drag started from, the cells it was last put at, where it was in the grid (x, y, width, height).
+type Dragged = (Item, bool, Vec<Item>, (u8, u8, u8, u8), (f64, f64, f64, f64));
 
 pub struct Panel {
     pub popup: Rc<Popup>,
@@ -372,6 +372,8 @@ pub struct Panel {
     /// a row's height and the gap between cells, in pixels, as the density says
     dims: Cell<(i32, i32)>,
     grid: gtk4::Grid,
+    /// the frame following the pointer while a tile is dragged, over the grid snapping under it
+    ghost: gtk4::Box,
     gallery: gtk4::Box,
     edit_button: gtk4::Button,
     items: RefCell<Vec<Item>>,
@@ -698,8 +700,9 @@ impl Panel {
         }
     }
 
-    /// Dragging a tile in the editing: by its body to move it, by its corner to size it. The grid's own drag,
-    /// in the grid's coordinates, since the tile moves under the pointer as it goes.
+    /// Dragging a tile in the editing: by its body to move it, by its corner to size it, a frame following the
+    /// pointer as it goes and the grid taking the cells it comes to under it. The grid's own drag, in the grid's
+    /// coordinates, since the tile moves under the pointer. A press on a tile's minus or eye is theirs.
     fn drags(self: &Rc<Self>) {
         let drag = gtk4::GestureDrag::new();
         let at: Rc<RefCell<Option<Dragged>>> = Rc::default();
@@ -712,6 +715,10 @@ impl Panel {
             let mut hit = p.grid.pick(x, y, gtk4::PickFlags::DEFAULT);
             let (mut corner, mut key) = (false, None);
             while let Some(w) = hit {
+                if w.has_css_class("tile-remove") || w.has_css_class("tile-eye") {
+                    g.set_state(gtk4::EventSequenceState::Denied);
+                    return;
+                }
                 corner |= w.has_css_class("tile-grip");
                 if w.has_css_class("tile") {
                     key = Some(w.widget_name().to_string());
@@ -725,17 +732,25 @@ impl Panel {
                 return;
             };
             g.set_state(gtk4::EventSequenceState::Claimed);
+            let mut at = (0.0, 0.0, 0.0, 0.0);
             if let Some(t) = p.tiles.borrow().get(&it.key) {
                 t.wrap.add_css_class("dragged");
+                if let Some(b) = t.wrap.compute_bounds(&p.grid) {
+                    at = (b.x() as f64, b.y() as f64, b.width() as f64, b.height() as f64);
+                }
             }
+            p.place_ghost(at);
+            p.ghost.set_visible(true);
             let last = (it.x, it.y, it.w, it.h);
-            *a.borrow_mut() = Some((it, corner, items, last));
+            *a.borrow_mut() = Some((it, corner, items, last, at));
         });
         let (me, a) = (Rc::downgrade(self), at.clone());
         drag.connect_drag_update(move |_, dx, dy| {
             let Some(p) = me.upgrade() else { return };
             let mut a = a.borrow_mut();
-            let Some((it, corner, start, last)) = a.as_mut() else { return };
+            let Some((it, corner, start, last, at)) = a.as_mut() else { return };
+            let (x, y, w, h) = *at;
+            p.place_ghost(if *corner { (x, y, (w + dx).max(24.0), (h + dy).max(24.0)) } else { (x + dx, y + dy, w, h) });
             let Some(m) = p.reg.iter().find(|m| m.id == it.key) else { return };
             let (row, gap) = p.dims.get();
             let cw = (p.grid.width() + gap) as f64 / COLS as f64;
@@ -761,11 +776,19 @@ impl Panel {
         let (me, a) = (Rc::downgrade(self), at);
         drag.connect_drag_end(move |_, _, _| {
             let (Some(p), Some((it, ..))) = (me.upgrade(), a.borrow_mut().take()) else { return };
+            p.ghost.set_visible(false);
             if let Some(t) = p.tiles.borrow().get(&it.key) {
                 t.wrap.remove_css_class("dragged");
             }
         });
         self.grid.add_controller(drag);
+    }
+
+    /// The pointer's frame at (x, y), (width, height) in the grid.
+    fn place_ghost(&self, (x, y, w, h): (f64, f64, f64, f64)) {
+        self.ghost.set_margin_start(x.max(0.0) as i32);
+        self.ghost.set_margin_top(y.max(0.0) as i32);
+        self.ghost.set_size_request(w as i32, h as i32);
     }
 }
 
@@ -820,7 +843,18 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     grid.set_column_homogeneous(true);
     grid.set_column_spacing(dims.1 as u32);
     grid.set_row_spacing(dims.1 as u32);
-    page.append(&grid);
+    // the grid under the pointer's frame while a tile is dragged
+    let over = gtk4::Overlay::new();
+    over.set_child(Some(&grid));
+    let ghost = gtk4::Box::new(Orientation::Vertical, 0);
+    ghost.add_css_class("tile-ghost");
+    ghost.set_halign(Align::Start);
+    ghost.set_valign(Align::Start);
+    ghost.set_can_target(false);
+    ghost.set_visible(false);
+    over.add_overlay(&ghost);
+    over.set_clip_overlay(&ghost, false);
+    page.append(&over);
 
     let gallery = gtk4::Box::new(Orientation::Vertical, 2);
     gallery.add_css_class("menu");
@@ -882,6 +916,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         settings,
         dims: Cell::new(dims),
         grid,
+        ghost,
         gallery,
         edit_button: edit_button.clone(),
         items: RefCell::new(items),
