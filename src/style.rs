@@ -24,7 +24,7 @@ const CSS: &str = r#"
 @define-color card rgba(255, 255, 255, 0.06);   /* a card, a menu, the month on a surface */
 @define-color well rgba(255, 255, 255, 0.1);    /* a trough, a line inside a surface */
 @define-color sunk rgba(0, 0, 0, 0.2);          /* an entry */
-@define-color rule #333333;                     /* an outline */
+@define-color rule rgba(255, 255, 255, 0.1);   /* an outline, see-through as the ground under it is */
 @define-color idle #666666;                     /* a workspace not focused */
 @define-color handle #3b82f6;                   /* a tile's corner in Edit, sizing it */
 @define-color urgent #cd0000;                   /* an error, a critical notification */

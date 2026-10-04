@@ -19,8 +19,8 @@ pub const MODULE: Module = Module { id: "hyprland", worker: Some(worker), ..Modu
 
 /// Its layers' rules, as layerrule lines.
 const RULES: &[&str] = &[
-    "blur on, ignore_alpha 0.7, xray on, match:namespace ^ostrov$",
-    "blur on, ignore_alpha 0.2, xray on, match:namespace ^(ostrov-toast|ostrov-osd|ostrov-prompt|ostrov-switcher|ostrov-overview)$",
+    "blur on, ignore_alpha 0.01, xray on, match:namespace ^ostrov$",
+    "blur on, ignore_alpha 0.01, xray on, match:namespace ^(ostrov-toast|ostrov-osd|ostrov-prompt|ostrov-switcher|ostrov-overview)$",
     "no_anim on, match:namespace ^(ostrov-switcher|ostrov-overview)$",
 ];
 
