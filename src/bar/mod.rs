@@ -81,9 +81,16 @@ fn block(name: &str, cx: &Rc<Ctx>, side: Side) -> Option<Block> {
 
 /// A block's pill: its content in a row, the ground lit under the pointer or as a tab.
 pub fn pill() -> gtk4::Box {
-    let gap = crate::config::load().appearance.bar_spacing.min(32) as i32;
-    let b = gtk4::Box::new(gtk4::Orientation::Horizontal, gap);
+    let gap = || crate::config::load().appearance.bar_spacing.min(32) as i32;
+    let b = gtk4::Box::new(gtk4::Orientation::Horizontal, gap());
     b.add_css_class("pill");
+    // its icons' gap as the config says it now
+    let w = b.downgrade();
+    crate::style::on_config(move || {
+        if let Some(b) = w.upgrade() {
+            b.set_spacing(gap());
+        }
+    });
     b
 }
 

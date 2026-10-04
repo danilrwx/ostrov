@@ -13,10 +13,15 @@ use gtk4::prelude::*;
 use gtk4::{glib, Align, Orientation};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
-/// The bar's height in pixels, [appearance]'s bar_height as ostrov started (the bar's window sized by it once).
+thread_local!(static HEIGHT: Cell<i32> = Cell::new(height()));
+
+/// The bar's height in pixels as [appearance]'s bar_height says it now, kept as the config changes (Host::new).
 pub fn bar() -> i32 {
-    static HEIGHT: std::sync::OnceLock<i32> = std::sync::OnceLock::new();
-    *HEIGHT.get_or_init(|| crate::config::load().appearance.bar_height.clamp(16, 64) as i32)
+    HEIGHT.with(Cell::get)
+}
+
+fn height() -> i32 {
+    crate::config::load().appearance.bar_height.clamp(16, 64) as i32
 }
 
 /// The bar's window: its mode (i3's bar mode toggle: docked, or hidden and shown over the windows while Super
@@ -50,6 +55,22 @@ impl Host {
         let col = gtk4::Box::new(Orientation::Vertical, 0);
         strip.set_size_request(-1, bar());
         col.append(strip);
+        // a new height in the config the strip's and the windows' strip at once, the popup open hung under it
+        let s = strip.clone().upcast::<gtk4::Widget>();
+        let me: Rc<RefCell<Weak<Host>>> = Rc::default();
+        let m2 = me.clone();
+        crate::style::on_config(move || {
+            let now = height();
+            if HEIGHT.with(|h| h.replace(now)) != now {
+                s.set_size_request(-1, now);
+                if let Some(h) = m2.borrow().upgrade() {
+                    if let Some(p) = h.popup() {
+                        p.reveal.set_margin_top(now);
+                    }
+                    h.apply();
+                }
+            }
+        });
         let layer = gtk4::Overlay::new();
         layer.set_child(Some(&col));
         layer.set_size_request(-1, screen.1);
@@ -65,6 +86,7 @@ impl Host {
             open: RefCell::default(),
             grab: RefCell::default(),
         });
+        *me.borrow_mut() = Rc::downgrade(&host);
 
         // Escape, a click under the bar beside or under the popup: closed
         let keys = gtk4::EventControllerKey::new();
@@ -332,6 +354,7 @@ impl Popup {
     /// edge under the tab's.
     fn place(&self) {
         let Some(host) = self.host.upgrade() else { return };
+        self.reveal.set_margin_top(bar());
         let tab = self.tab.borrow();
         let Some(b) = tab.compute_bounds(&host.win) else { return };
         let inner = if self.side == Side::Center { 2 } else { 1 };

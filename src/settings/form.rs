@@ -229,7 +229,14 @@ fn control(f: &Field, cur: &Value, secret_key: &str, put: Put, err: &gtk4::Label
                 sc.set_value(n);
                 sc.set_draw_value(true);
                 sc.set_value_pos(gtk4::PositionType::Right);
-                sc.set_digits(if step.fract() == 0.0 { 0 } else { 2 });
+                let digits = if step.fract() == 0.0 { 0 } else { 2 };
+                sc.set_digits(digits);
+                // dragged, it moves by its step and shows so: 10, not 9.95
+                sc.set_round_digits(digits);
+                sc.connect_change_value(move |s, _, v| {
+                    s.set_value(((v / step).round() * step).clamp(min, max));
+                    glib::Propagation::Stop
+                });
                 sc.set_hexpand(true);
                 // on the step, without a float's tail (0.85, not 0.8500000000000001)
                 sc.connect_value_changed(move |s| {
