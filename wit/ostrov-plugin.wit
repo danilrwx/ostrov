@@ -35,6 +35,8 @@ interface plugin {
     /// {"type":"run_result","id":N,"ok":"..."} or {...,"err":"..."}.
     run: func(args: list<string>, input: option<string>) -> result<string, string>;
     /// A widget of its manifest drawn: a tree of nodes as JSON (docs/plugins.md), null to keep what is drawn.
+    /// For a widget declaring `badge = true`, also "<widget>#bar": its badge in the bar, a small tree (an image,
+    /// a label, a box of them) with a top-level "active" (bool) for a badge shown only while active.
     render: func(widget: string) -> string;
     /// Something happened to a node with an id: click, toggle (value "true" or "false"), change (a slider's
     /// value, a chip's index, an entry's text).

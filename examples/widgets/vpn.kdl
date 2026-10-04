@@ -1,0 +1,16 @@
+// A VPN as a toggle: its state polled every 5 s from a command printing JSON
+// ({"on": true, "profile": "work", "profiles": ["home", "work"]}), a click flipping it, its menu the profiles, a
+// tick at the one in use. In the bar while it is up. Its id is its own: ostrov's own VLESS widget is "vless".
+widget "vless-cli" name="VLESS (CLI)" icon="network-vpn-symbolic" sizes="4x1 2x1 1x1" {
+    poll "st" every="5s" exec="vless status --json"
+    toggle icon="network-vpn-symbolic" title="VLESS" sub="{st.profile || 'off'}" on="{st.on}" {
+        click exec="vless toggle"
+        menu {
+            for "p" in="{st.profiles}" {
+                // {p} reaches sh quoted, whatever the profile is called
+                row text="{p}" on="{p == st.profile}" { click exec="vless profile {p}" }
+            }
+        }
+    }
+    badge icon="network-vpn-symbolic" text="{st.profile}" show="active" active="{st.on}"
+}

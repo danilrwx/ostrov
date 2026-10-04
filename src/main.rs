@@ -33,6 +33,7 @@ mod style;
 mod switcher;
 mod ui;
 mod wallpaper;
+mod widgets;
 mod wm;
 
 use std::rc::Rc;
