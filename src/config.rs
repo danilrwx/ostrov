@@ -34,6 +34,7 @@
 //!     opacity = 0.75      # the surface's
 //!     radius = 10         # a surface's corners, what is on it 4 less; unset, the theme's or 10
 //!     density = "normal"  # compact, normal, comfortable: the control centre's rows; unset, the theme's
+//!     tab = "auto"        # a hovered block's and a tab's ground: wallpaper, bar; auto, the wallpaper with blur
 //!     blur = true         # Hyprland's blur, its blur_size and blur_passes: set only when given here or by the theme
 //!
 //!     [widget.wallpaper]  # a control centre widget's own, as its schema says (settings/)
@@ -178,6 +179,7 @@ pub struct Appearance {
     pub opacity: f64,
     pub radius: Option<u32>,
     pub density: Option<String>,
+    pub tab: String,
     pub animations: bool,
     pub blur: Option<bool>,
     pub blur_size: Option<u32>,
@@ -206,6 +208,7 @@ impl Default for Appearance {
             opacity: 0.75,
             radius: None,
             density: None,
+            tab: "auto".into(),
             animations: true,
             blur: None,
             blur_size: None,

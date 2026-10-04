@@ -278,7 +278,14 @@ pub fn load() {
             let rules = crate::look::radii(rules, crate::look::radius(&cfg.appearance, &theme));
             let rules = crate::look::sizes(&rules, &cfg.appearance);
             let previews = crate::look::previews(&crate::theme::all());
-            let all = format!("{palette}{look}{rules}{previews}{}", theme.css);
+            // a tab's ground over the wallpaper matches a blurred panel; without blur the bar's is the nearer
+            let a = &cfg.appearance;
+            let unblurred = if a.tab == "bar" || a.tab != "wallpaper" && a.blur.or(theme.blur) == Some(false) {
+                ".slot:hover, .slot.tab { background: @bar; }\n"
+            } else {
+                ""
+            };
+            let all = format!("{palette}{look}{rules}{unblurred}{previews}{}", theme.css);
             css.load_from_string(&all.replace("ALPHA", &alpha.to_string()));
             crate::look::apply(&cfg.appearance, &theme);
             WATCHERS.with(|w| w.borrow().iter().for_each(|f| f()));

@@ -496,6 +496,9 @@ pub fn appearance() -> Vec<Section> {
         Field::new("density", "Density", Kind::Choice { options: opts(&["compact", "normal", "comfortable"]) })
             .default(theme.density.unwrap_or("normal".into()))
             .help("The control centre's rows."),
+        Field::new("tab", "Tab ground", Kind::Choice { options: opts(&["auto", "wallpaper", "bar"]) })
+            .default("auto")
+            .help("Under a hovered block and a panel's tab. Auto: the wallpaper with blur, else the bar."),
         Field::new("animations", "Animations", Kind::Bool).default(true),
         Field::new("blur", "Blur", Kind::Bool)
             .default(live("enabled", 1) != 0)

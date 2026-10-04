@@ -39,6 +39,7 @@ bar_color = ""          # the bar's colour; "" the theme's own
 # bar_opacity = 0.65    # 0 clear to 1 solid; unset: 0.65 over a wallpaper, solid over none
 # radius = 10           # a surface's corners in px, 0 to 20, what is on it 4 less; unset: the theme's, or 10
 # density = "normal"    # compact, normal, comfortable: the control centre's rows; unset: the theme's, or normal
+# tab = "auto"          # under a hovered block and a tab: wallpaper, bar; auto: the wallpaper with blur, else the bar
 animations = true
 # Hyprland's blur behind the bar and what opens: set only when given here or by the theme, Hyprland's own otherwise.
 # blur = true
