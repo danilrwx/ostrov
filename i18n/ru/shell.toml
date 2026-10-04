@@ -55,3 +55,4 @@
 "The app may share it again without asking" = "Приложение сможет показывать его снова, не спрашивая"
 "screen sharing: xdph asks ostrov ({})" = "показ экрана: xdph спрашивает ostrov ({})"
 "screen sharing: xdph's own picker; for ostrov's, in {}: {} (the link: ln -sf ostrov {})" = "показ экрана: свой выбор xdph; для выбора ostrov — в {}: {} (ссылка: ln -sf ostrov {})"
+"Open {} for {}" = "Открыть {}: {}"

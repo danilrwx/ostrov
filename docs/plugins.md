@@ -392,7 +392,8 @@ permissions would be which imports the component is linked with.
 `sdk/python/ostrov_plugin.py`: subclass `Plugin`, override the exports, call `log`, `host_run`, `ask`, `secret`,
 `http_get`, `set_timer`, `kick`, `set_settings_schema` (and `push_render`, `push_state`), run `main()`. See
 `examples/plugins/hello-python/main.py` (with an event, `on_shell_event`, and a key); a launcher mode in
-`examples/plugins/claude/main.py` and `examples/plugins/google/main.py`; a calendar, `calendar_events`, in
+`examples/plugins/claude/main.py` and `examples/plugins/google/main.py` (a URL opened by prefix alone wants no
+plugin: `[launcher] engines` does it); a calendar, `calendar_events`, in
 `examples/plugins/calendar-demo/main.py`.
 
 ## Writing a plugin in Rust

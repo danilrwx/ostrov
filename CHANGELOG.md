@@ -17,7 +17,8 @@ The first release: the whole shell in one binary.
   power profiles, battery, Airplane Mode, wallpaper, Keep Awake, screenshot, lock and power off, the player (MPRIS), the
   clock, the month and upcoming events (CalDAV's and .ics links' by the official plugin caldav), the weather
   (open-meteo), the notifications' history with Do Not Disturb.
-- The launcher in the bar: apps, a calculator, emoji, files (fd), web search (DuckDuckGo, `[launcher] search`),
+- The launcher in the bar: apps, a calculator, emoji, files (fd), web search (DuckDuckGo, `[launcher] search`, and
+  engines of one's own by prefix, `[launcher] engines`),
   the clipboard's history with previews; plugins' modes (`[[launcher]]`: `?question` to Claude and `g words` to
   Google in the examples).
 - Notifications server with toasts and an OSD; the media and Fn keys (`ostrov key NAME`) shown in the OSD;

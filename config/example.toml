@@ -82,6 +82,8 @@ binds = true
 # The launcher's web search, `s words` in it: the engine's URL, {} the words escaped.
 [launcher]
 search = "https://duckduckgo.com/?q={}"
+# more engines by prefix, what follows it in the URL's {}: `g words` to Google, `?question` to Claude
+# engines = { "g " = "https://www.google.com/search?q={}", "?" = "https://claude.ai/new?q={}" }
 
 # When toasts keep back (the history kept; a critical one always shows): a game focused, quiet hours, the apps let
 # through all the same.

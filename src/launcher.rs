@@ -55,8 +55,8 @@ pub struct Launcher {
     prompt: gtk4::Label,
     query: gtk4::Text,
     clip: Cell<bool>,
-    /// the web search's URL, {} the query: the config's, read as it opens
-    search: RefCell<String>,
+    /// the web search's URL and the engines by prefix, {} the query: the config's, read as it opens
+    search: RefCell<crate::config::Launcher>,
     all: RefCell<Vec<Hit>>,
     hits: RefCell<Vec<Hit>>,
     /// bumped by every key typed: a file search's late answer to an older query is dropped
@@ -170,7 +170,7 @@ impl Launcher {
             return self.close();
         }
         self.clip.set(clip);
-        *self.search.borrow_mut() = crate::config::load().launcher.search;
+        *self.search.borrow_mut() = crate::config::load().launcher;
         *self.all.borrow_mut() = if clip {
             crate::clip::list().into_iter().map(|(id, picture, shown)| Hit::Clip(id, picture, shown)).collect()
         } else {
@@ -199,8 +199,11 @@ impl Launcher {
             (t("clip"), self.matching(&q))
         } else if let Some(name) = q.strip_prefix(':') {
             (t("emoji"), emoji(name))
+        } else if let Some((url, words)) = engine(&self.search.borrow().engines, &q) {
+            let hit = Hit::Open(fill(t("Open {} for {}"), &[&host(&url), &words]), web(&url, words));
+            (t("web"), if words.is_empty() { vec![] } else { vec![hit] })
         } else if let Some(words) = q.strip_prefix("s ").map(str::trim) {
-            let hit = Hit::Open(fill(t("Search the web for {}"), &[&words]), web(&self.search.borrow(), words));
+            let hit = Hit::Open(fill(t("Search the web for {}"), &[&words]), web(&self.search.borrow().search, words));
             (t("web"), if words.is_empty() { vec![] } else { vec![hit] })
         } else if let Some(name) = q.strip_prefix('/') {
             self.files(name.trim());
@@ -414,6 +417,17 @@ impl Launcher {
     }
 }
 
+/// The engine whose prefix starts what is typed (the longest one), and the words after it.
+fn engine<'a>(engines: &std::collections::BTreeMap<String, String>, q: &'a str) -> Option<(String, &'a str)> {
+    let (prefix, url) = engines.iter().filter(|(p, _)| !p.is_empty() && q.starts_with(p.as_str())).max_by_key(|(p, _)| p.len())?;
+    Some((url.clone(), q[prefix.len()..].trim()))
+}
+
+/// An engine's URL's host, what its hit is named by ("claude.ai").
+fn host(url: &str) -> String {
+    glib::Uri::parse(url, glib::UriFlags::NONE).ok().and_then(|u| u.host()).map_or(url.to_string(), |h| h.to_string())
+}
+
 /// The search's URL for words: {} in the engine's URL their escaped text.
 fn web(engine: &str, words: &str) -> String {
     engine.replace("{}", &glib::Uri::escape_string(words, None, false))
@@ -469,5 +483,16 @@ mod tests {
     fn web() {
         let engine = crate::config::Launcher::default().search;
         assert_eq!(super::web(&engine, "rust & gtk"), "https://duckduckgo.com/?q=rust%20%26%20gtk");
+    }
+
+    #[test]
+    fn an_engine_by_its_longest_prefix() {
+        let engines = [("g ", "https://g.example/?q={}"), ("gh ", "https://gh.example/?q={}"), ("?", "https://c.example/new?q={}")]
+            .map(|(p, u)| (p.to_string(), u.to_string()))
+            .into();
+        assert_eq!(super::engine(&engines, "gh ostrov"), Some(("https://gh.example/?q={}".into(), "ostrov")));
+        assert_eq!(super::engine(&engines, "?why "), Some(("https://c.example/new?q={}".into(), "why")));
+        assert_eq!(super::engine(&engines, "firefox"), None);
+        assert_eq!(super::host("https://claude.ai/new?q={}"), "claude.ai");
     }
 }

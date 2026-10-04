@@ -257,8 +257,9 @@ impl Backend for Process {
             let mut wait = Duration::from_secs(1);
             loop {
                 let started = Instant::now();
+                // exec: the shell gives its place to the plugin, not one more process waiting on it
                 let child = tokio::process::Command::new("sh")
-                    .args(["-c", &me.exec])
+                    .args(["-c", &format!("exec {}", me.exec)])
                     .current_dir(&me.dir)
                     .env("PATH", path())
                     .stdin(Stdio::piped())

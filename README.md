@@ -14,7 +14,7 @@ Hyprland desktop is usually pieced together from, made to look and work as one t
   month and its events, notifications with Do Not Disturb). Edit them in place, add from a gallery, make your
   own panels.
 - **A launcher in the bar**, dmenu-style: apps, a calculator, emoji (`:name`), files (`/name`), web search
-  (`s words`), the clipboard's history, and plugins' modes.
+  (`s words`, and engines of your own by prefix: `g words`, `?question`), the clipboard's history, and plugins' modes.
 - **Notifications** (it is the notification server), with toasts and an OSD for volume and brightness.
 - **The lock screen and idle**: ext-session-lock with PAM, locked and screens off after a while and before
   sleep, inhibitors honoured.

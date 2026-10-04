@@ -123,11 +123,14 @@ impl Default for Notifications {
 #[serde(default)]
 pub struct Launcher {
     pub search: String,
+    /// more engines by their prefixes: "g " = "https://www.google.com/search?q={}", "?" = Claude's; what follows
+    /// the prefix put in the URL's {} and opened, as s words is for the search above
+    pub engines: BTreeMap<String, String>,
 }
 
 impl Default for Launcher {
     fn default() -> Launcher {
-        Launcher { search: "https://duckduckgo.com/?q={}".into() }
+        Launcher { search: "https://duckduckgo.com/?q={}".into(), engines: BTreeMap::new() }
     }
 }
 
