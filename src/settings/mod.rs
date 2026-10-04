@@ -485,7 +485,7 @@ pub fn appearance() -> Vec<Section> {
         Field::new("surface", "Surface colour", Kind::Color)
             .default("")
             .help("Under everything that opens; empty: the theme's."),
-        Field::new("opacity", "Surface opacity", slider(0.05, 1.0, 0.05)).default(0.75),
+        Field::new("opacity", "Surface opacity", slider(0.3, 1.0, 0.05)).default(0.75),
         Field::new("bar_color", "Bar colour", Kind::Color).default("").help("Empty: the theme's."),
         Field::new("bar_opacity", "Bar opacity", slider(0.0, 1.0, 0.05))
             .default(crate::modules::wallpaper::service::bar_alpha())
