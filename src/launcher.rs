@@ -5,9 +5,9 @@
 //! ($mod+Shift+v).
 //!
 //! What is typed picks the run's mode, named by the prompt: arithmetic is calculated (calc.rs), its result copied;
-//! :name finds emoji, copied; ?question asks Claude, claude.ai opened in the browser with it; g words searches
-//! Google in the browser; /name finds files under
-//! the home with fd, opened in their default app.
+//! :name finds emoji, copied; s words searches the web in the browser ([launcher] search, DuckDuckGo's by
+//! default); /name finds files under the home with fd, opened in their default app; a plugin's prefix (plugins/,
+//! [[launcher]]) has the plugin answer what is typed.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -31,7 +31,12 @@ enum Hit {
     Copy(String, String),
     /// a search or a file: what is shown, the URI opened in its default app
     Open(String, String),
+    /// a plugin's mode's: the mode, the hit, what was typed after its prefix
+    Plugin(Rc<crate::plugins::Mode>, crate::plugins::ModeHit, String),
 }
+
+/// The built-in modes' prefixes, which a plugin's may not overlap.
+pub const PREFIXES: &[&str] = &[":", "s ", "/"];
 
 impl Hit {
     fn name(&self) -> String {
@@ -39,6 +44,7 @@ impl Hit {
             Hit::App(a) => a.name().to_string(),
             Hit::Clip(_, _, shown) => shown.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(60).collect(),
             Hit::Copy(shown, _) | Hit::Open(shown, _) => shown.clone(),
+            Hit::Plugin(_, h, _) => h.text.clone(),
         }
     }
 }
@@ -48,6 +54,8 @@ pub struct Launcher {
     prompt: gtk4::Label,
     query: gtk4::Text,
     clip: Cell<bool>,
+    /// the web search's URL, {} the query: the config's, read as it opens
+    search: RefCell<String>,
     all: RefCell<Vec<Hit>>,
     hits: RefCell<Vec<Hit>>,
     /// bumped by every key typed: a file search's late answer to an older query is dropped
@@ -112,6 +120,7 @@ impl Launcher {
             prompt,
             query,
             clip: Cell::new(false),
+            search: RefCell::default(),
             all: RefCell::default(),
             hits: RefCell::default(),
             typed: Cell::new(0),
@@ -160,6 +169,7 @@ impl Launcher {
             return self.close();
         }
         self.clip.set(clip);
+        *self.search.borrow_mut() = crate::config::load().launcher.search;
         *self.all.borrow_mut() = if clip {
             crate::clip::list().into_iter().map(|(id, picture, shown)| Hit::Clip(id, picture, shown)).collect()
         } else {
@@ -183,21 +193,20 @@ impl Launcher {
     fn filter(self: &Rc<Self>) {
         let q = self.query.text().to_string();
         self.typed.set(self.typed.get() + 1);
+        let plugin = crate::plugins::mode(&q);
         let (mode, hits) = if self.clip.get() {
             ("clip", self.matching(&q))
         } else if let Some(name) = q.strip_prefix(':') {
             ("emoji", emoji(name))
-        } else if let Some((engine, url)) = web(&q) {
-            let words = q[2..].trim();
-            let uri = format!("{url}{}", glib::Uri::escape_string(words, None, false));
-            let hit = Hit::Open(format!("Search {engine} for {words}"), uri);
+        } else if let Some(words) = q.strip_prefix("s ").map(str::trim) {
+            let hit = Hit::Open(format!("Search the web for {words}"), web(&self.search.borrow(), words));
             ("web", if words.is_empty() { vec![] } else { vec![hit] })
-        } else if let Some(question) = q.strip_prefix('?') {
-            let question = question.trim();
-            ("claude", if question.is_empty() { vec![] } else { vec![Hit::Open(format!("Ask Claude: {question}"), claude(question))] })
         } else if let Some(name) = q.strip_prefix('/') {
             self.files(name.trim());
             ("files", vec![])
+        } else if let Some((m, text)) = &plugin {
+            self.ask(m, text);
+            (m.decl.name.as_str(), vec![])
         } else if let Some(r) = crate::calc::eval(&q) {
             ("calc", [vec![Hit::Copy(format!("= {r}"), r)], self.matching(&q)].concat())
         } else {
@@ -253,6 +262,27 @@ impl Launcher {
         });
     }
 
+    /// A plugin's mode's hits for what is typed after its prefix, asked once typing pauses; they arrive as the hits
+    /// unless something else has been typed by then.
+    fn ask(self: &Rc<Self>, m: &Rc<crate::plugins::Mode>, text: &str) {
+        let (me, m, text, typed) = (Rc::downgrade(self), m.clone(), text.to_string(), self.typed.get());
+        glib::spawn_future_local(async move {
+            glib::timeout_future(Duration::from_millis(150)).await;
+            if me.upgrade().is_none_or(|me| me.typed.get() != typed) {
+                return;
+            }
+            let hits = m.query(&text).await;
+            let Some(me) = me.upgrade().filter(|me| me.typed.get() == typed && me.is_open()) else { return };
+            let hits = match hits {
+                Ok(hits) => hits.into_iter().map(|h| Hit::Plugin(m.clone(), h, text.clone())).collect(),
+                Err(e) => return eprintln!("ostrov: launcher {}: {e}", m.decl.name),
+            };
+            *me.hits.borrow_mut() = hits;
+            me.picked.set(0);
+            me.draw();
+        });
+    }
+
     fn draw(self: &Rc<Self>) {
         crate::style::clear(&self.row);
         // the first hundred: past that no one tabs
@@ -261,7 +291,17 @@ impl Launcher {
             if let Hit::Clip(_, true, _) = hit {
                 l.append(&gtk4::Image::from_icon_name("image-x-generic-symbolic"));
             }
+            if let Hit::Plugin(_, h, _) = hit
+                && !h.icon.is_empty()
+            {
+                l.append(&gtk4::Image::from_icon_name(&h.icon));
+            }
             l.append(&gtk4::Label::new(Some(&hit.name())));
+            if let Hit::Plugin(_, h, _) = hit
+                && !h.note.is_empty()
+            {
+                l.append(&crate::style::label(&h.note, "dim"));
+            }
             l.add_css_class("hit");
             if n == self.picked.get() {
                 l.add_css_class("picked");
@@ -348,11 +388,15 @@ impl Launcher {
             }
             Some(Hit::Clip(id, ..)) => crate::clip::copy(*id),
             Some(Hit::Copy(_, text)) => crate::clip::put(text.clone().into_bytes(), "text"),
-            Some(Hit::Open(_, uri)) => {
+            Some(Hit::Open(_, uri)) | Some(Hit::Plugin(_, crate::plugins::ModeHit { open: Some(uri), .. }, _)) => {
                 if let Err(e) = gio::AppInfo::launch_default_for_uri(uri, ctx.as_ref()) {
                     eprintln!("ostrov: open {uri}: {e}");
                 }
             }
+            Some(Hit::Plugin(_, crate::plugins::ModeHit { copy: Some(text), .. }, _)) => {
+                crate::clip::put(text.clone().into_bytes(), "text")
+            }
+            Some(Hit::Plugin(m, h, text)) => m.pick(&h.id, text),
             None if run_mode && !typed.trim().is_empty() => run(&["sh", "-c", &typed]),
             None => {}
         }
@@ -369,17 +413,9 @@ impl Launcher {
     }
 }
 
-/// Claude's page with the question asked (claude.ai/new?q=, the question typed in and sent).
-pub fn claude(question: &str) -> String {
-    format!("https://claude.ai/new?q={}", glib::Uri::escape_string(question, None, false))
-}
-
-/// "g words" searches Google: the engine's name and its query's URL.
-fn web(q: &str) -> Option<(&'static str, &'static str)> {
-    match q.get(..2)? {
-        "g " => Some(("Google", "https://www.google.com/search?q=")),
-        _ => None,
-    }
+/// The search's URL for words: {} in the engine's URL their escaped text.
+fn web(engine: &str, words: &str) -> String {
+    engine.replace("{}", &glib::Uri::escape_string(words, None, false))
 }
 
 /// Emoji whose name has what is typed, a name starting with it first.
@@ -430,7 +466,7 @@ mod tests {
 
     #[test]
     fn web() {
-        assert_eq!(super::web("g rust gtk").map(|w| w.0), Some("Google"));
-        assert_eq!(super::web("gimp"), None);
+        let engine = crate::config::Launcher::default().search;
+        assert_eq!(super::web(&engine, "rust & gtk"), "https://duckduckgo.com/?q=rust%20%26%20gtk");
     }
 }

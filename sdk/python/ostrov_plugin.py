@@ -53,6 +53,14 @@ class Plugin:
     def on_state(self, state):
         pass
 
+    def query(self, mode, text):
+        """A launcher mode's hits ([[launcher]], mode its prefix) for what is typed after the prefix: a list of
+        {"id", "text", "note", "icon"}, and "open": URI or "copy": TEXT for ostrov to do when it is picked."""
+        return []
+
+    def pick(self, mode, id, text):
+        """A hit without "open" or "copy" picked, text what was typed after the prefix."""
+
     # the imports, called on ostrov
     def log(self, msg):
         self._send({"type": "log", "msg": str(msg)})
@@ -139,10 +147,14 @@ class Plugin:
                 return self.on_event(m["widget"], m["node"], m["event"], m["value"])
             if t == "on_timer":
                 return self.on_timer(m["id"])
+            if t == "pick":
+                return self.pick(m["mode"], m["id"], m["text"])
             if t == "state":
                 value = self.state()
             elif t == "render":
                 value = self.render(m["widget"])
+            elif t == "query":
+                value = self.query(m["mode"], m["text"])
             elif t == "run_request":
                 try:
                     r = {"ok": str(self.run(m["args"], m.get("input")) or "")}
@@ -154,7 +166,7 @@ class Plugin:
             self._send({"type": "return", "call": call, "value": value})
         except Exception as e:  # a broken handler answers, and the plugin goes on
             print(f"{t}: {e!r}", file=sys.stderr)
-            if call is not None and t in ("state", "render"):
+            if call is not None and t in ("state", "render", "query"):
                 self._send({"type": "return", "call": call, "error": repr(e)})
 
     def main(self):

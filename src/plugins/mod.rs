@@ -2,7 +2,7 @@
 //! lives in ~/.local/share/ostrov/plugins/<id>/ by its manifest.toml, and speaks wit/ostrov-plugin.wit: its
 //! exports called by ostrov (state, run, render, on-event, on-timer, on-config, on-state), ostrov's imports
 //! called by it (log, run, ask, secret, http-get, set-timer, kick, set-settings-schema), whatever carries the
-//! calls.
+//! calls. Its launcher modes ([[launcher]], a prefix typed) are answered by its query and pick.
 //! Its transport is a Backend (backend.rs) that Draws besides: a process talking JSON lines now (process.rs), a
 //! WebAssembly component the same way another time. Its widgets are trees of ui.rs's kit (node.rs), pulled with
 //! render once it kicks, or pushed; they join the control centre's registry as plugin.<id>.<widget>. Its
@@ -48,6 +48,42 @@ pub struct Manifest {
     pub widgets: Vec<WidgetDecl>,
     #[serde(default)]
     pub commands: Vec<CommandDecl>,
+    #[serde(default)]
+    pub launcher: Vec<ModeDecl>,
+}
+
+/// One of its launcher modes: what is typed starting with prefix is the plugin's to answer, its name the
+/// launcher's prompt.
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub struct ModeDecl {
+    pub prefix: String,
+    pub name: String,
+    #[serde(default)]
+    pub icon: String,
+}
+
+/// A hit a launcher mode answers with: a row of the launcher's. Picking it opens open, else copies copy, else
+/// calls the plugin's pick with its id.
+#[derive(Deserialize, Debug, PartialEq, Clone, Default)]
+pub struct ModeHit {
+    #[serde(default)]
+    pub id: String,
+    pub text: String,
+    #[serde(default)]
+    pub note: String,
+    #[serde(default)]
+    pub icon: String,
+    pub open: Option<String>,
+    pub copy: Option<String>,
+}
+
+/// What query answered, as hits: null for none, a hit that does not read passed over.
+fn parse_hits(v: Value) -> Result<Vec<ModeHit>, String> {
+    match v {
+        Value::Null => Ok(vec![]),
+        Value::Array(all) => Ok(all.into_iter().filter_map(|h| ModeHit::deserialize(h).ok()).collect()),
+        v => Err(format!("not a list of hits: {v}")),
+    }
 }
 
 /// One of its commands, `ostrov plugin <id> <usage>`, for help: the words are the plugin's to read.
@@ -97,6 +133,9 @@ fn parse_manifest(text: &str, dir: &str) -> Result<Manifest, String> {
     if m.exec.trim().is_empty() {
         return Err("no exec".into());
     }
+    if let Some(l) = m.launcher.iter().find(|l| l.prefix.trim_start() != l.prefix || l.prefix.is_empty()) {
+        return Err(format!("launcher prefix {:?}: empty, or starting with a space", l.prefix));
+    }
     for w in &mut m.widgets {
         if !word(&w.id) {
             return Err(format!("widget id {:?}: not of [a-z0-9-]", w.id));
@@ -137,6 +176,10 @@ pub trait Draws: Backend {
     fn on_config(&self, config: Value);
     /// The desktop's state, to a plugin that may have it.
     fn on_state(&self, state: &Value);
+    /// A launcher mode's hits for what is typed after its prefix, as JSON.
+    fn query(&self, mode: &str, text: &str) -> BoxFut<Result<Value, String>>;
+    /// One of its hits picked, what was typed beside it.
+    fn pick(&self, mode: &str, id: &str, text: &str);
 }
 
 /// What a plugin's transport hands GTK's thread: ostrov's commands it runs (their outcome back through the
@@ -251,6 +294,42 @@ impl View {
 
 thread_local! {
     static PLUGINS: RefCell<Vec<Rc<Plugin>>> = const { RefCell::new(Vec::new()) };
+    static MODES: RefCell<Vec<Rc<Mode>>> = const { RefCell::new(Vec::new()) };
+}
+
+/// A plugin's launcher mode, its prefix claimed.
+pub struct Mode {
+    pub decl: ModeDecl,
+    backend: Arc<dyn Draws>,
+}
+
+impl Mode {
+    /// Its hits for text, what is typed after the prefix; an error after 2 s, the launcher being typed into.
+    pub async fn query(&self, text: &str) -> Result<Vec<ModeHit>, String> {
+        let call = self.backend.query(&self.decl.prefix, text);
+        let late = glib::timeout_future(std::time::Duration::from_secs(2));
+        match futures_util::future::select(call, std::pin::pin!(late)).await {
+            futures_util::future::Either::Left((r, _)) => parse_hits(r?),
+            futures_util::future::Either::Right(_) => Err("no hits in 2 s".into()),
+        }
+    }
+
+    pub fn pick(&self, id: &str, text: &str) {
+        self.backend.pick(&self.decl.prefix, id, text);
+    }
+}
+
+/// The plugin's mode whose prefix what is typed starts with, and what is typed after it.
+pub fn mode(typed: &str) -> Option<(Rc<Mode>, &str)> {
+    let m = MODES.with(|ms| ms.borrow().iter().find(|m| typed.starts_with(&m.decl.prefix)).cloned())?;
+    let rest = &typed[m.decl.prefix.len()..];
+    Some((m, rest))
+}
+
+/// Whether a prefix may be claimed besides those taken (the launcher's own first): not when either starts with
+/// the other, as what is typed would go to one of them alone.
+fn free(prefix: &str, taken: &[String]) -> bool {
+    taken.iter().all(|t| !t.starts_with(prefix) && !prefix.starts_with(t.as_str()))
 }
 
 fn dir() -> PathBuf {
@@ -439,6 +518,19 @@ pub fn start(hub: &Rc<Hub>) {
             };
         });
     }
+    let mut taken: Vec<String> = crate::launcher::PREFIXES.iter().map(|p| p.to_string()).collect();
+    let mut modes = Vec::new();
+    for p in &plugins {
+        for decl in &p.m.launcher {
+            if !free(&decl.prefix, &taken) {
+                p.log(&format!("launcher prefix {:?}: taken", decl.prefix));
+                continue;
+            }
+            taken.push(decl.prefix.clone());
+            modes.push(Rc::new(Mode { decl: decl.clone(), backend: p.backend.clone() }));
+        }
+    }
+    MODES.with(|ms| *ms.borrow_mut() = modes);
     PLUGINS.with(|ps| *ps.borrow_mut() = plugins);
     hub.on(|st| {
         if !st.is_null() {
@@ -501,6 +593,7 @@ pub fn list() -> String {
                     "dir": p.dir, "permissions": m.permissions, "state": *p.state.borrow(),
                     "widgets": m.widgets.iter().map(|w| format!("plugin.{}.{}", m.id, w.id)).collect::<Vec<_>>(),
                     "settings": *p.settings.borrow(),
+                    "launcher": m.launcher.iter().map(|l| &l.prefix).collect::<Vec<_>>(),
                 })
             })
             .collect()
@@ -604,6 +697,12 @@ mod tests {
 
         [[commands]]
         name = "count"
+
+        [[launcher]]
+        prefix = "?"
+        name = "Ask"
+        icon = "help-symbolic"
+        later = true                       # unknown: ignored
     "#;
 
     #[test]
@@ -619,6 +718,41 @@ mod tests {
         let u = usage(&m);
         assert!(u.contains("ostrov plugin hello set N") && u.contains("the count set"), "{u}");
         assert!(u.contains("ostrov plugin hello count"), "{u}");
+        assert_eq!(m.launcher, [ModeDecl { prefix: "?".into(), name: "Ask".into(), icon: "help-symbolic".into() }]);
+        assert!(parse_manifest(&HELLO.replace("prefix = \"?\"", "prefix = \"\""), "hello").is_err());
+        assert!(parse_manifest(&HELLO.replace("prefix = \"?\"", "prefix = \" a\""), "hello").is_err());
+        let bare = parse_manifest("id = \"x\"\nname = \"X\"\napi = 1\nexec = \"x\"", "x").unwrap();
+        assert!(bare.launcher.is_empty());
+    }
+
+    #[test]
+    fn hits_read() {
+        let v = serde_json::json!([
+            {"id": "1", "text": "Ask", "note": "web", "icon": "i", "open": "https://x", "extra": 1},
+            {"text": "Copied", "copy": "c"},
+            {"id": "no text"},
+        ]);
+        let hits = parse_hits(v).unwrap();
+        assert_eq!(hits.len(), 2);
+        assert_eq!((hits[0].id.as_str(), hits[0].open.as_deref()), ("1", Some("https://x")));
+        assert_eq!(hits[0].copy, None);
+        assert_eq!((hits[1].text.as_str(), hits[1].copy.as_deref(), hits[1].note.as_str()), ("Copied", Some("c"), ""));
+        assert_eq!(parse_hits(Value::Null).unwrap(), []);
+        assert!(parse_hits(serde_json::json!({"text": "x"})).is_err());
+    }
+
+    #[test]
+    fn prefixes_conflict() {
+        let taken: Vec<String> = crate::launcher::PREFIXES.iter().map(|p| p.to_string()).collect();
+        assert!(free("?", &taken));
+        assert!(free("g", &taken));
+        assert!(free("sh", &taken));
+        assert!(!free(":", &taken));
+        assert!(!free("s", &taken));
+        assert!(!free(":x", &taken));
+        assert!(!free("/", &taken));
+        let taken = [taken, vec!["?".into()]].concat();
+        assert!(!free("??", &taken));
     }
 
     #[test]

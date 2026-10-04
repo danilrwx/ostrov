@@ -1,0 +1,13 @@
+# A launcher mode: g words searches Google in the browser
+id = "google"
+name = "Google"
+version = "0.1.0"
+api = 1
+exec = "python3 main.py"
+icon = "system-search-symbolic"
+description = "Google search: g words in the launcher."
+
+[[launcher]]
+prefix = "g "                  # its space: gimp still runs as an app
+name = "Google"
+icon = "system-search-symbolic"

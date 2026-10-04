@@ -12,7 +12,8 @@ locker, idle daemon, polkit agent, clipboard manager, screenshot tools and wallp
   notifications' history with Do Not Disturb). Each panel is edited in place: drag, resize, remove, add from the
   gallery, choose which widgets show a badge in the bar. Make panels of your own.
 - **A launcher** in the bar, dmenu-style: apps, a calculator, emoji (`:name`), files (`/name`), web search
-  (`g words`), questions to Claude in the browser (`?question`), and the clipboard's history.
+  (`s words`, DuckDuckGo or the engine in `[launcher] search`), the clipboard's history, and plugins' modes
+  (`?question` to Claude, `g words` to Google: examples/plugins).
 - **Notifications** (the org.freedesktop.Notifications server) with toasts and an **OSD** for volume and
   brightness.
 - **The lock screen** (ext-session-lock, PAM) and **idle** handling: lock and screens off after a while, lock before
@@ -153,6 +154,7 @@ Everything lives under `~/.config/ostrov/`; every key has a default, so no file 
 - `[hyprland]`, `[hyprland.keys]`: what ostrov puts into Hyprland, and keys moved.
 - `[calendar]`: a CalDAV account and .ics links.
 - `[games]`: window classes played in the performance power profile.
+- `[launcher]`: the web search's engine (`search`, {} the query; DuckDuckGo's by default).
 - `[panels.ID]`: panels of your own.
 - `[widget.ID]`, `[plugin.ID]`: a widget's or a plugin's own settings.
 
@@ -168,10 +170,11 @@ comments and order kept; secrets go to the Secret Service, never to the file.
 listened to, expressions, toggles, sliders, menus, badges. See [docs/widgets.md](docs/widgets.md) and
 `examples/widgets/`.
 
-**Plugins.** A program in any language, in `~/.local/share/ostrov/plugins/<id>/`, puts widgets and commands into
-ostrov over JSON lines (the protocol is `wit/ostrov-plugin.wit`; a Python SDK is in `sdk/python`). See
-[docs/plugins.md](docs/plugins.md) and `examples/plugins/hello-python`. The same document describes ostrov's D-Bus
-interface, `dev.ostrov.Shell`.
+**Plugins.** A program in any language, in `~/.local/share/ostrov/plugins/<id>/`, puts widgets, commands and
+launcher modes into ostrov over JSON lines (the protocol is `wit/ostrov-plugin.wit`; a Python SDK is in
+`sdk/python`). See [docs/plugins.md](docs/plugins.md), `examples/plugins/hello-python`, and the launcher modes
+`examples/plugins/claude` (`?question`) and `examples/plugins/google` (`g words`). The same document describes
+ostrov's D-Bus interface, `dev.ostrov.Shell`.
 
 ## Commands
 
@@ -188,7 +191,6 @@ ostrov's own:
     ostrov appearance                  the Appearance page
     ostrov run                         the launcher
     ostrov clip                        the clipboard's history
-    ostrov ask QUESTION...             Claude in the browser, the question asked
     ostrov windows [app]               the window switcher (app: the focused app's windows)
     ostrov overview [close]            the overview
     ostrov lock                        the lock screen

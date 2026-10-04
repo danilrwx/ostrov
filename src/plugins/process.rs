@@ -319,4 +319,12 @@ impl Draws for Process {
             self.0.send(json!({"type": "on_state", "json": state}));
         }
     }
+
+    fn query(&self, mode: &str, text: &str) -> BoxFut<Result<Value, String>> {
+        self.0.call(json!({"type": "query", "mode": mode, "text": text}), "call")
+    }
+
+    fn pick(&self, mode: &str, id: &str, text: &str) {
+        self.0.send(json!({"type": "pick", "mode": mode, "id": id, "text": text}));
+    }
 }
