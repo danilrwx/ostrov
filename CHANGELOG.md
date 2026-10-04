@@ -34,6 +34,9 @@ The first release: the whole shell in one binary.
 - The login screen: `ostrov greet`, a greeter for greetd.
 - Settings and Appearance pages in the control centre, editing `config.toml` in place; themes (dark, light,
   graphite, nord, solarized), accent, opacity, corners, density, Hyprland's blur.
+- Themes as packages: `theme.toml` (the palette's colours, suggested corners, density, blur) and an optional
+  `theme.css`, installed from a path or a git URL (`ostrov theme list|set|install|remove`), on the Appearance page
+  beside the built-in five, which are the same format (docs/themes.md).
 - At home in a bare Hyprland: its layer rules, the lock's takeover and its keys put in over IPC where free
   (`[hyprland]`, `ostrov hyprland`); `ostrov doctor` checks the system.
 - Extensibility: widgets in KDL (`~/.config/ostrov/widgets/*.kdl`), plugins in any language over JSON lines

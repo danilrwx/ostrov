@@ -28,14 +28,14 @@ screens_off = 900
 
 # The look. Applied as the file is saved; the Appearance page (the palette beside Edit) edits it.
 [appearance]
-theme = "dark"          # dark, light, graphite, nord, solarized
+theme = "dark"          # dark, light, graphite, nord, solarized, or an installed one (`ostrov theme list`)
 accent = ""             # a colour (#5e81ac, rgb(94, 129, 172), a name); "" the theme's own
 surface = ""            # the colour under everything that opens; "" the theme's own
 opacity = 0.75          # the surface's, 0.3 to 1
-radius = 10             # a surface's corners in px, 0 to 20; what is on it 4 less
-density = "normal"      # compact, normal, comfortable: the control centre's rows
+# radius = 10           # a surface's corners in px, 0 to 20, what is on it 4 less; unset: the theme's, or 10
+# density = "normal"    # compact, normal, comfortable: the control centre's rows; unset: the theme's, or normal
 animations = true
-# Hyprland's blur behind the bar and what opens: set only when given here, Hyprland's own otherwise.
+# Hyprland's blur behind the bar and what opens: set only when given here or by the theme, Hyprland's own otherwise.
 # blur = true
 # blur_size = 8         # 1 to 20
 # blur_passes = 1       # 1 to 4

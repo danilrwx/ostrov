@@ -1,0 +1,17 @@
+name = "Graphite"
+author = "ostrov"
+version = "1"
+dark = true
+
+[colors]
+surface = "#242428"
+bar = "rgba(28, 28, 30, ALPHA)"
+fg = "#e8e8ea"
+dim = "#8e8e93"
+ink = "#1c1c1e"
+accent = "#c8c8cc"
+accent-rule = "#8e8e93"
+accent-pressed = "#a8a8ac"
+hover = "rgba(255, 255, 255, 0.12)"
+rule = "#48484a"
+idle = "#636366"

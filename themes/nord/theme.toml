@@ -1,0 +1,17 @@
+name = "Nord"
+author = "ostrov"
+version = "1"
+dark = true
+
+[colors]
+surface = "#2e3440"
+bar = "rgba(46, 52, 64, ALPHA)"
+fg = "#eceff4"
+dim = "#9aa5b8"
+ink = "#2e3440"
+accent = "#88c0d0"
+accent-rule = "#5e81ac"
+accent-pressed = "#81a1c1"
+rule = "#4c566a"
+idle = "#4c566a"
+urgent = "#bf616a"

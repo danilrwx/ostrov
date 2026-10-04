@@ -1,0 +1,17 @@
+name = "Solarized"
+author = "ostrov"
+version = "1"
+dark = true
+
+[colors]
+surface = "#002b36"
+bar = "rgba(0, 43, 54, ALPHA)"
+fg = "#eee8d5"
+dim = "#839496"
+ink = "#002b36"
+accent = "#b58900"
+accent-rule = "#8a6a00"
+accent-pressed = "#9c7600"
+rule = "#2a4f5a"
+idle = "#586e75"
+urgent = "#dc322f"

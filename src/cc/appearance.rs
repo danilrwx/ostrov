@@ -1,13 +1,13 @@
-//! The control centre's Appearance page: the themes as cards in their own colours, the accent as swatches (or
-//! any colour through GTK's colour dialog), then the rest of [appearance] as its form (settings/). Each pick is
-//! written to config.toml at once and taken live: style.rs follows the file.
+//! The control centre's Appearance page: the themes, built in and installed (theme.rs), as cards in their own
+//! colours, the accent as swatches (or any colour through GTK's colour dialog), then the rest of [appearance] as its
+//! form (settings/). Each pick is written to config.toml at once and taken live: style.rs follows the file.
 
 
 use gtk4::prelude::*;
 use gtk4::{glib, Orientation};
 use serde_json::Value;
 
-use crate::look::{ACCENTS, THEMES};
+use crate::look::ACCENTS;
 use crate::style::{clear, label};
 use crate::ui::{header, setting};
 
@@ -26,6 +26,14 @@ pub fn page(back: impl Fn() + 'static) -> gtk4::Box {
     fill(&body);
     let b = body.clone();
     crate::settings::on_outside(move || fill(&b));
+    // a theme installed or removed (its card in or out), or picked by `ostrov theme set`
+    let seen = std::cell::RefCell::new(themes());
+    let b = body.clone();
+    crate::style::on_config(move || {
+        if seen.replace(themes()) != *seen.borrow() {
+            fill(&b);
+        }
+    });
     root
 }
 
@@ -38,17 +46,29 @@ fn set(body: &gtk4::Box, key: &'static str, v: Option<Value>) {
     glib::idle_add_local_once(move || fill(&body));
 }
 
+/// The themes' ids in the page's order, and the one picked.
+fn themes() -> (Vec<String>, String) {
+    (crate::theme::all().into_iter().map(|t| t.id).collect(), crate::config::load().appearance.theme)
+}
+
 fn fill(body: &gtk4::Box) {
     clear(body);
     let a = crate::config::load().appearance;
 
-    let themes = gtk4::Box::new(Orientation::Horizontal, 6);
+    // five to a row, as many rows as there are themes
+    let themes = gtk4::FlowBox::new();
+    themes.set_selection_mode(gtk4::SelectionMode::None);
     themes.set_homogeneous(true);
-    for t in THEMES {
+    themes.set_column_spacing(6);
+    themes.set_row_spacing(6);
+    themes.set_min_children_per_line(5);
+    themes.set_max_children_per_line(5);
+    for t in crate::theme::all() {
         let b = gtk4::Button::new();
         b.add_css_class("theme");
-        b.add_css_class(&format!("theme-{t}"));
-        if a.theme == *t {
+        b.add_css_class(&format!("theme-{}", t.id));
+        b.set_tooltip_text(Some(format!("{}  {} {}", t.name, t.author, t.version).trim()));
+        if a.theme == t.id {
             b.add_css_class("picked");
         }
         let card = gtk4::Box::new(Orientation::Vertical, 4);
@@ -56,15 +76,13 @@ fn fill(body: &gtk4::Box) {
         dot.add_css_class("theme-dot");
         dot.set_halign(gtk4::Align::Start);
         card.append(&dot);
-        let mut name = t.to_string();
-        name[..1].make_ascii_uppercase();
-        let l = label(&name, "");
+        let l = label(&t.name, "");
         l.set_ellipsize(gtk4::pango::EllipsizeMode::End);
         card.append(&l);
         b.set_child(Some(&card));
         let body = body.clone();
-        b.connect_clicked(move |_| set(&body, "theme", Some((*t).into())));
-        themes.append(&b);
+        b.connect_clicked(move |_| set(&body, "theme", Some(t.id.clone().into())));
+        themes.insert(&b, -1);
     }
     body.append(&setting("Theme", "", &themes, true));
 

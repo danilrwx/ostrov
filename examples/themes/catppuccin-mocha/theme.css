@@ -1,0 +1,10 @@
+/* Laid after ostrov's CSS, so these rules win. Only the stable classes (docs/themes.md) are used. */
+
+/* the focused workspace a pill rather than a dot */
+.dot.focused { min-width: 18px; }
+
+/* the accent's ring round the control centre's toggles that are on */
+.toggle.on { box-shadow: 0 0 0 1px alpha(@accent, 0.5); }
+
+/* a critical notification on red's own tint */
+.card.critical, .toast.critical { background: alpha(@urgent, 0.12); }

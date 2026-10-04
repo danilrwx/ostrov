@@ -26,12 +26,12 @@ const CSS: &str = r#"
 @define-color sunk rgba(0, 0, 0, 0.2);          /* an entry */
 @define-color rule #333333;                     /* an outline */
 @define-color idle #666666;                     /* a workspace not focused */
-@define-color handle #3b82f6;                /* a tile's corner in Edit, sizing it */
+@define-color handle #3b82f6;                   /* a tile's corner in Edit, sizing it */
 @define-color urgent #cd0000;                   /* an error, a critical notification */
 @define-color recording #ff4040;                /* the mic or the camera taken (bar/privacy.rs) */
 @define-color lock #000000;                     /* the lock screen */
-@define-color ground #000000;
-@define-color shade rgba(0, 0, 0, 0.4);         /* the screen under a question (polkit's, askpass's) */                   /* under the wallpaper, and in its place under the dark theme */
+@define-color ground #000000;                   /* under the wallpaper, and in its place with none */
+@define-color shade rgba(0, 0, 0, 0.4);         /* the screen under a question (polkit's, askpass's), the overview */
 
 /* the shapes: a surface rounded 10, what is on it 6 */
 * { font-family: "Iosevka"; font-size: 11pt; color: @fg; }
@@ -235,6 +235,20 @@ dropdown.lock-entry > button { padding: 0 12px; }
 thread_local! {
     /// What follows the config as it changes, past the CSS (the control centre's density, the Settings' forms).
     static WATCHERS: std::cell::RefCell<Vec<Box<dyn Fn()>>> = Default::default();
+    /// The CSS loaded anew, once load() has set it.
+    static RELOAD: std::cell::RefCell<Option<std::rc::Rc<dyn Fn()>>> = Default::default();
+}
+
+/// The palette's tokens, the names a theme's [colors] and [colors] may set.
+pub fn tokens() -> Vec<&'static str> {
+    CSS.lines().filter_map(|l| l.strip_prefix("@define-color ")?.split_whitespace().next()).collect()
+}
+
+/// The CSS loaded anew as the files say now: a theme installed, removed or edited.
+pub fn reload() {
+    if let Some(f) = RELOAD.with(|r| r.borrow().clone()) {
+        f();
+    }
 }
 
 /// f on every change to the config (and to the wallpaper's pick), once the CSS has followed it.
@@ -243,7 +257,7 @@ pub fn on_config(f: impl Fn() + 'static) {
 }
 
 /// The CSS on the display, the Adwaita icons, the bar's black reloaded as the wallpaper's pick changes; the look as
-/// config.toml's [appearance] sets it (look.rs).
+/// config.toml's [appearance] sets it (look.rs), its theme's (theme.rs) palette and theme.css.
 pub fn load() {
     let Some(display) = gtk4::gdk::Display::default() else { return };
     let css = gtk4::CssProvider::new();
@@ -252,19 +266,22 @@ pub fn load() {
         let css = css.clone();
         move || {
             let alpha = crate::modules::wallpaper::service::bar_alpha();
-            // the appearance's palette, then the config's colours over it, before the rules that take them
+            // the theme's palette, the appearance's and the config's colours over it, before the rules that take
+            // them; the theme's own CSS last
             let cfg = crate::config::load();
-            let look = crate::look::palette(&cfg.appearance);
-            let own: String = cfg.colors.iter().map(|(k, v)| format!("@define-color {k} {v};\n")).collect();
+            let theme = crate::theme::get(&cfg.appearance.theme);
+            let look = crate::look::palette(&cfg.appearance, &theme, &cfg.colors);
             let (palette, rules) = CSS.split_at(CSS.find("/* the shapes").unwrap_or(0));
-            let rules = crate::look::radii(rules, cfg.appearance.radius);
-            let previews = crate::look::previews();
-            css.load_from_string(&format!("{palette}{look}{own}{rules}{previews}").replace("ALPHA", &alpha.to_string()));
-            crate::look::apply(&cfg.appearance);
+            let rules = crate::look::radii(rules, crate::look::radius(&cfg.appearance, &theme));
+            let previews = crate::look::previews(&crate::theme::all());
+            let all = format!("{palette}{look}{rules}{previews}{}", theme.css);
+            css.load_from_string(&all.replace("ALPHA", &alpha.to_string()));
+            crate::look::apply(&cfg.appearance, &theme);
             WATCHERS.with(|w| w.borrow().iter().for_each(|f| f()));
         }
     };
     load();
+    RELOAD.with(|r| *r.borrow_mut() = Some(std::rc::Rc::new(load.clone())));
     gtk4::style_context_add_provider_for_display(&display, &css, 900);
     for f in [alpha_file, crate::config::path()] {
         if let Ok(mon) = gio::File::for_path(&f).monitor_file(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE) {

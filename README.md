@@ -150,8 +150,9 @@ Everything lives under `~/.config/ostrov/`; every key has a default, so no file 
 
 - `[bar]`: the blocks in the bar's left, middle and right (`panel.ID`, `widget.ID` among them).
 - `[idle]`: seconds to the lock and to the screens off.
-- `[appearance]`, `[colors]`: the theme (dark, light, graphite, nord, solarized), accent, surface, opacity,
-  corners, density, animations, Hyprland's blur; any palette colour overridden. Applied as the file is saved.
+- `[appearance]`, `[colors]`: the theme (dark, light, graphite, nord, solarized, or an installed one), accent,
+  surface, opacity, corners, density, animations, Hyprland's blur; any palette colour overridden. Applied as the
+  file is saved.
 - `[hyprland]`, `[hyprland.keys]`: what ostrov puts into Hyprland, and keys moved.
 - `[calendar]`: a CalDAV account and .ics links.
 - `[games]`: window classes played in the performance power profile.
@@ -170,6 +171,11 @@ comments and order kept; secrets go to the Secret Service, never to the file.
 **Widgets in KDL.** A file in `~/.config/ostrov/widgets/*.kdl` declares widgets without code: commands polled or
 listened to, expressions, toggles, sliders, menus, badges. See [docs/widgets.md](docs/widgets.md) and
 `examples/widgets/`.
+
+**Themes.** A directory with a `theme.toml` (colours for the palette, suggested corners, density and blur) and
+an optional `theme.css`, installed into `~/.local/share/ostrov/themes/<id>/` from a path or a git URL with
+`ostrov theme install`. The built-in five are the same format, under `themes/`. See [docs/themes.md](docs/themes.md)
+and `examples/themes/catppuccin-mocha`.
 
 **Plugins.** A program in any language, in `~/.local/share/ostrov/plugins/<id>/`, puts widgets, commands and
 launcher modes into ostrov over JSON lines (the protocol is `wit/ostrov-plugin.wit`; a Python SDK is in
@@ -190,6 +196,10 @@ ostrov's own:
     ostrov menu NAME                   the panel with that widget, its menu unfolded ("edit": Edit)
     ostrov settings [SECTION]          the Settings page
     ostrov appearance                  the Appearance page
+    ostrov theme list                  the themes, built in and installed, the one picked starred
+    ostrov theme set ID                a theme picked
+    ostrov theme install PATH|GIT-URL  a theme installed from a directory or a git repository
+    ostrov theme remove ID             an installed theme removed
     ostrov run                         the launcher
     ostrov clip                        the clipboard's history
     ostrov windows [app]               the window switcher (app: the focused app's windows)

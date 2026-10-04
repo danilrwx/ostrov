@@ -459,18 +459,23 @@ pub fn appearance() -> Vec<Section> {
         let v = crate::wm::hyprctl(&format!("j/getoption decoration:blur:{k}"));
         serde_json::from_str::<Value>(&v).ok().and_then(|v| v["int"].as_i64()).unwrap_or(or)
     };
+    // the theme's suggestions the defaults, what the file leaving them out gives
+    let theme = crate::theme::get(&crate::config::load().appearance.theme);
     vec![Section::new("appearance", "Appearance", vec![
-        Field::new("theme", "Theme", Kind::Choice { options: opts(crate::look::THEMES) }).default("dark"),
+        Field::new("theme", "Theme", Kind::Choice {
+            options: crate::theme::all().into_iter().map(|t| Opt::Labeled { value: t.id, label: t.name }).collect(),
+        })
+        .default("dark"),
         Field::new("accent", "Accent", Kind::Color).default("").help("Empty: the theme's own."),
         Field::new("surface", "Surface colour", Kind::Color)
             .default("")
             .help("Under everything that opens; empty: the theme's."),
         Field::new("opacity", "Surface opacity", slider(0.3, 1.0, 0.05)).default(0.75),
         Field::new("radius", "Corner radius", slider(0.0, 20.0, 1.0))
-            .default(10)
+            .default(theme.radius.unwrap_or(10))
             .help("A surface's; what is on it 4 less."),
         Field::new("density", "Density", Kind::Choice { options: opts(&["compact", "normal", "comfortable"]) })
-            .default("normal")
+            .default(theme.density.unwrap_or("normal".into()))
             .help("The control centre's rows."),
         Field::new("animations", "Animations", Kind::Bool).default(true),
         Field::new("blur", "Blur", Kind::Bool)

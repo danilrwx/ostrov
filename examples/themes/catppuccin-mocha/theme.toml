@@ -1,0 +1,31 @@
+# Catppuccin Mocha (https://catppuccin.com/palette) for ostrov: `ostrov theme install examples/themes/catppuccin-mocha`,
+# then `ostrov theme set catppuccin-mocha` or its card on the Appearance page.
+name = "Catppuccin Mocha"
+author = "ostrov"
+version = "1"
+dark = true
+# suggestions, taken while [appearance] says nothing of them
+radius = 12
+density = "normal"
+
+[colors]
+surface = "#1e1e2e"                      # base
+bar = "rgba(17, 17, 27, ALPHA)"          # crust, as see-through as the wallpaper's bar setting says
+fg = "#cdd6f4"                           # text
+dim = "#a6adc8"                          # subtext0
+ink = "#1e1e2e"                          # base on the accent
+accent = "#cba6f7"                       # mauve
+accent-rule = "#9d7cd8"
+accent-pressed = "#b491e8"
+hover = "rgba(205, 214, 244, 0.12)"
+raised = "rgba(205, 214, 244, 0.07)"
+card = "rgba(205, 214, 244, 0.05)"
+well = "#313244"                         # surface0
+sunk = "rgba(17, 17, 27, 0.5)"
+rule = "#45475a"                         # surface1
+idle = "#6c7086"                         # overlay0
+handle = "#89b4fa"                       # blue
+urgent = "#f38ba8"                       # red
+recording = "#f38ba8"
+lock = "#11111b"
+ground = "#11111b"

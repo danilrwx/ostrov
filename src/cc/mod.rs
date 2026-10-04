@@ -454,7 +454,7 @@ impl Panel {
 
     /// The rows as the density in the config says, laid out again if that changed.
     fn fit_density(&self) {
-        let (row, gap) = crate::look::density(&crate::config::load().appearance.density);
+        let (row, gap) = crate::look::density(&crate::config::load().appearance);
         if self.dims.replace((row, gap)) != (row, gap) {
             self.grid.set_column_spacing(gap as u32);
             self.grid.set_row_spacing(gap as u32);
@@ -1055,7 +1055,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     col.append(&pages);
 
     let page = gtk4::Box::new(Orientation::Vertical, 10);
-    let dims = crate::look::density(&crate::config::load().appearance.density);
+    let dims = crate::look::density(&crate::config::load().appearance);
     let grid = gtk4::Grid::new();
     grid.add_css_class("cc");
     grid.set_column_homogeneous(true);

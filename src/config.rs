@@ -28,12 +28,12 @@
 //!     profile = "performance"
 //!
 //!     [appearance]        # the look (style.rs), taken as the file is saved; the control centre's Appearance
-//!     theme = "dark"      # dark, light, graphite, nord, solarized
+//!     theme = "dark"      # dark, light, graphite, nord, solarized, or an installed one (theme.rs)
 //!     accent = "#5e81ac"  # "" the theme's own
 //!     opacity = 0.75      # the surface's
-//!     radius = 10         # a surface's corners, what is on it 4 less
-//!     density = "normal"  # compact, normal, comfortable: the control centre's rows
-//!     blur = true         # Hyprland's blur, its blur_size and blur_passes: set only when given here
+//!     radius = 10         # a surface's corners, what is on it 4 less; unset, the theme's or 10
+//!     density = "normal"  # compact, normal, comfortable: the control centre's rows; unset, the theme's
+//!     blur = true         # Hyprland's blur, its blur_size and blur_passes: set only when given here or by the theme
 //!
 //!     [widget.wallpaper]  # a control centre widget's own, as its schema says (settings/)
 //!     dir = "~/Pictures/wallpapers"
@@ -139,8 +139,8 @@ pub struct Appearance {
     pub accent: String,
     pub surface: String,
     pub opacity: f64,
-    pub radius: u32,
-    pub density: String,
+    pub radius: Option<u32>,
+    pub density: Option<String>,
     pub animations: bool,
     pub blur: Option<bool>,
     pub blur_size: Option<u32>,
@@ -154,8 +154,8 @@ impl Default for Appearance {
             accent: String::new(),
             surface: String::new(),
             opacity: 0.75,
-            radius: 10,
-            density: "normal".into(),
+            radius: None,
+            density: None,
             animations: true,
             blur: None,
             blur_size: None,
@@ -229,7 +229,7 @@ mod tests {
         let d = super::Config::default();
         assert_eq!((c.bar.left, c.bar.center, c.bar.right), (d.bar.left, d.bar.center, d.bar.right));
         assert_eq!((c.idle.lock, c.idle.screens_off), (d.idle.lock, d.idle.screens_off));
-        assert_eq!((c.appearance.theme, c.appearance.opacity, c.appearance.radius), (d.appearance.theme, 0.75, 10));
+        assert_eq!((c.appearance.theme, c.appearance.opacity, c.appearance.radius), (d.appearance.theme, 0.75, None));
         assert_eq!((c.games.classes, c.games.profile), (d.games.classes, d.games.profile));
         assert_eq!(c.launcher.search, d.launcher.search);
         assert!(c.hyprland.rules && c.hyprland.binds && c.hyprland.keys.is_empty() && c.panels.is_empty());

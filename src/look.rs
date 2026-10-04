@@ -1,42 +1,13 @@
-//! The look as config.toml's [appearance] sets it, made into what style.rs draws with: a theme's palette over
-//! style.rs's own (dark), the accent and the surface over the theme's, the shapes' radii, the density of the
-//! control centre's rows; and what is set outside the CSS: GTK's animations, Hyprland's blur.
+//! The look as config.toml's [appearance] sets it, made into what style.rs draws with: the theme's palette
+//! (theme.rs) over style.rs's own, the accent and the surface over the theme's, [colors] over all; the shapes'
+//! radii, the density of the control centre's rows (the appearance's, else the theme's suggestion); and what is set
+//! outside the CSS: GTK's animations and its dark variant, Hyprland's blur.
 
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 
 use crate::config::Appearance;
-
-/// The themes, in the order the Appearance page shows them.
-pub const THEMES: &[&str] = &["dark", "light", "graphite", "nord", "solarized"];
-
-/// A theme: its surface's colour (the opacity is the user's), the palette's colours over style.rs's.
-fn theme(name: &str) -> ((u8, u8, u8), &'static [(&'static str, &'static str)]) {
-    match name {
-        "light" => ((246, 246, 246), &[
-            ("fg", "#1d1d1f"), ("dim", "#6e6e73"), ("ink", "#ffffff"), ("accent", "#1d1d1f"),
-            ("accent-rule", "#555555"), ("accent-pressed", "#3a3a3c"), ("bar", "rgba(242, 242, 242, ALPHA)"),
-            ("hover", "rgba(0, 0, 0, 0.08)"), ("raised", "rgba(0, 0, 0, 0.05)"), ("card", "rgba(0, 0, 0, 0.04)"),
-            ("well", "rgba(0, 0, 0, 0.1)"), ("sunk", "rgba(255, 255, 255, 0.7)"), ("rule", "#d2d2d7"),
-            ("idle", "#aaaaaa"),
-        ]),
-        "graphite" => ((36, 36, 40), &[
-            ("fg", "#e8e8ea"), ("dim", "#8e8e93"), ("ink", "#1c1c1e"), ("accent", "#c8c8cc"),
-            ("accent-rule", "#8e8e93"), ("accent-pressed", "#a8a8ac"), ("bar", "rgba(28, 28, 30, ALPHA)"),
-            ("hover", "rgba(255, 255, 255, 0.12)"), ("rule", "#48484a"), ("idle", "#636366"),
-        ]),
-        "nord" => ((46, 52, 64), &[
-            ("fg", "#eceff4"), ("dim", "#9aa5b8"), ("ink", "#2e3440"), ("accent", "#88c0d0"),
-            ("accent-rule", "#5e81ac"), ("accent-pressed", "#81a1c1"), ("bar", "rgba(46, 52, 64, ALPHA)"),
-            ("rule", "#4c566a"), ("idle", "#4c566a"), ("urgent", "#bf616a"),
-        ]),
-        "solarized" => ((0, 43, 54), &[
-            ("fg", "#eee8d5"), ("dim", "#839496"), ("ink", "#002b36"), ("accent", "#b58900"),
-            ("accent-rule", "#8a6a00"), ("accent-pressed", "#9c7600"), ("bar", "rgba(0, 43, 54, ALPHA)"),
-            ("rule", "#2a4f5a"), ("idle", "#586e75"), ("urgent", "#dc322f"),
-        ]),
-        _ => ((0, 0, 0), &[]),
-    }
-}
+use crate::theme::Theme;
 
 /// The accents the Appearance page offers as swatches.
 pub const ACCENTS: &[&str] =
@@ -48,12 +19,14 @@ fn rgb(c: &str) -> Option<(u8, u8, u8)> {
     Some((b(c.red()), b(c.green()), b(c.blue())))
 }
 
-/// The palette's colours as the appearance sets them, to go between style.rs's palette and [colors].
-pub fn palette(a: &Appearance) -> String {
-    let (surface, colors) = theme(&a.theme);
-    let mut out: String = colors.iter().map(|(k, v)| format!("@define-color {k} {v};\n")).collect();
-    let (r, g, b) = rgb(&a.surface).unwrap_or(surface);
-    out += &format!("@define-color surface rgba({r}, {g}, {b}, {:.2});\n", a.opacity.clamp(0.0, 1.0));
+/// The palette's colours over style.rs's, later over earlier: the theme's, its surface's colour (or the
+/// appearance's) under the appearance's opacity, the appearance's accent, then the config's [colors].
+pub fn palette(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) -> String {
+    let def = |k: &str, v: &str| format!("@define-color {k} {v};\n");
+    let mut out: String = t.colors.iter().filter(|(k, _)| *k != "surface").map(|(k, v)| def(k, v)).collect();
+    let theirs = t.colors.get("surface").and_then(|s| rgb(s));
+    let (r, g, b) = rgb(&a.surface).or(theirs).unwrap_or((0, 0, 0));
+    out += &def("surface", &format!("rgba({r}, {g}, {b}, {:.2})", a.opacity.clamp(0.0, 1.0)));
     if let Some((r, g, b)) = rgb(&a.accent) {
         // what goes on the accent black or white, as the accent is light or dark
         let light = 0.2126 * r as f64 + 0.7152 * g as f64 + 0.0722 * b as f64 > 150.0;
@@ -63,7 +36,12 @@ pub fn palette(a: &Appearance) -> String {
             if light { "#000000" } else { "#ffffff" }
         );
     }
-    out
+    out + &colors.iter().map(|(k, v)| def(k, v)).collect::<String>()
+}
+
+/// A surface's corner radius: the appearance's, else the theme's, else 10.
+pub fn radius(a: &Appearance, t: &Theme) -> u32 {
+    a.radius.or(t.radius).unwrap_or(10)
 }
 
 /// The CSS's radii made the appearance's: a surface's 10 px r, what is on it 6 px r - 4. Only the radii
@@ -90,26 +68,29 @@ pub fn radii(css: &str, r: u32) -> String {
     out
 }
 
-/// The control centre's row height and gap for a density.
-pub fn density(name: &str) -> (i32, i32) {
-    match name {
+/// The control centre's row height and gap: the appearance's density, else its theme's.
+pub fn density(a: &Appearance) -> (i32, i32) {
+    let theirs = || crate::theme::get(&a.theme).density;
+    match a.density.clone().or_else(theirs).as_deref().unwrap_or("normal") {
         "compact" => (40, 6),
         "comfortable" => (56, 10),
         _ => (48, 8),
     }
 }
 
-/// The Appearance page's previews: each theme's card on its surface with its accent, each swatch its colour.
-pub fn previews() -> String {
+/// The Appearance page's previews: each theme's card on its surface in its text's colour with its accent's dot,
+/// each swatch its colour.
+pub fn previews(themes: &[Theme]) -> String {
     let mut out = String::new();
-    for t in THEMES {
-        let ((r, g, b), colors) = theme(t);
-        let get = |k: &str, or: &'static str| colors.iter().find(|(n, _)| *n == k).map_or(or, |(_, v)| *v);
+    for t in themes {
+        let get = |k: &str| t.colors.get(k).map_or("#ffffff", String::as_str);
+        let (r, g, b) = t.colors.get("surface").and_then(|s| rgb(s)).unwrap_or((0, 0, 0));
         out += &format!(
-            ".theme-{t} {{ background: rgb({r}, {g}, {b}); }}\n.theme-{t} label {{ color: {}; }}\n\
-             .theme-{t} .theme-dot {{ background: {}; }}\n",
-            get("fg", "#ffffff"),
-            get("accent", "#ffffff")
+            "button.theme-{id} {{ background: rgb({r}, {g}, {b}); }}\nbutton.theme-{id} label {{ color: {}; }}\n\
+             button.theme-{id} .theme-dot {{ background: {}; }}\n",
+            get("fg"),
+            get("accent"),
+            id = t.id,
         );
     }
     for (i, c) in ACCENTS.iter().enumerate() {
@@ -123,16 +104,17 @@ thread_local! {
     static BLUR: RefCell<(Option<bool>, Option<u32>, Option<u32>)> = const { RefCell::new((None, None, None)) };
 }
 
-/// What the appearance sets outside the CSS: GTK's animations, and Hyprland's blur where the file gives it and
-/// it changed (so Hyprland's own config rules while the file says nothing).
-pub fn apply(a: &Appearance) {
+/// What the appearance sets outside the CSS: GTK's animations and dark variant, and Hyprland's blur where the file
+/// or the theme gives it and it changed (so Hyprland's own config rules while neither says anything).
+pub fn apply(a: &Appearance, t: &Theme) {
     if let Some(s) = gtk4::Settings::default() {
         s.set_gtk_enable_animations(a.animations);
+        s.set_gtk_application_prefer_dark_theme(t.dark);
     }
     if crate::wm::wm() != crate::wm::Wm::Hyprland {
         return;
     }
-    let now = (a.blur, a.blur_size, a.blur_passes);
+    let now = (a.blur.or(t.blur), a.blur_size, a.blur_passes);
     let last = BLUR.with(|b| b.replace(now));
     let set = |k: &str, v: String| drop(crate::wm::hyprctl(&format!("keyword decoration:blur:{k} {v}")));
     if now.0 != last.0 {
@@ -168,13 +150,58 @@ mod tests {
         assert_eq!(radii(css, 10), css);
     }
 
+    fn theme(text: &str) -> Theme {
+        crate::theme::parse(text, "t", String::new()).expect("theme.toml")
+    }
+
     #[test]
     fn accents_inked() {
+        let (dark, none) = (theme("name = \"D\"\ndark = true\n"), BTreeMap::new());
         let a = |accent: &str| Appearance { accent: accent.into(), ..Appearance::default() };
-        assert!(palette(&a("#ffd60a")).contains("ink #000000"));
-        assert!(palette(&a("#0a3d91")).contains("ink #ffffff"));
-        assert!(palette(&a("")).ends_with("@define-color surface rgba(0, 0, 0, 0.75);\n"));
-        let nord = Appearance { theme: "nord".into(), opacity: 0.9, ..Appearance::default() };
-        assert!(palette(&nord).contains("surface rgba(46, 52, 64, 0.90)"));
+        assert!(palette(&a("#ffd60a"), &dark, &none).contains("ink #000000"));
+        assert!(palette(&a("#0a3d91"), &dark, &none).contains("ink #ffffff"));
+        assert_eq!(palette(&a(""), &dark, &none), "@define-color surface rgba(0, 0, 0, 0.75);\n");
+    }
+
+    /// The value a token ends up with: its last definition, as GTK takes it.
+    fn last<'a>(css: &'a str, token: &str) -> &'a str {
+        let def = format!("@define-color {token} ");
+        css.lines().rev().find_map(|l| l.strip_prefix(&def)?.strip_suffix(';')).unwrap_or("")
+    }
+
+    /// style.rs's palette, under the theme's, under [appearance]'s accent and surface, under [colors].
+    #[test]
+    fn merge_order() {
+        let t = theme(
+            "name = \"T\"\ndark = true\nradius = 4\n[colors]\nfg = \"#010101\"\naccent = \"#020202\"\n\
+             dim = \"#030303\"\nsurface = \"#040404\"\n",
+        );
+        let colors = BTreeMap::from([("dim".to_string(), "#0a0a0a".to_string())]);
+        let mut a = Appearance { theme: "t".into(), opacity: 0.9, ..Appearance::default() };
+        let css = palette(&a, &t, &colors);
+        assert_eq!(last(&css, "fg"), "#010101");
+        assert_eq!(last(&css, "accent"), "#020202");
+        assert_eq!(last(&css, "dim"), "#0a0a0a");
+        assert_eq!(last(&css, "surface"), "rgba(4, 4, 4, 0.90)");
+        assert_eq!(last(&css, "rule"), "", "left to style.rs's");
+        a.accent = "#ff0000".into();
+        a.surface = "#102030".into();
+        let css = palette(&a, &t, &colors);
+        assert_eq!((last(&css, "accent"), last(&css, "ink")), ("rgb(255, 0, 0)", "#ffffff"));
+        assert_eq!(last(&css, "surface"), "rgba(16, 32, 48, 0.90)");
+        let colors = BTreeMap::from([("accent".to_string(), "#00ff00".to_string())]);
+        assert_eq!(last(&palette(&a, &t, &colors), "accent"), "#00ff00");
+        assert_eq!(radius(&a, &t), 4);
+        a.radius = Some(14);
+        assert_eq!(radius(&a, &t), 14);
+        assert_eq!(radius(&Appearance::default(), &Theme::default()), 10);
+    }
+
+    #[test]
+    fn previews_per_theme() {
+        let nord = crate::theme::parse(include_str!("../themes/nord/theme.toml"), "nord", String::new());
+        let css = previews(&[nord.expect("nord")]);
+        assert!(css.contains("button.theme-nord { background: rgb(46, 52, 64); }"), "{css}");
+        assert!(css.contains("button.theme-nord .theme-dot { background: #88c0d0; }"));
     }
 }

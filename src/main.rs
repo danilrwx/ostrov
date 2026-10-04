@@ -34,6 +34,7 @@ mod settings;
 mod shot;
 mod style;
 mod switcher;
+mod theme;
 mod ui;
 mod wallpaper;
 mod widgets;
@@ -59,7 +60,8 @@ const FORMS: &[&str] = &[
     "panel", "menu NAME", "settings [SECTION]", "appearance", "calendar", "run", "clip",
     "windows [app]", "overview [close]", "lock", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "record [--audio]",
     "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
-    "plugin [ID] [ARGS...]", "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor",
+    "plugin [ID] [ARGS...]", "theme list", "theme set ID", "theme install PATH|GIT-URL", "theme remove ID",
+    "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor",
 ];
 
 fn usage() -> String {
@@ -183,6 +185,7 @@ fn activate(app: &gtk4::Application) {
                         sections: settings::entries().into_iter().map(|e| (e.id, e.title)).collect(),
                         plugins: plugins::known(),
                         blocks: bar.forms(),
+                        themes: theme::all().into_iter().map(|t| (t.id, t.name)).collect(),
                     };
                     return Ok(forms::lines(&forms::complete(&known, if words.is_empty() { &[""] } else { words })));
                 }
@@ -223,6 +226,8 @@ fn command(args: &[String], input: Option<String>) -> Reply {
     match args {
         [first, rest @ ..] if first == "plugin" => return plugins::run(rest, input),
         [first] if first == "doctor" => return Box::pin(doctor::report()),
+        // a theme's install clones a repository: awaited, ostrov going on meanwhile
+        [first, rest @ ..] if first == "theme" => return Box::pin(theme::command(rest.to_vec())),
         [first, rest @ ..] if first == "dialog" => {
             let spec = rest.join(" ");
             return Box::pin(async move {

@@ -94,13 +94,14 @@ pub struct Plugin {
 }
 
 /// What the running ostrov knows, for the placeholders: the state, the control centre's widgets (and the menus'
-/// other names), the Settings' entries, the plugins, the bar's blocks with commands.
+/// other names), the Settings' entries, the plugins, the bar's blocks with commands, the themes.
 pub struct Known {
     pub state: Value,
     pub widgets: Candidates,
     pub sections: Candidates,
     pub plugins: Vec<Plugin>,
     pub blocks: Vec<(String, &'static [&'static str])>,
+    pub themes: Candidates,
 }
 
 /// `ostrov complete WORD...`: what may follow the words after `ostrov`, the last one as far as it is typed.
@@ -111,6 +112,7 @@ pub fn complete(k: &Known, words: &[&str]) -> Candidates {
             (Some("menu"), "NAME") => k.widgets.clone(),
             (Some("settings"), "SECTION") => k.sections.clone(),
             (Some("key"), "NAME") => crate::keys::NAMES.iter().map(|n| (n.to_string(), String::new())).collect(),
+            (Some("theme"), "ID") => k.themes.clone(),
             (Some("plugin"), "ID") => k.plugins.iter().map(|p| (p.id.clone(), p.name.clone())).collect(),
             _ => Vec::new(),
         }
@@ -245,6 +247,7 @@ mod tests {
                 commands: vec![("set N".into(), "the count set".into()), ("mode a|b".into(), String::new())],
             }],
             blocks: vec![("status".into(), &["menu NAME", "settings [SECTION]", "appearance"])],
+            themes: vec![("nord".into(), "Nord".into()), ("paper".into(), "Paper".into())],
         }
     }
 
@@ -279,6 +282,9 @@ mod tests {
         assert_eq!(words(&c(&["plugin", "hello", "mode", ""])), ["a", "b"]);
         assert!(c(&["plugin", "nope", ""]).is_empty());
         assert_eq!(words(&c(&["completions", ""])), ["zsh", "bash", "fish"]);
+        assert_eq!(words(&c(&["theme", ""])), ["list", "set", "install", "remove"]);
+        assert_eq!(c(&["theme", "set", "p"]), [("paper".into(), "Paper".into())]);
+        assert_eq!(words(&c(&["theme", "remove", ""])), ["nord", "paper"]);
         assert!(c(&["nope", ""]).is_empty());
         assert_eq!(lines(&c(&["power", "set", "p"])), "power-saver\t\nperformance\t");
     }
