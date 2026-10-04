@@ -30,6 +30,22 @@ fn clamp(items: &mut [Item]) {
     }
 }
 
+/// Items laid out without overlaps, as a hand-edited file may not have them: each in order (higher, then lefter)
+/// kept where it is unless it lies on one before it, then put in the first place it fits; then compacted.
+pub fn settle(items: &mut Vec<Item>) {
+    clamp(items);
+    items.sort_by_key(|i| (i.y, i.x));
+    let mut placed: Vec<Item> = Vec::with_capacity(items.len());
+    for mut it in items.drain(..) {
+        if placed.iter().any(|p| p.overlaps(&it)) {
+            (it.x, it.y) = free(&placed, it.w, it.h);
+        }
+        placed.push(it);
+    }
+    *items = placed;
+    compact(items);
+}
+
 /// Items floated up as far as each goes, the higher ones (then the lefter) first.
 pub fn compact(items: &mut [Item]) {
     clamp(items);
@@ -152,6 +168,14 @@ mod tests {
         let g = vec![it("a", 0, 0, 4, 1), it("b", 0, 1, 8, 1)];
         assert_eq!(free(&g, 4, 1), (4, 0));
         assert_eq!(free(&g, 8, 1), (0, 2));
+    }
+
+    #[test]
+    fn a_file_with_overlaps_is_settled() {
+        let mut g = vec![it("weather", 4, 0, 4, 2), it("media", 0, 0, 4, 2), it("month", 4, 0, 4, 5), it("clock", 0, 2, 4, 1)];
+        settle(&mut g);
+        assert!(no_overlaps(&g), "{g:?}");
+        assert_eq!(g.len(), 4);
     }
 
     #[test]

@@ -324,7 +324,7 @@ fn load(reg: &[Meta], spec: &Spec) -> (Vec<Item>, Vec<Item>, HashMap<String, Sho
     let mut seen = std::collections::HashSet::new();
     items.retain(|i| seen.insert(i.key.clone()));
     hidden.retain(|i| seen.insert(i.key.clone()));
-    grid::compact(&mut items);
+    grid::settle(&mut items);
     (items, hidden, shows)
 }
 

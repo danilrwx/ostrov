@@ -60,10 +60,16 @@ fn clock(_: &Ctx) -> Widget {
     };
     tick();
     glib::timeout_add_seconds_local(1, tick);
-    let d2 = date.clone();
+    let (d2, c2) = (date.clone(), col.clone());
     Widget {
         face: Some(Face::new(&badge)),
-        size: Box::new(move |w, _| d2.set_visible(w >= 4)),
+        // a row high, the date beside the time (under it it would not fit a dense row); from four cells wide
+        size: Box::new(move |w, h| {
+            d2.set_visible(w >= 4);
+            c2.set_orientation(if h == 1 { Orientation::Horizontal } else { Orientation::Vertical });
+            c2.set_spacing(if h == 1 { 12 } else { 0 });
+            d2.set_valign(if h == 1 { gtk4::Align::Center } else { gtk4::Align::Fill });
+        }),
         ..Widget::new(&col, None, |_| ())
     }
 }
