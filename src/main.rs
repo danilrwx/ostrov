@@ -49,7 +49,7 @@ thread_local! {
     static PROMPTS: std::cell::RefCell<Option<Rc<prompt::Prompts>>> = Default::default();
 }
 
-const USAGE: &str = "usage: ostrov [panel | menu NAME | settings [SECTION] | appearance | calendar | run | ask QUESTION | clip | windows [app] | overview [close] | lock | restart | key NAME | awake | screenshot | \
+const USAGE: &str = "usage: ostrov [panel | menu NAME | settings [SECTION] | appearance | calendar | run | ask QUESTION | clip | windows [app] | overview [close] | lock | restart | hyprland | key NAME | awake | screenshot | \
 capture FILE | record [--audio] | bar toggle|peek|unpeek | state | dump | toast TITLE [BODY] | dialog JSON | plugins | plugin [ID [ARGS]] | help | BLOCK ARGS | MODULE ARGS]";
 
 fn activate(app: &gtk4::Application) {
@@ -139,6 +139,7 @@ fn activate(app: &gtk4::Application) {
                 ["clip"] => launcher.toggle(true),
                 ["lock"] => lock.lock(),
                 ["restart"] => restart(),
+                ["hyprland"] => return Ok(modules::hyprland::conf()),
                 ["screenshot"] => shot.take(),
                 ["awake"] => idle::set_awake(!idle::awake()),
                 ["capture", path] => shot::capture(path.to_string()),

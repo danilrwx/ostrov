@@ -21,6 +21,7 @@ pub mod calendar;
 pub mod clock;
 pub mod displays;
 pub mod games;
+pub mod hyprland;
 pub mod keymap;
 pub mod location;
 pub mod media;
@@ -106,6 +107,7 @@ pub const ALL: &[&Module] = &[
     &calendar::MODULE,
     &clock::MODULE,
     &games::MODULE,
+    &hyprland::MODULE,
     &system::MODULE,
 ];
 

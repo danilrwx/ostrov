@@ -163,6 +163,23 @@ pub struct Config {
     /// panels of the user's own, [panels.ID], put in the bar as panel.ID; the control centre's and the
     /// calendar's name, icon or width changed the same way
     pub panels: BTreeMap<String, PanelSpec>,
+    pub hyprland: Hyprland,
+}
+
+/// What ostrov puts into Hyprland itself (modules/hyprland.rs): its layers' rules, its keys where free, a key
+/// moved ([hyprland.keys] run = "SUPER, R").
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct Hyprland {
+    pub rules: bool,
+    pub binds: bool,
+    pub keys: BTreeMap<String, String>,
+}
+
+impl Default for Hyprland {
+    fn default() -> Hyprland {
+        Hyprland { rules: true, binds: true, keys: BTreeMap::new() }
+    }
 }
 
 #[derive(Deserialize, Default)]
