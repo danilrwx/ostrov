@@ -285,6 +285,26 @@ fn nearest(sizes: &[(u8, u8)], w: i32, h: i32) -> (u8, u8) {
     sizes.iter().copied().min_by_key(d).unwrap_or((COLS, 1))
 }
 
+/// The size a corner dragged by (dw, dh) cells (fractions of them) from (w, h) takes: of the allowed sizes
+/// the drag heads for, the one it has come nearest to, once it is 40% of the way there; else the size it was.
+/// So a toggle of 4 grows to 8 at 1.6 cells, not past the 6 the nearest size alone would wait for.
+fn toward(sizes: &[(u8, u8)], (w, h): (u8, u8), (dw, dh): (f64, f64)) -> (u8, u8) {
+    let mut best = ((w, h), f64::MAX);
+    for &(sw, sh) in sizes {
+        let (vw, vh) = (sw as f64 - w as f64, sh as f64 - h as f64);
+        let len = vw * vw + vh * vh;
+        if len == 0.0 {
+            continue;
+        }
+        // how far along the way to this size the drag is, 1 there
+        let along = (dw * vw + dh * vh) / len;
+        if along >= 0.4 && (along - 1.0).abs() < best.1 {
+            best = ((sw, sh), (along - 1.0).abs());
+        }
+    }
+    best.0
+}
+
 /// A panel's layout as panel.toml has it (widgets unknown dropped, sizes not allowed made the nearest allowed),
 /// else its spec's; and when its badges show where it says.
 fn load(reg: &[Meta], spec: &Spec) -> (Vec<Item>, HashMap<String, Show>) {
@@ -719,9 +739,10 @@ impl Panel {
             let Some(m) = p.reg.iter().find(|m| m.id == it.key) else { return };
             let (row, gap) = p.dims.get();
             let cw = (p.grid.width() + gap) as f64 / COLS as f64;
-            let (cx, cy) = ((dx / cw).round() as i32, (dy / (row + gap) as f64).round() as i32);
+            let (fx, fy) = (dx / cw, dy / (row + gap) as f64);
+            let (cx, cy) = (fx.round() as i32, fy.round() as i32);
             let next = if *corner {
-                let (w, h) = nearest(m.sizes, it.w as i32 + cx, it.h as i32 + cy);
+                let (w, h) = toward(m.sizes, (it.w, it.h), (fx, fy));
                 (it.x, it.y, w, h)
             } else {
                 let x = (it.x as i32 + cx).clamp(0, (COLS - it.w) as i32) as u8;
@@ -913,4 +934,23 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         }
     });
     p
+}
+
+#[cfg(test)]
+mod tests {
+    use super::toward;
+
+    const TOGGLE: &[(u8, u8)] = &[(4, 1), (2, 1), (1, 1), (8, 1)];
+
+    #[test]
+    fn a_corner_takes_the_size_it_heads_for() {
+        assert_eq!(toward(TOGGLE, (4, 1), (0.3, 0.0)), (4, 1));
+        assert_eq!(toward(TOGGLE, (4, 1), (1.7, 0.0)), (8, 1));
+        assert_eq!(toward(TOGGLE, (4, 1), (-1.0, 0.0)), (2, 1));
+        assert_eq!(toward(TOGGLE, (4, 1), (-2.8, 0.0)), (1, 1));
+        // down, for a widget that has a taller size
+        assert_eq!(toward(&[(4, 2), (8, 2), (4, 4)], (4, 2), (0.0, 1.0)), (4, 4));
+        // a slider has one size
+        assert_eq!(toward(&[(8, 1)], (8, 1), (-3.0, 1.0)), (8, 1));
+    }
 }

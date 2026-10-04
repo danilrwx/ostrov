@@ -80,7 +80,7 @@ button.round.open image, button.arrow.open image, .tile.open button.round image,
 .tile.open button.arrow:not(.toggle-side) image, button.item.on label, button.item.on image,
 button.chip:checked label, .hit.picked label, .hit.picked image { color: @ink; }
 button.arrow image { transition: -gtk-icon-transform 100ms; }
-button.arrow.open image, .tile.open button.arrow image { -gtk-icon-transform: rotate(90deg); }
+button.arrow.open image, .tile.open button.arrow image { }
 button.item { padding: 0 10px; min-height: 34px; border-radius: 6px; }
 button.connect { background: @accent; padding: 0 10px; border-radius: 6px; min-height: 30px; }
 button.connect label { color: @ink; font-weight: bold; }
@@ -107,7 +107,7 @@ button.tile-remove { background: @urgent; border-radius: 9px; min-width: 18px; m
 button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }
 /* a plugin's widget drawn as anything but a toggle, a slider or a round button: on a card like the battery's */
 .plugin-card { background: @raised; border: 1px solid @rule; border-radius: 6px; padding: 4px 14px; }
-.tile-grip { color: @dim; -gtk-icon-size: 10px; margin: 3px; }
+.tile-grip { color: @dim; -gtk-icon-size: 12px; min-width: 28px; min-height: 28px; }
 button.tile-eye { background: @raised; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
 button.tile-eye image { -gtk-icon-size: 12px; }
 .clock { padding: 0 14px; }
