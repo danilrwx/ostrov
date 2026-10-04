@@ -17,6 +17,7 @@ mod layout;
 mod panel;
 mod privacy;
 mod tray;
+mod widget;
 mod window;
 mod workspaces;
 
@@ -53,9 +54,14 @@ impl Block {
     }
 }
 
-/// The blocks there are, by name; a panel's, panel.ID, unrolling on the side of the bar it is in. The names from
+/// The blocks there are, by name; a panel's, panel.ID, unrolling on the side of the bar it is in; any widget's,
+/// widget.ID, its badge in the bar. The names from
 /// before there were panels still work: status the control centre's, clock the calendar's.
 fn block(name: &str, cx: &Rc<Ctx>, side: Side) -> Option<Block> {
+    // a panel's widget on its own, its badge the block
+    if let Some(id) = name.strip_prefix("widget.") {
+        return widget::build(cx, id, side);
+    }
     Some(match name {
         "workspaces" => workspaces::build(cx),
         "window" => window::build(cx),

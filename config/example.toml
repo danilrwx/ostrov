@@ -13,6 +13,7 @@
 #   panel.ID        a panel's face in the bar, made of its widgets' badges, unrolling the panel on a click:
 #                   panel.control (the control centre, alias "status"), panel.calendar (alias "clock"), or one of
 #                   [panels.ID] below
+#   widget.ID       any widget on its own (ostrov's, a KDL file's, a plugin's): its badge, its menu on a click
 [bar]
 left = ["workspaces", "window"]
 center = ["panel.calendar"]

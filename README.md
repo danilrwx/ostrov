@@ -5,7 +5,8 @@ GTK 4 and gtk4-layer-shell. One process replaces the usual collection of bar, no
 locker, idle daemon, polkit agent, clipboard manager, screenshot tools and wallpaper setter:
 
 - **The bar**, made of blocks: workspaces, the focused window's title, the tray, the keyboard layout, the privacy
-  indicator (mic or camera in use), the recording's timer, and the faces of the panels.
+  indicator (mic or camera in use), the recording's timer, the faces of the panels, and any widget on its own
+  (`widget.ID`: its badge in the bar, its menu on a click).
 - **Panels of widgets**, macOS-style: the control centre and the calendar are grids of widgets (Wi-Fi, Bluetooth,
   volume and mic with per-app sliders and device ports, brightness, power profiles, battery, night light,
   displays, wallpaper, Keep Awake, the player, the month and its events from CalDAV or .ics, the weather,
@@ -146,7 +147,7 @@ once).
 Everything lives under `~/.config/ostrov/`; every key has a default, so no file is needed to start.
 [`config/example.toml`](config/example.toml) lists every section with its defaults:
 
-- `[bar]`: the blocks in the bar's left, middle and right.
+- `[bar]`: the blocks in the bar's left, middle and right (`panel.ID`, `widget.ID` among them).
 - `[idle]`: seconds to the lock and to the screens off.
 - `[appearance]`, `[colors]`: the theme (dark, light, graphite, nord, solarized), accent, surface, opacity,
   corners, density, animations, Hyprland's blur; any palette colour overridden. Applied as the file is saved.

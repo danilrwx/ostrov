@@ -38,6 +38,10 @@ fn named(id: &str) -> (String, String) {
         "clock" => "panel.calendar",
         n => n,
     };
+    if let Some(w) = id.strip_prefix("widget.") {
+        let reg = super::registry();
+        return reg.iter().find(|m| m.id == w).map_or((w.into(), "image-missing-symbolic".into()), |m| (m.name.into(), m.icon.into()));
+    }
     if let Some(p) = id.strip_prefix("panel.") {
         let spec = super::Spec::of(p);
         return (spec.name, spec.icon);
@@ -162,6 +166,8 @@ fn draw(body: &gtk4::Box, st: &Rc<RefCell<State>>, again: Rc<dyn Fn()>) {
     let mut all: Vec<String> = BLOCKS.iter().map(|b| b.0.to_string()).collect();
     all.extend(["panel.control", "panel.calendar"].map(String::from));
     all.extend(cfg.panels.keys().filter(|k| *k != "control" && *k != "calendar").map(|k| format!("panel.{k}")));
+    // every widget on its own, its badge the block
+    all.extend(super::registry().iter().map(|m| format!("widget.{}", m.id)));
     let placed = |id: &str| s.parts.iter().flatten().any(|p| p == id || named(p).0 == named(id).0);
     let missing: Vec<String> = all.into_iter().filter(|id| !placed(id)).collect();
     let into = s.picked.map_or(2, |(i, _)| i);
