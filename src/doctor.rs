@@ -111,6 +111,11 @@ fn programs(out: &mut Vec<Line>) {
     ] {
         out.push(if on_path(p) { ('✓', p.into()) } else { ('!', format!("{p} missing: {cost}")) });
     }
+    let limit = crate::modules::battery::limit::state();
+    if !limit.is_null() && limit["writable"] != true {
+        out.push(('·', "charge limit: the thresholds are root's; to set them: sudo cp packaging/udev/90-ostrov-battery.rules \
+            /etc/udev/rules.d/ && sudo udevadm trigger --subsystem-match=power_supply".into()));
+    }
     out.push(if std::path::Path::new("/etc/pam.d/ostrov").exists() {
         ('✓', "PAM: /etc/pam.d/ostrov".into())
     } else {

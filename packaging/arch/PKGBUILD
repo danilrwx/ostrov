@@ -60,6 +60,7 @@ package() {
   cd ostrov
   install -Dm755 target/release/ostrov "$pkgdir/usr/bin/ostrov"
   install -Dm644 packaging/pam/ostrov "$pkgdir/etc/pam.d/ostrov"
+  install -Dm644 packaging/udev/90-ostrov-battery.rules "$pkgdir/usr/lib/udev/rules.d/90-ostrov-battery.rules"
   install -Dm644 completions/_ostrov "$pkgdir/usr/share/zsh/site-functions/_ostrov"
   install -Dm644 completions/ostrov.bash "$pkgdir/usr/share/bash-completion/completions/ostrov"
   install -Dm644 completions/ostrov.fish "$pkgdir/usr/share/fish/vendor_completions.d/ostrov.fish"
