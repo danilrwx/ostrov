@@ -382,6 +382,8 @@ pub struct Panel {
     /// the frame following the pointer while a tile is dragged, over the grid snapping under it
     ghost: gtk4::Box,
     gallery: gtk4::Box,
+    /// the widgets in the bar alone, under the grid in the editing
+    shelf: gtk4::Box,
     /// in the editing, what can be done to the tile picked (a click on it): its size, its badge, its settings
     inspector: gtk4::Box,
     picked: RefCell<String>,
@@ -474,6 +476,14 @@ impl Panel {
         clip.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::External);
         clip.set_propagate_natural_width(true);
         clip.set_child(Some(&widget.root));
+        // a card's ground on the tile itself, its cells' size whatever it holds: what is cut off is inside it
+        for ground in ["card", "clock"] {
+            if widget.root.has_css_class(ground) {
+                widget.root.remove_css_class(ground);
+                widget.root.add_css_class(&format!("{ground}-body"));
+                clip.add_css_class(ground);
+            }
+        }
         wrap.set_child(Some(&clip));
         let remove = gtk4::Button::from_icon_name("list-remove-symbolic");
         remove.add_css_class("tile-remove");
@@ -676,6 +686,7 @@ impl Panel {
                 t.wrap.remove_css_class("picked");
             }
         }
+        self.fill_shelf();
         self.inspect();
     }
 
@@ -683,7 +694,9 @@ impl Panel {
     fn inspect(self: &Rc<Self>) {
         clear(&self.inspector);
         let key = self.picked.borrow().clone();
-        let it = self.items.borrow().iter().find(|i| i.key == key).cloned();
+        let on = self.items.borrow().iter().find(|i| i.key == key).cloned();
+        let off = on.is_none();
+        let it = on.or_else(|| self.hidden.borrow().iter().find(|i| i.key == key).cloned());
         let (Some(it), Some(m)) = (it, self.reg.iter().find(|m| m.id == key)) else {
             return self.inspector.set_visible(false);
         };
@@ -704,7 +717,7 @@ impl Panel {
             self.inspector.append(&bx);
         };
         // its sizes, the one it has pressed
-        if m.sizes.len() > 1 {
+        if m.sizes.len() > 1 && !off {
             let names: Vec<String> = m.sizes.iter().map(|(w, h)| format!("{w}×{h}")).collect();
             let strs: Vec<&str> = names.iter().map(String::as_str).collect();
             let at = m.sizes.iter().position(|&s| s == (it.w, it.h));
@@ -751,8 +764,10 @@ impl Panel {
             });
             acts.append(&b);
         };
-        if self.tiles.borrow().get(&key).is_some_and(|t| t.widget.face.is_some()) {
-            let k = key.clone();
+        let k = key.clone();
+        if off {
+            act("Back on the Panel", Box::new(move |p| p.unhide(&k)));
+        } else if self.tiles.borrow().get(&key).is_some_and(|t| t.widget.face.is_some()) {
             act("In the Bar Only", Box::new(move |p| p.hide(&k)));
         }
         if m.settings.is_some() || crate::settings::has(&format!("widget.{key}")) {
@@ -811,23 +826,43 @@ impl Panel {
         self.draw();
     }
 
+    /// The shelf under the grid in the editing, past a rule: the widgets on in the bar alone, a chip each, a
+    /// click picking one (its inspector puts it back on the panel).
+    fn fill_shelf(self: &Rc<Self>) {
+        clear(&self.shelf);
+        let hidden = self.hidden.borrow().clone();
+        self.shelf.set_visible(self.editing.get() && !hidden.is_empty());
+        self.shelf.append(&gtk4::Separator::new(Orientation::Horizontal));
+        self.shelf.append(&label("In the bar only", "dim"));
+        let chips = gtk4::FlowBox::new();
+        chips.set_selection_mode(gtk4::SelectionMode::None);
+        chips.set_max_children_per_line(4);
+        for it in hidden {
+            let Some(m) = self.reg.iter().find(|m| m.id == it.key) else { continue };
+            let chip = gtk4::ToggleButton::new();
+            chip.add_css_class("chip");
+            let bx = gtk4::Box::new(Orientation::Horizontal, 6);
+            bx.append(&gtk4::Image::from_icon_name(m.icon));
+            bx.append(&gtk4::Label::new(Some(m.name)));
+            chip.set_child(Some(&bx));
+            chip.set_active(*self.picked.borrow() == it.key);
+            let me = Rc::downgrade(self);
+            chip.connect_clicked(move |_| {
+                if let Some(p) = me.upgrade() {
+                    let now = if *p.picked.borrow() == it.key { String::new() } else { it.key.clone() };
+                    p.pick(&now);
+                }
+            });
+            chips.insert(&chip, -1);
+        }
+        self.shelf.append(&chips);
+    }
+
     /// The gallery: every widget not on the grid, its sizes, a click putting it on.
     fn fill_gallery(self: &Rc<Self>) {
         clear(&self.gallery);
         let hidden: Vec<String> = self.hidden.borrow().iter().map(|i| i.key.clone()).collect();
-        if !hidden.is_empty() {
-            self.gallery.append(&label("In the Bar Only", "title"));
-        }
-        for k in &hidden {
-            let Some(m) = self.reg.iter().find(|m| m.id == k) else { continue };
-            let me = Rc::downgrade(self);
-            let k2 = k.clone();
-            self.gallery.append(&crate::ui::row(m.icon, m.name, "back on the panel", false, move || {
-                if let Some(p) = me.upgrade() {
-                    p.unhide(&k2);
-                }
-            }));
-        }
+        self.fill_shelf();
         self.gallery.append(&label("Add Widgets", "title"));
         let mut on: Vec<String> = self.items.borrow().iter().map(|i| i.key.clone()).collect();
         on.extend(hidden);
@@ -1023,6 +1058,9 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     let inspector = gtk4::Box::new(Orientation::Vertical, 6);
     inspector.add_css_class("menu");
     inspector.set_visible(false);
+    let shelf = gtk4::Box::new(Orientation::Vertical, 6);
+    shelf.set_visible(false);
+    body.append(&shelf);
     body.append(&inspector);
     body.append(&gallery);
 
@@ -1083,6 +1121,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         grid,
         ghost,
         gallery,
+        shelf,
         inspector,
         picked: RefCell::default(),
         edit_button: edit_button.clone(),
@@ -1118,6 +1157,8 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     popup.on_open(move || {
         if let Some(h) = h.upgrade() {
             sc.set_max_content_height((h.win.height() - crate::popup::BAR - 110).max(200));
+            // no ring round what has the focus until a key moves it
+            h.win.set_focus_visible(false);
         }
     });
     popup.on_open(move || {

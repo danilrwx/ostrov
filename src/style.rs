@@ -103,6 +103,9 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 .cc .battery { min-height: 0; }
 /* every tile of a panel on the same ground as a toggle's */
 .cc .month calendar { background: none; border: none; padding: 0; }
+.cc scrolledwindow.card, .cc scrolledwindow.clock { padding: 0; }
+.cc .card-body { padding: 10px; }
+.cc .clock-body { padding: 0 14px; }
 .cc .card, .cc .clock { background: @raised; border: 1px solid @rule; border-radius: 6px; }
 .cc.editing .tile > :first-child { opacity: 0.85; }
 .cc.editing { margin: 6px; }
