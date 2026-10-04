@@ -223,9 +223,9 @@ pub fn register(id: &str, title: &str, icon: &str, mut schema: Schema) {
     });
 }
 
-/// Whether an entry of that id is registered (a KDL widget's, a plugin's, besides the modules' widgets).
-pub fn has(id: &str) -> bool {
-    REGISTERED.with(|r| r.borrow().iter().any(|e| e.id == id))
+/// The entry of that id: a widget's (widget.ID), a plugin's (plugin.ID), one of ostrov's own sections.
+pub fn entry(id: &str) -> Option<Entry> {
+    entries().into_iter().find(|e| e.id == id)
 }
 
 /// ostrov's own entries, then the registered ones.

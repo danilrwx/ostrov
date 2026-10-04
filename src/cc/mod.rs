@@ -429,6 +429,12 @@ impl Panel {
         Ok(())
     }
 
+    /// Open in the editing, the widget key picked ("" none).
+    pub fn edit(self: &Rc<Self>, key: &str) {
+        self.open_menu("edit");
+        self.pick(key);
+    }
+
     /// Whether a widget key is on it.
     pub fn has(&self, key: &str) -> bool {
         self.items.borrow().iter().chain(self.hidden.borrow().iter()).any(|i| i.key == key)
@@ -795,18 +801,17 @@ impl Panel {
         } else if self.tiles.borrow().get(&key).is_some_and(|t| t.widget.face.is_some()) {
             act("In the Bar Only", Box::new(move |p| p.hide(&k)));
         }
-        if m.settings.is_some() || crate::settings::has(&format!("widget.{key}")) {
-            let k = key.clone();
-            act("Settings…", Box::new(move |p| {
-                p.set_editing(false);
-                if let Some(c) = panel("control") {
-                    c.open_page("settings", Some(&format!("widget.{k}")));
-                }
-            }));
-        }
         let k = key.clone();
         act("Remove", Box::new(move |p| p.remove(&k)));
         self.inspector.append(&acts);
+        // its settings right here, written to the config as they change: its own (a module's, a KDL widget's
+        // [widget.ID]) or its plugin's ([plugin.ID])
+        let plugin = key.strip_prefix("plugin.").and_then(|r| r.split('.').next()).map(|p| format!("plugin.{p}"));
+        if let Some(e) = crate::settings::entry(&format!("widget.{key}")).or_else(|| plugin.and_then(|p| crate::settings::entry(&p))) {
+            self.inspector.append(&gtk4::Separator::new(Orientation::Horizontal));
+            self.inspector.append(&label("Settings", "dim"));
+            self.inspector.append(&crate::settings::form::form(&e.schema));
+        }
     }
 
     /// A widget's tile off the panel, its badge left in the bar (shown always, if it was never).
