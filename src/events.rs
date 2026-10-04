@@ -1,6 +1,7 @@
-//! ostrov's events: what happens on the desktop, a name and a JSON payload, for what extends it to follow: scripts through D-Bus's Event signal (api.rs), KDL widgets through an `event` source, plugins
-//! through on-shell-event. Some come from where they happen (the window focused, a workspace, the lock, the
-//! wallpaper); the rest from the services' state as it changes (watch): the network joined, the power plugged or
+//! ostrov's events: what happens on the desktop, a name and a JSON payload, for what extends it to follow:
+//! scripts through D-Bus's Event signal (api.rs), KDL widgets through an `event` source, plugins through
+//! on-shell-event. Some come from where they happen (the window focused, a workspace, the lock, the wallpaper);
+//! the rest from the services' state as it changes (watch): the network joined, the power plugged or
 //! not, a Bluetooth device, the default output, the player.
 //!
 //!     window      {"class", "title"}          the window focused ("" none)

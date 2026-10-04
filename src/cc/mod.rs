@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use gtk4::prelude::*;
-use gtk4::{Align, Orientation};
+use gtk4::{glib, Align, Orientation};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -361,8 +361,8 @@ struct Tile {
 }
 
 /// The tile dragged in the editing: it as the drag found it, by its corner (sized) or not (moved), the layout
-/// the drag started from, the cells it was last put at.
-type Dragged = (Item, bool, Vec<Item>, (u8, u8, u8, u8));
+/// the drag started from, the cells it was last put at, a cell's pitch as the tile is laid out (across, down).
+type Dragged = (Item, bool, Vec<Item>, (u8, u8, u8, u8), (f64, f64));
 
 pub struct Panel {
     pub popup: Rc<Popup>,
@@ -918,9 +918,9 @@ impl Panel {
         }
     }
 
-    /// Dragging a tile in the editing: by its body to move it, by its corner to size it, a frame following the
-    /// pointer as it goes and the grid taking the cells it comes to under it. The grid's own drag, in the grid's
-    /// coordinates, since the tile moves under the pointer. A press on a tile's minus is its own; a click, no drag, picks the tile.
+    /// Dragging a tile in the editing: by its body to move it, by its corner to size it, a frame following the pointer
+    /// as it goes and the grid taking the cells it comes to under it. The grid's own drag, in the grid's coordinates,
+    /// since the tile moves under the pointer. A press on a tile's minus is its own; a click, no drag, picks the tile.
     fn drags(self: &Rc<Self>) {
         let drag = gtk4::GestureDrag::new();
         let at: Rc<RefCell<Option<Dragged>>> = Rc::default();
@@ -950,27 +950,27 @@ impl Panel {
                 return;
             };
             g.set_state(gtk4::EventSequenceState::Claimed);
-            let mut at = (0.0, 0.0, 0.0, 0.0);
+            // a cell's pitch from the tile as laid out, whatever the grid's margins: its size over its cells
+            let (row, gap) = p.dims.get();
+            let mut pitch = ((p.grid.width() + gap) as f64 / COLS as f64, (row + gap) as f64);
             if let Some(t) = p.tiles.borrow().get(&it.key) {
                 t.wrap.add_css_class("dragged");
                 if let Some(b) = t.wrap.compute_bounds(&p.grid) {
-                    at = (b.x() as f64, b.y() as f64, b.width() as f64, b.height() as f64);
+                    pitch = ((b.width() as f64 + gap as f64) / it.w as f64, (b.height() as f64 + gap as f64) / it.h as f64);
                 }
             }
-            p.place_ghost(at);
+            p.ghost_on(&it.key);
             p.ghost.set_visible(true);
             let last = (it.x, it.y, it.w, it.h);
-            *a.borrow_mut() = Some((it, corner, items, last));
+            *a.borrow_mut() = Some((it, corner, items, last, pitch));
         });
         let (me, a) = (Rc::downgrade(self), at.clone());
         drag.connect_drag_update(move |_, dx, dy| {
             let Some(p) = me.upgrade() else { return };
             let mut a = a.borrow_mut();
-            let Some((it, corner, start, last)) = a.as_mut() else { return };
+            let Some((it, corner, start, last, pitch)) = a.as_mut() else { return };
             let Some(m) = p.reg.iter().find(|m| m.id == it.key) else { return };
-            let (row, gap) = p.dims.get();
-            let cw = (p.grid.width() + gap) as f64 / COLS as f64;
-            let (fx, fy) = (dx / cw, dy / (row + gap) as f64);
+            let (fx, fy) = (dx / pitch.0, dy / pitch.1);
             let (cx, cy) = (fx.round() as i32, fy.round() as i32);
             let next = if *corner {
                 let (nw, nh) = toward(m.sizes, (it.w, it.h), (fx, fy));
@@ -985,16 +985,10 @@ impl Panel {
             *last = next;
             let mut items = start.clone();
             grid::place(&mut items, &it.key, next.0, next.1, next.2, next.3);
-            // the frame where the tile has gone, its cells after the grid made room and closed up: what is seen
-            // is what it takes
-            if let Some(at) = items.iter().find(|i| i.key == it.key) {
-                let pitch = (row + gap) as f64;
-                let (ax, ay) = (at.x as f64 * cw, at.y as f64 * pitch);
-                p.place_ghost((ax, ay, at.w as f64 * cw - gap as f64, at.h as f64 * pitch - gap as f64));
-            }
             *p.items.borrow_mut() = items;
             p.layout();
             p.faces();
+            p.ghost_on(&it.key);
         });
         let (me, a) = (Rc::downgrade(self), at);
         drag.connect_drag_end(move |_, dx, dy| {
@@ -1012,11 +1006,18 @@ impl Panel {
         self.grid.add_controller(drag);
     }
 
-    /// The pointer's frame at (x, y), (width, height) in the grid.
-    fn place_ghost(&self, (x, y, w, h): (f64, f64, f64, f64)) {
-        self.ghost.set_margin_start(x.max(0.0) as i32);
-        self.ghost.set_margin_top(y.max(0.0) as i32);
-        self.ghost.set_size_request(w as i32, h as i32);
+    /// The frame on the tile key exactly where it is laid out, once the grid has laid it out anew (an idle runs
+    /// after the frame's layout): what is seen is what it takes, whatever the grid's margins and columns.
+    fn ghost_on(self: &Rc<Self>, key: &str) {
+        let (me, key) = (Rc::downgrade(self), key.to_string());
+        glib::idle_add_local_once(move || {
+            let Some(p) = me.upgrade() else { return };
+            let (Some(over), Some(t)) = (p.ghost.parent(), p.tiles.borrow().get(&key).map(|t| t.wrap.clone())) else { return };
+            let Some(b) = t.compute_bounds(&over) else { return };
+            p.ghost.set_margin_start(b.x().max(0.0) as i32);
+            p.ghost.set_margin_top(b.y().max(0.0) as i32);
+            p.ghost.set_size_request(b.width() as i32, b.height() as i32);
+        });
     }
 }
 
