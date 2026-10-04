@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::cc::{Ctx as Ui, Widget};
+use crate::cc::{Ctx as Ui, Show, Widget};
 use crate::services::{Ctx, Kick, Res};
 
 pub mod audio;
@@ -18,6 +18,7 @@ pub mod battery;
 pub mod brightness;
 pub mod bt;
 pub mod calendar;
+pub mod clock;
 pub mod displays;
 pub mod games;
 pub mod keymap;
@@ -58,11 +59,26 @@ pub struct WidgetDef {
     pub sizes: &'static [(u8, u8)],
     pub make: fn(&Ui) -> Widget,
     pub settings: Option<fn() -> crate::settings::Schema>,
+    /// when its badge is in its panel's face in the bar, unless the panel says otherwise
+    pub bar: Show,
 }
 
-/// A widget without settings.
+impl WidgetDef {
+    /// Its badge in the bar as bar says.
+    pub const fn bar(mut self, bar: Show) -> WidgetDef {
+        self.bar = bar;
+        self
+    }
+
+    pub const fn settings(mut self, schema: fn() -> crate::settings::Schema) -> WidgetDef {
+        self.settings = Some(schema);
+        self
+    }
+}
+
+/// A widget without settings, its badge (if it has one) not in the bar.
 pub const fn widget(id: &'static str, name: &'static str, icon: &'static str, sizes: &'static [(u8, u8)], make: fn(&Ui) -> Widget) -> WidgetDef {
-    WidgetDef { id, name, icon, sizes, make, settings: None }
+    WidgetDef { id, name, icon, sizes, make, settings: None, bar: Show::Never }
 }
 
 /// The sizes of a toggle: from a square to the whole width; of a round button; of a slider.
@@ -88,6 +104,7 @@ pub const ALL: &[&Module] = &[
     &weather::MODULE,
     &displays::MODULE,
     &calendar::MODULE,
+    &clock::MODULE,
     &games::MODULE,
     &system::MODULE,
 ];

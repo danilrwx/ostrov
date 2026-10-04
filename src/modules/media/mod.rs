@@ -1,8 +1,9 @@
-//! The player, through MPRIS: its state, `ostrov media ...`.
+//! The player, through MPRIS: its state, `ostrov media ...`; the Now Playing widget.
 
 mod service;
+mod widget;
 
-use super::{words, Fut, Module};
+use super::{widget, words, Fut, Module};
 use crate::services::{Ctx, Kick, Res};
 
 pub const USAGE: &str = "media play-pause|next|previous";
@@ -13,7 +14,7 @@ pub const MODULE: Module = Module {
     state: Some(state),
     run: Some(run),
     worker: Some(worker),
-    ..Module::NONE
+    widgets: &[widget("media", "Now Playing", "audio-x-generic-symbolic", &[(4, 2), (8, 2)], widget::player)],
 };
 
 fn state(c: &Ctx) -> Fut<'_, serde_json::Value> {

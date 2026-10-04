@@ -4,8 +4,8 @@
 //!
 //!     [bar]
 //!     left = ["workspaces"]
-//!     center = ["clock"]
-//!     right = ["record", "privacy", "layout", "tray", "status"]
+//!     center = ["panel.calendar"]  # a panel: its widgets' badges, the panel unrolled out of them
+//!     right = ["record", "privacy", "layout", "tray", "panel.control"]
 //!
 //!     [idle]
 //!     lock = 600          # seconds idle to the lock, 0 never
@@ -57,7 +57,11 @@ pub struct Bar {
 impl Default for Bar {
     fn default() -> Bar {
         let v = |s: &[&str]| s.iter().map(|s| s.to_string()).collect();
-        Bar { left: v(&["workspaces"]), center: v(&["clock"]), right: v(&["record", "privacy", "layout", "tray", "status"]) }
+        Bar {
+            left: v(&["workspaces", "window"]),
+            center: v(&["panel.calendar"]),
+            right: v(&["record", "privacy", "layout", "tray", "panel.control"]),
+        }
     }
 }
 
@@ -156,6 +160,17 @@ pub struct Config {
     /// the control centre widgets' own sections, [widget.ID]
     pub widget: BTreeMap<String, toml::Table>,
     pub plugin: BTreeMap<String, toml::Table>,
+    /// panels of the user's own, [panels.ID], put in the bar as panel.ID; the control centre's and the
+    /// calendar's name, icon or width changed the same way
+    pub panels: BTreeMap<String, PanelSpec>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+pub struct PanelSpec {
+    pub name: Option<String>,
+    pub icon: Option<String>,
+    pub width: Option<i32>,
 }
 
 pub fn path() -> PathBuf {

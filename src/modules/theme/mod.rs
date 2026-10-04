@@ -3,20 +3,14 @@
 mod service;
 mod widget;
 
-use super::{Fut, Module, WidgetDef, TOGGLE};
+use super::{widget, Fut, Module, TOGGLE};
 use crate::services::Ctx;
 
 pub const MODULE: Module = Module {
     id: "theme",
     state: Some(state),
-    widgets: &[WidgetDef {
-        id: "wallpaper",
-        name: "Wallpaper",
-        icon: "preferences-desktop-wallpaper-symbolic",
-        sizes: TOGGLE,
-        make: widget::wallpaper,
-        settings: Some(widget::wallpaper_settings),
-    }],
+    widgets: &[widget("wallpaper", "Wallpaper", "preferences-desktop-wallpaper-symbolic", TOGGLE, widget::wallpaper)
+        .settings(widget::wallpaper_settings)],
     ..Module::NONE
 };
 

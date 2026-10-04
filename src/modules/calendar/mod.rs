@@ -1,8 +1,11 @@
-//! The calendars' events, CalDAV's and .ics links': their state, `ostrov calendar refresh`.
+//! The calendars' events, CalDAV's and .ics links': their state, `ostrov calendar refresh`; the month and the
+//! coming events.
 
 pub mod service;
+mod widget;
 
-use super::{words, Fut, Module};
+use super::{widget, words, Fut, Module};
+use crate::cc::Show;
 use crate::services::{Ctx, Kick, Res};
 
 pub const USAGE: &str = "calendar refresh";
@@ -13,7 +16,10 @@ pub const MODULE: Module = Module {
     state: Some(state),
     run: Some(run),
     worker: Some(worker),
-    ..Module::NONE
+    widgets: &[
+        widget("month", "Month", "x-office-calendar-symbolic", &[(4, 5), (8, 5), (4, 6)], widget::month),
+        widget("agenda", "Coming Up", "view-list-symbolic", &[(4, 4), (4, 2), (8, 2), (8, 4)], widget::agenda).bar(Show::Active),
+    ],
 };
 
 fn state(_: &Ctx) -> Fut<'_, serde_json::Value> {

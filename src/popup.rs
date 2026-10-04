@@ -181,9 +181,11 @@ impl Host {
     }
 }
 
-/// Where the popup hangs: its right edge under its tab's (the bar's right end, the tray), or in the middle.
+/// Where the popup hangs: its left edge under its tab's (a panel at the bar's left), its right edge under its
+/// tab's (the bar's right end, the tray), or in the middle.
 #[derive(Clone, Copy, PartialEq)]
 pub enum Side {
+    Left,
     Right,
     Center,
 }
@@ -207,7 +209,11 @@ impl Popup {
         reveal.set_transition_type(gtk4::RevealerTransitionType::SlideDown);
         reveal.set_transition_duration(120);
         reveal.set_valign(Align::Start);
-        reveal.set_halign(if side == Side::Right { Align::End } else { Align::Center });
+        reveal.set_halign(match side {
+            Side::Left => Align::Start,
+            Side::Right => Align::End,
+            Side::Center => Align::Center,
+        });
         reveal.set_margin_top(BAR);
         reveal.set_size_request(width, -1);
 
@@ -218,16 +224,26 @@ impl Popup {
         left.add_css_class("edge");
         left.set_hexpand(true);
         let gap = gtk4::Box::new(Orientation::Horizontal, 0);
-        top.append(&left);
-        top.append(&gap);
-        if side == Side::Right {
-            gap.add_css_class("gap");
-        } else {
-            gap.add_css_class("gap-mid");
-            let right = gtk4::Box::new(Orientation::Horizontal, 0);
-            right.add_css_class("edge-right");
-            right.set_hexpand(true);
-            top.append(&right);
+        let right = gtk4::Box::new(Orientation::Horizontal, 0);
+        right.add_css_class("edge-right");
+        right.set_hexpand(true);
+        match side {
+            Side::Left => {
+                gap.add_css_class("gap");
+                top.append(&gap);
+                top.append(&right);
+            }
+            Side::Right => {
+                gap.add_css_class("gap");
+                top.append(&left);
+                top.append(&gap);
+            }
+            Side::Center => {
+                gap.add_css_class("gap-mid");
+                top.append(&left);
+                top.append(&gap);
+                top.append(&right);
+            }
         }
         shape.append(&top);
         body.add_css_class("attached");
@@ -315,13 +331,15 @@ impl Popup {
         let Some(host) = self.host.upgrade() else { return };
         let tab = self.tab.borrow();
         let Some(b) = tab.compute_bounds(&host.win) else { return };
-        let inner = if self.side == Side::Right { 1 } else { 2 };
+        let inner = if self.side == Side::Center { 2 } else { 1 };
         let tw = b.width().round() as i32;
         if tw > inner {
             self.gap.set_size_request(tw - inner, -1);
         }
-        if self.side == Side::Right {
-            self.reveal.set_margin_end(host.win.width() - (b.x() + b.width()).round() as i32);
+        match self.side {
+            Side::Right => self.reveal.set_margin_end(host.win.width() - (b.x() + b.width()).round() as i32),
+            Side::Left => self.reveal.set_margin_start(b.x().round() as i32),
+            Side::Center => {}
         }
     }
 

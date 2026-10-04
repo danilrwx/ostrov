@@ -42,6 +42,8 @@ pub enum Event {
     /// a Super combination done (a workspace, a window): the compositor skips Super's release bind after another
     /// key, so a peek ends here instead
     Done,
+    /// the window focused now, or its title changed: its class and title (empty: none)
+    Window(String, String),
 }
 
 pub(crate) fn hypr_socket(name: &str) -> Option<String> {
@@ -119,8 +121,12 @@ pub fn events(tx: async_channel::Sender<Event>) {
         Wm::Hyprland => {
             let Some(Ok(s)) = hypr_socket(".socket2.sock").map(UnixStream::connect) else { return };
             for line in BufReader::new(s).lines().map_while(Result::ok) {
-                let Some((name, _)) = line.split_once(">>") else { continue };
+                let Some((name, data)) = line.split_once(">>") else { continue };
                 let e = match name {
+                    "activewindow" => {
+                        let (class, title) = data.split_once(',').unwrap_or((data, ""));
+                        Event::Window(class.into(), title.into())
+                    }
                     "workspace" | "createworkspace" | "destroyworkspace" | "urgent" | "focusedmon" => Event::Workspaces,
                     "workspacev2" | "focusedmonv2" | "activewindowv2" | "openwindow" | "closewindow" | "movewindowv2"
                     | "changefloatingmode" | "fullscreen" => Event::Done,

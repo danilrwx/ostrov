@@ -8,7 +8,6 @@ mod api;
 mod backend;
 mod bar;
 mod calc;
-mod calendar;
 mod cc;
 mod clip;
 mod config;
@@ -71,7 +70,7 @@ fn activate(app: &gtk4::Application) {
         v.iter().map(String::as_str).collect()
     }
     let (l, c, r) = (names(&cfg.bar.left), names(&cfg.bar.center), names(&cfg.bar.right));
-    let bar = bar::Bar::build(&host, &hub, &notes, [&l, &c, &r]);
+    let bar = bar::Bar::build(&host, &hub, [&l, &c, &r]);
     over.set_child(Some(&bar.strip));
 
     // the launcher, over the bar between the left's blocks and the right's, the middle's hidden under it; the
@@ -116,16 +115,21 @@ fn activate(app: &gtk4::Application) {
     COMMAND.with(|c| {
         *c.borrow_mut() = Some(Box::new(move |args: &[String]| {
             let args: Vec<&str> = args.iter().map(String::as_str).collect();
-            let toggle = |name: &str| bar.popup(name).map(|p| p.toggle()).ok_or(format!("no block {name}"));
+            let panel = |id: &str| cc::panel(id).ok_or(format!("no panel {id} in the bar"));
             match args[..] {
-                ["panel"] => toggle("status")?,
-                ["calendar"] => toggle("clock")?,
-                ["menu", name] => return bar.command("status", &["menu", name]).unwrap_or(Err("no status block".into())),
+                ["panel"] => panel("control")?.toggle(),
+                ["panel", id] => panel(id)?.toggle(),
+                ["calendar"] => panel("calendar")?.toggle(),
+                // the panel with that widget on it, the widget's menu unfolded ("edit": the control centre in its
+                // editing)
+                ["menu", name] => {
+                    let key = cc::alias(name);
+                    cc::with_widget(key).or_else(|| cc::panel("control")).ok_or("no panel in the bar")?.open_menu(name);
+                }
                 // the control centre at its Settings (an entry's form: bar, calendar, widget.wallpaper...) or
                 // Appearance page
-                ["settings", ..] | ["appearance"] => {
-                    return bar.command("status", &args).unwrap_or(Err("no status block".into()));
-                }
+                ["settings", ref entry @ ..] => panel("control")?.open_page("settings", entry.first().copied()),
+                ["appearance"] => panel("control")?.open_page("appearance", None),
                 ["run"] => launcher.toggle(false),
                 ["ask", ref question @ ..] if !question.is_empty() => {
                     let ctx = gtk4::gdk::Display::default().map(|d| d.app_launch_context());

@@ -1,15 +1,20 @@
-//! The control centre: the quick settings as a grid of widgets 8 cells wide (grid.rs), unrolled from the bar's
-//! status. Each widget is one of the registry's (widgets.rs), in one of the sizes it allows: a toggle from a
-//! square to the whole width, a slider the whole width alone. Its menu, if it has one, unfolds under its rows
-//! across the whole width, one menu at a time, sliding open in 100 ms.
+//! The panels: what unrolls out of the bar, each a grid of widgets 8 cells wide (grid.rs), its face in the bar
+//! made of its widgets' badges. The control centre (control) and the calendar (calendar) are two; [panels.ID] in
+//! the config makes more. Each widget is one of the modules' (modules/) or the plugins', in one of the sizes it
+//! allows: a toggle from a square to the whole width, a slider the whole width alone. Its menu, if it has one,
+//! unfolds under its rows across the whole width, one menu at a time, sliding open in 100 ms. A widget may put a
+//! badge (an icon, a few words) in its panel's face in the bar: always, only while it is active (a VPN up, an
+//! event near), or never; the panel's own icon there when none does.
 //!
 //! "Edit" turns the grid to its editing: a widget dragged goes where it is dropped, the ones in its way pushed
 //! down; dragged by its corner it takes the size nearest the pointer of those it allows; its minus takes it off;
-//! the gallery under the grid puts back any widget not on it. The layout is kept in ~/.config/ostrov/panel.toml.
+//! its eye says when its badge shows; the gallery under the grid puts back any widget not on it. The layouts are
+//! kept in ~/.config/ostrov/panel.toml, a list of widgets a panel.
 //!
-//! Under the grid, beside Edit, a gear and a palette: the Settings page (settings/: a form for each of ostrov's
-//! sections, each widget with a schema, each plugin's) and the Appearance page (appearance.rs), each sliding in
-//! over the grid in the same popup, its arrow back at its top. The rows are as tall as [appearance]'s density.
+//! Under the control centre's grid, beside Edit, a gear and a palette: the Settings page (settings/: a form for
+//! each of ostrov's sections, each widget with a schema, each plugin's) and the Appearance page (appearance.rs),
+//! each sliding in over the grid in the same popup, its arrow back at its top. The rows are as tall as
+//! [appearance]'s density.
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -29,12 +34,59 @@ pub mod grid;
 
 use grid::{Item, COLS};
 
-/// A widget made: its tile, its menu's card, how it draws the state and fits a size.
+/// A widget made: its tile, its menu's card, its badge for the bar, how it draws the state and fits a size.
 pub struct Widget {
     pub root: gtk4::Widget,
     pub menu: Option<gtk4::Widget>,
+    pub face: Option<Face>,
     pub draw: Box<dyn Fn(&Value)>,
     pub size: Box<dyn Fn(u8, u8)>,
+}
+
+/// A widget's badge in its panel's face in the bar, kept up by the widget as it draws; active while what it
+/// shows is on (a VPN up), for a badge shown only then.
+pub struct Face {
+    pub root: gtk4::Widget,
+    pub active: Rc<Cell<bool>>,
+}
+
+impl Face {
+    pub fn new(root: &impl IsA<gtk4::Widget>) -> Face {
+        Face { root: root.clone().upcast(), active: Rc::new(Cell::new(true)) }
+    }
+
+    /// A badge of an icon alone, and the cell its widget says it is active by.
+    pub fn icon(icon: &str) -> (Face, gtk4::Image) {
+        let img = gtk4::Image::from_icon_name(icon);
+        (Face::new(&img), img)
+    }
+}
+
+/// When a widget's badge is in its panel's face.
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Show {
+    Always,
+    Active,
+    Never,
+}
+
+impl Show {
+    fn next(self) -> Show {
+        match self {
+            Show::Always => Show::Active,
+            Show::Active => Show::Never,
+            Show::Never => Show::Always,
+        }
+    }
+
+    fn says(self) -> &'static str {
+        match self {
+            Show::Always => "In the bar: always",
+            Show::Active => "In the bar: while active",
+            Show::Never => "In the bar: never",
+        }
+    }
 }
 
 impl Widget {
@@ -43,15 +95,20 @@ impl Widget {
         Widget {
             root: root.clone().upcast(),
             menu: menu.map(|m| m.clone().upcast()),
+            face: None,
             draw: Box::new(draw),
             size: Box::new(|_, _| ()),
         }
     }
 
-    /// A toggle's widget: drawn by draw, fitted as the toggle fits.
+    /// A toggle's widget: drawn by draw, fitted as the toggle fits, its badge the toggle's.
     pub fn toggle(t: &crate::ui::Toggle, menu: Option<&gtk4::Box>, draw: impl Fn(&Value) + 'static) -> Widget {
         let t2 = t.clone();
-        Widget { size: Box::new(move |w, h| t2.size(w, h)), ..Widget::new(&t.root, menu, draw) }
+        Widget {
+            size: Box::new(move |w, h| t2.size(w, h)),
+            face: Some(Face { root: t.face.clone().upcast(), active: t.active.clone() }),
+            ..Widget::new(&t.root, menu, draw)
+        }
     }
 }
 
@@ -74,53 +131,66 @@ pub struct Meta {
     pub make: Rc<dyn Fn(&Ctx) -> Widget>,
     /// its settings' schema, kept in [widget.ID], a page of the Settings
     pub settings: Option<fn() -> crate::settings::Schema>,
+    /// when its badge is in the bar unless its panel says otherwise
+    pub bar: Show,
 }
 
-/// A widget placed on the grid, as panel.toml keeps it.
-#[derive(Serialize, Deserialize)]
-struct Placed {
-    id: String,
-    x: u8,
-    y: u8,
-    w: u8,
-    h: u8,
+/// The widgets there are: the modules' and the plugins'. Made once, every panel's gallery the same.
+pub fn registry() -> Rc<Vec<Meta>> {
+    thread_local!(static REG: std::cell::OnceCell<Rc<Vec<Meta>>> = const { std::cell::OnceCell::new() });
+    REG.with(|r| {
+        r.get_or_init(|| {
+            let mut reg: Vec<Meta> = crate::modules::ALL
+                .iter()
+                .flat_map(|m| m.widgets)
+                .map(|d| Meta {
+                    id: d.id,
+                    name: d.name,
+                    icon: d.icon,
+                    sizes: d.sizes,
+                    make: Rc::new(d.make),
+                    settings: d.settings,
+                    bar: d.bar,
+                })
+                .collect();
+            reg.extend(crate::plugins::metas());
+            for m in &reg {
+                if let Some(schema) = m.settings {
+                    crate::settings::register(&format!("widget.{}", m.id), m.name, m.icon, schema());
+                }
+            }
+            Rc::new(reg)
+        })
+        .clone()
+    })
 }
 
-#[derive(Serialize, Deserialize)]
-struct Saved {
-    #[serde(default)]
-    widget: Vec<Placed>,
+/// A panel: its id, the name and icon its face falls back to, how wide it is, its layout until one is saved;
+/// the control centre's has the Settings and Appearance pages under it.
+pub struct Spec {
+    pub id: String,
+    pub name: String,
+    pub icon: String,
+    pub width: i32,
+    pub pages: bool,
+    pub layout: Vec<Item>,
 }
 
-fn layout_path() -> std::path::PathBuf {
-    crate::hub::home().join(".config/ostrov/panel.toml")
-}
-
-/// The size of those allowed nearest (w, h), a row off counting as two columns.
-fn nearest(sizes: &[(u8, u8)], w: i32, h: i32) -> (u8, u8) {
-    let d = |&(sw, sh): &(u8, u8)| (sw as i32 - w).pow(2) + 4 * (sh as i32 - h).pow(2);
-    sizes.iter().copied().min_by_key(d).unwrap_or((COLS, 1))
-}
-
-/// The layout as panel.toml has it (widgets unknown dropped, sizes not allowed made the nearest allowed), else
-/// the one that came before the grid: the battery and the buttons, the sliders, the toggles two a row.
-fn load(reg: &[Meta]) -> Vec<Item> {
-    let saved: Option<Saved> = std::fs::read_to_string(layout_path()).ok().and_then(|t| {
-        toml::from_str(&t).map_err(|e| eprintln!("ostrov: {}: {e}", layout_path().display())).ok()
-    });
-    let mut items: Vec<Item> = match saved {
-        Some(s) => s
-            .widget
-            .into_iter()
-            .filter_map(|p| {
-                let m = reg.iter().find(|m| m.id == p.id)?;
-                let (w, h) = nearest(m.sizes, p.w as i32, p.h as i32);
-                Some(Item { key: p.id, x: p.x, y: p.y, w, h })
-            })
-            .collect(),
-        None => {
-            let it = |key: &str, x, y, w, h| Item { key: key.into(), x, y, w, h };
-            vec![
+impl Spec {
+    /// The panel id: the control centre, the calendar, or one of [panels.ID] (empty until edited).
+    pub fn of(id: &str) -> Spec {
+        let it = |key: &str, x, y, w, h| Item { key: key.into(), x, y, w, h };
+        let spec = |name: &str, icon: &str, width, pages, layout| Spec {
+            id: id.into(),
+            name: name.into(),
+            icon: icon.into(),
+            width,
+            pages,
+            layout,
+        };
+        let cfg = crate::config::load().panels.remove(id);
+        match id {
+            "control" => spec("Control Centre", "emblem-system-symbolic", 390, true, vec![
                 it("battery", 0, 0, 5, 1),
                 it("screenshot", 5, 0, 1, 1),
                 it("lock", 6, 0, 1, 1),
@@ -137,21 +207,97 @@ fn load(reg: &[Meta]) -> Vec<Item> {
                 it("awake", 0, 7, 4, 1),
                 it("headset", 4, 7, 4, 1),
                 it("displays", 0, 8, 4, 1),
-            ]
+            ]),
+            // the calendar as it was: the weather and the player over the notifications at the left; the
+            // date, the month, the coming events at the right
+            "calendar" => spec("Calendar", "x-office-calendar-symbolic", 680, false, vec![
+                it("weather", 0, 0, 4, 2),
+                it("clock", 4, 0, 4, 1),
+                it("month", 4, 1, 4, 5),
+                it("media", 0, 2, 4, 2),
+                it("notifications", 0, 4, 4, 6),
+                it("agenda", 4, 6, 4, 4),
+            ]),
+            _ => spec(id, "view-grid-symbolic", 390, false, Vec::new()),
         }
+        .with(cfg)
+    }
+
+    fn with(mut self, cfg: Option<crate::config::PanelSpec>) -> Spec {
+        if let Some(c) = cfg {
+            self.name = c.name.unwrap_or(self.name);
+            self.icon = c.icon.unwrap_or(self.icon);
+            self.width = c.width.unwrap_or(self.width);
+        }
+        self
+    }
+}
+
+/// A widget placed on a grid, as panel.toml keeps it; bar, when its badge shows, if not as its widget says.
+#[derive(Serialize, Deserialize)]
+struct Placed {
+    id: String,
+    x: u8,
+    y: u8,
+    w: u8,
+    h: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    bar: Option<Show>,
+}
+
+/// panel.toml: each panel's widgets, under its id ([[control]], [[calendar]]); [[widget]] the control centre's
+/// from before there were panels.
+type Saved = std::collections::BTreeMap<String, Vec<Placed>>;
+
+fn read_saved() -> Option<Saved> {
+    let t = std::fs::read_to_string(layout_path()).ok()?;
+    toml::from_str(&t).map_err(|e| eprintln!("ostrov: {}: {e}", layout_path().display())).ok()
+}
+
+fn layout_path() -> std::path::PathBuf {
+    crate::hub::home().join(".config/ostrov/panel.toml")
+}
+
+/// The size of those allowed nearest (w, h), a row off counting as two columns.
+fn nearest(sizes: &[(u8, u8)], w: i32, h: i32) -> (u8, u8) {
+    let d = |&(sw, sh): &(u8, u8)| (sw as i32 - w).pow(2) + 4 * (sh as i32 - h).pow(2);
+    sizes.iter().copied().min_by_key(d).unwrap_or((COLS, 1))
+}
+
+/// A panel's layout as panel.toml has it (widgets unknown dropped, sizes not allowed made the nearest allowed),
+/// else its spec's; and when its badges show where it says.
+fn load(reg: &[Meta], spec: &Spec) -> (Vec<Item>, HashMap<String, Show>) {
+    let mut saved = read_saved().unwrap_or_default();
+    let placed = saved.remove(&spec.id).or_else(|| if spec.id == "control" { saved.remove("widget") } else { None });
+    let mut shows = HashMap::new();
+    let mut items: Vec<Item> = match placed {
+        Some(ps) => ps
+            .into_iter()
+            .filter_map(|p| {
+                let m = reg.iter().find(|m| m.id == p.id)?;
+                let (w, h) = nearest(m.sizes, p.w as i32, p.h as i32);
+                if let Some(b) = p.bar {
+                    shows.insert(p.id.clone(), b);
+                }
+                Some(Item { key: p.id, x: p.x, y: p.y, w, h })
+            })
+            .collect(),
+        None => spec.layout.clone(),
     };
     let mut seen = std::collections::HashSet::new();
     items.retain(|i| seen.insert(i.key.clone()));
     grid::compact(&mut items);
-    items
+    (items, shows)
 }
 
-fn save(items: &[Item]) {
-    let s = Saved {
-        widget: items.iter().map(|i| Placed { id: i.key.clone(), x: i.x, y: i.y, w: i.w, h: i.h }).collect(),
-    };
+/// A panel's layout into panel.toml, the other panels' kept.
+fn save(id: &str, items: &[Item], shows: &HashMap<String, Show>) {
+    let mut s = read_saved().unwrap_or_default();
+    s.remove("widget");
+    let placed = items.iter().map(|i| Placed { id: i.key.clone(), x: i.x, y: i.y, w: i.w, h: i.h, bar: shows.get(&i.key).copied() });
+    s.insert(id.to_string(), placed.collect());
     let text = match toml::to_string(&s) {
-        Ok(t) => format!("# ostrov's control centre, as its Edit leaves it\n\n{t}"),
+        Ok(t) => format!("# ostrov's panels, as their Edit leaves them\n\n{t}"),
         Err(e) => return eprintln!("ostrov: panel layout: {e}"),
     };
     if let Err(e) = std::fs::write(layout_path(), text) {
@@ -173,10 +319,15 @@ type Dragged = (Item, bool, Vec<Item>, (u8, u8, u8, u8));
 
 pub struct Panel {
     pub popup: Rc<Popup>,
-    reg: Vec<Meta>,
+    spec: Spec,
+    reg: Rc<Vec<Meta>>,
+    /// its face in the bar: its widgets' badges, else its icon
+    face: gtk4::Box,
+    face_icon: gtk4::Image,
+    shows: RefCell<HashMap<String, Show>>,
     /// the grid's page, the Settings', the Appearance's
     pages: gtk4::Stack,
-    settings: Rc<crate::settings::form::Page>,
+    settings: Option<Rc<crate::settings::form::Page>>,
     /// a row's height and the gap between cells, in pixels, as the density says
     dims: Cell<(i32, i32)>,
     grid: gtk4::Grid,
@@ -201,15 +352,12 @@ impl Panel {
         if name == "edit" {
             return self.set_editing(true);
         }
-        let key = match name {
-            "system" => "session",
-            "outs" => "volume",
-            "ins" => "mic",
-            "night" => "brightness",
-            "theme" => "wallpaper",
-            n => n,
-        };
-        self.set_open(key);
+        self.set_open(alias(name));
+    }
+
+    /// Whether a widget key is on it.
+    pub fn has(&self, key: &str) -> bool {
+        self.items.borrow().iter().any(|i| i.key == key)
     }
 
     /// Open at a page: "settings" (at an entry's form, if given), "appearance", "grid".
@@ -217,8 +365,8 @@ impl Panel {
         if !self.popup.is_open() {
             self.popup.open();
         }
-        if page == "settings" {
-            self.settings.show(entry);
+        if let Some(s) = self.settings.as_ref().filter(|_| page == "settings") {
+            s.show(entry);
         }
         if !(page == "settings" && entry == Some("appearance")) {
             self.pages.set_visible_child_full(page, gtk4::StackTransitionType::None);
@@ -281,7 +429,32 @@ impl Panel {
         grip.add_css_class("tile-grip");
         grip.set_halign(Align::End);
         grip.set_valign(Align::End);
-        for w in [remove.upcast_ref::<gtk4::Widget>(), grip.upcast_ref()] {
+        let mut marks = vec![remove.upcast::<gtk4::Widget>(), grip.upcast()];
+        // the eye: when its badge is in the bar, a click the next way
+        if widget.face.is_some() {
+            let eye = gtk4::Button::from_icon_name("view-reveal-symbolic");
+            eye.add_css_class("tile-eye");
+            eye.set_halign(Align::End);
+            eye.set_valign(Align::Start);
+            let show = self.show(key, m.bar);
+            eye.set_tooltip_text(Some(show.says()));
+            let me = Rc::downgrade(self);
+            let k = key.to_string();
+            let bar = m.bar;
+            eye.connect_clicked(move |e| {
+                let Some(p) = me.upgrade() else { return };
+                let next = p.show(&k, bar).next();
+                p.shows.borrow_mut().insert(k.clone(), next);
+                e.set_tooltip_text(Some(next.says()));
+                e.set_icon_name(if next == Show::Never { "view-conceal-symbolic" } else { "view-reveal-symbolic" });
+                p.faces();
+            });
+            if show == Show::Never {
+                eye.set_icon_name("view-conceal-symbolic");
+            }
+            marks.push(eye.upcast());
+        }
+        for w in &marks {
             w.set_visible(self.editing.get());
             wrap.add_overlay(w);
         }
@@ -373,12 +546,51 @@ impl Panel {
         for t in self.tiles.borrow().values() {
             (t.widget.draw)(&st);
         }
+        self.fit_faces();
+    }
+
+    /// When a widget's badge shows here: as the panel says, else as the widget does.
+    fn show(&self, key: &str, default: Show) -> Show {
+        self.shows.borrow().get(key).copied().unwrap_or(default)
+    }
+
+    /// The face laid anew: the badges in their widgets' order on the grid, left to right, top to bottom.
+    fn faces(&self) {
+        while let Some(c) = self.face.first_child() {
+            self.face.remove(&c);
+        }
+        let mut items = self.items.borrow().clone();
+        items.sort_by_key(|i| (i.y, i.x));
+        let tiles = self.tiles.borrow();
+        for f in items.iter().filter_map(|i| tiles.get(&i.key)?.widget.face.as_ref()) {
+            self.face.append(&f.root);
+        }
+        self.face.append(&self.face_icon);
+        drop(tiles);
+        self.fit_faces();
+    }
+
+    /// Each badge shown or not, as when it shows says and its widget's activity; the icon while none is.
+    fn fit_faces(&self) {
+        let mut any = false;
+        for (k, t) in self.tiles.borrow().iter() {
+            let Some(f) = &t.widget.face else { continue };
+            let Some(m) = self.reg.iter().find(|m| m.id == k) else { continue };
+            let on = match self.show(k, m.bar) {
+                Show::Always => true,
+                Show::Active => f.active.get(),
+                Show::Never => false,
+            };
+            f.root.set_visible(on);
+            any |= on;
+        }
+        self.face_icon.set_visible(!any);
     }
 
     /// In the editing or out of it, the layout saved on the way out.
     fn set_editing(self: &Rc<Self>, on: bool) {
         if !on && self.editing.get() {
-            save(&self.items.borrow());
+            save(&self.spec.id, &self.items.borrow(), &self.shows.borrow());
         }
         self.editing.set(on);
         self.set_open("");
@@ -405,6 +617,7 @@ impl Panel {
         grid::compact(&mut self.items.borrow_mut());
         self.tiles.borrow_mut().remove(key);
         self.layout();
+        self.faces();
         self.fill_gallery();
     }
 
@@ -417,6 +630,7 @@ impl Panel {
         self.items.borrow_mut().push(Item { key: key.into(), x, y, w, h });
         self.tiles.borrow_mut().insert(key.into(), t);
         self.layout();
+        self.faces();
         self.fill_gallery();
         self.draw();
     }
@@ -500,6 +714,7 @@ impl Panel {
             grid::place(&mut items, &it.key, next.0, next.1, next.2, next.3);
             *p.items.borrow_mut() = items;
             p.layout();
+            p.faces();
         });
         let (me, a) = (Rc::downgrade(self), at);
         drag.connect_drag_end(move |_, _, _| {
@@ -523,7 +738,37 @@ fn fit_band(bx: &gtk4::Widget) {
     bx.set_visible(any);
 }
 
-pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Panel> {
+/// A widget by the name its menu had in the panel before the grid (ostrov menu night), or by its own.
+pub fn alias(name: &str) -> &str {
+    match name {
+        "system" => "session",
+        "outs" => "volume",
+        "ins" => "mic",
+        "night" => "brightness",
+        "theme" => "wallpaper",
+        n => n,
+    }
+}
+
+thread_local! {
+    static PANELS: RefCell<Vec<Rc<Panel>>> = RefCell::default();
+}
+
+/// A panel built, by its id.
+pub fn panel(id: &str) -> Option<Rc<Panel>> {
+    PANELS.with(|p| p.borrow().iter().find(|p| p.spec.id == id).cloned())
+}
+
+/// The panel a widget is on, the control centre's first.
+pub fn with_widget(key: &str) -> Option<Rc<Panel>> {
+    PANELS.with(|p| {
+        let ps = p.borrow();
+        ps.iter().find(|p| p.spec.id == "control" && p.has(key)).or_else(|| ps.iter().find(|p| p.has(key))).cloned()
+    })
+}
+
+/// The panel spec unrolled from tab in the bar, on the side of the bar it is on; its face put into face.
+pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::Widget>, side: Side, spec: Spec, face: &gtk4::Box) -> Rc<Panel> {
     let col = gtk4::Box::new(Orientation::Vertical, 0);
     col.add_css_class("surface");
     let pages = gtk4::Stack::new();
@@ -547,12 +792,14 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
     gallery.set_visible(false);
     page.append(&gallery);
 
-    // the footer: the gear to the Settings, the palette to the Appearance, Edit
+    // the footer: the control centre's gear to the Settings and palette to the Appearance, Edit
     let foot = gtk4::Box::new(Orientation::Horizontal, 4);
-    for (icon, tip, to) in [
-        ("emblem-system-symbolic", "Settings", "settings"),
-        ("preferences-desktop-appearance-symbolic", "Appearance", "appearance"),
-    ] {
+    let to_pages: &[(&str, &str, &str)] = if spec.pages {
+        &[("emblem-system-symbolic", "Settings", "settings"), ("preferences-desktop-appearance-symbolic", "Appearance", "appearance")]
+    } else {
+        &[]
+    };
+    for &(icon, tip, to) in to_pages {
         let b = gtk4::Button::from_icon_name(icon);
         b.add_css_class("flat-round");
         b.set_tooltip_text(Some(tip));
@@ -569,31 +816,30 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
     page.append(&foot);
     pages.add_named(&page, Some("grid"));
 
-    let (pg, pg2) = (pages.clone(), pages.clone());
-    let settings = crate::settings::form::Page::new(
-        move || pg.set_visible_child_name("grid"),
-        move |id| id == "appearance" && { pg2.set_visible_child_name("appearance"); true },
-    );
-    pages.add_named(&settings.root, Some("settings"));
-    let pg = pages.clone();
-    pages.add_named(&appearance::page(move || pg.set_visible_child_name("grid")), Some("appearance"));
+    let settings = spec.pages.then(|| {
+        let (pg, pg2) = (pages.clone(), pages.clone());
+        let settings = crate::settings::form::Page::new(
+            move || pg.set_visible_child_name("grid"),
+            move |id| id == "appearance" && { pg2.set_visible_child_name("appearance"); true },
+        );
+        pages.add_named(&settings.root, Some("settings"));
+        let pg = pages.clone();
+        pages.add_named(&appearance::page(move || pg.set_visible_child_name("grid")), Some("appearance"));
+        settings
+    });
 
-    let popup = Popup::new(host, tab, Side::Right, 390, &col);
-    let mut reg: Vec<Meta> = crate::modules::ALL
-        .iter()
-        .flat_map(|m| m.widgets)
-        .map(|d| Meta { id: d.id, name: d.name, icon: d.icon, sizes: d.sizes, make: Rc::new(d.make), settings: d.settings })
-        .collect();
-    reg.extend(crate::plugins::metas());
-    for m in &reg {
-        if let Some(schema) = m.settings {
-            crate::settings::register(&format!("widget.{}", m.id), m.name, m.icon, schema());
-        }
-    }
-    let items = load(&reg);
+    let popup = Popup::new(host, tab, side, spec.width, &col);
+    let reg = registry();
+    let (items, shows) = load(&reg, &spec);
+    let face_icon = gtk4::Image::from_icon_name(&spec.icon);
+    face_icon.set_tooltip_text(Some(&spec.name));
     let p = Rc::new(Panel {
         popup: popup.clone(),
+        spec,
         reg,
+        face: face.clone(),
+        face_icon,
+        shows: RefCell::new(shows),
         pages,
         settings,
         dims: Cell::new(dims),
@@ -613,7 +859,9 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
         }
     }
     p.layout();
+    p.faces();
     p.drags();
+    PANELS.with(|ps| ps.borrow_mut().push(p.clone()));
 
     let me = Rc::downgrade(&p);
     edit_button.connect_clicked(move |_| {
@@ -627,7 +875,9 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
     popup.on_open(move || {
         if let Some(p) = me.upgrade() {
             p.pages.set_visible_child_full("grid", gtk4::StackTransitionType::None);
-            p.settings.show(None);
+            if let Some(s) = &p.settings {
+                s.show(None);
+            }
             p.set_editing(false);
             p.draw();
         }

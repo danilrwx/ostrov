@@ -175,11 +175,14 @@ pub fn round(icon: &str, f: impl Fn() + 'static) -> gtk4::Button {
 }
 
 /// A split toggle: the pill flips it (inverted while on), the arrow side (or a right click) opens its menu.
-/// Narrower than four cells it is its icon alone.
+/// Narrower than four cells it is its icon alone. Its badge for the bar is its icon, active while it is on.
 #[derive(Clone)]
 pub struct Toggle {
     pub root: gtk4::Box,
     icon: gtk4::Image,
+    pub face: gtk4::Image,
+    pub active: Rc<std::cell::Cell<bool>>,
+    title: String,
     inner: gtk4::Box,
     col: gtk4::Box,
     sub: gtk4::Label,
@@ -219,7 +222,10 @@ impl Toggle {
             root.append(&a);
             a
         });
-        Toggle { root, icon: img, inner: bx, col, sub, side }
+        let face = gtk4::Image::from_icon_name(icon);
+        face.set_tooltip_text(Some(title));
+        let active = Rc::new(std::cell::Cell::new(false));
+        Toggle { root, icon: img, face, active, title: title.into(), inner: bx, col, sub, side }
     }
 
     pub fn set(&self, on: bool, icon: &str, sub: &str) {
@@ -230,7 +236,10 @@ impl Toggle {
         }
         if !icon.is_empty() {
             self.icon.set_icon_name(Some(icon));
+            self.face.set_icon_name(Some(icon));
         }
+        self.active.set(on);
+        self.face.set_tooltip_text(Some(&if sub.is_empty() { self.title.clone() } else { format!("{}: {sub}", self.title) }));
         self.sub.set_text(sub);
         self.sub.set_visible(!sub.is_empty());
     }
@@ -256,6 +265,8 @@ impl Toggle {
 pub struct Slider {
     pub root: gtk4::Box,
     pub icon: gtk4::Button,
+    /// its badge for the bar: its icon
+    pub face: gtk4::Image,
     scale: gtk4::Scale,
     touched: Rc<RefCell<Instant>>,
 }
@@ -278,7 +289,8 @@ impl Slider {
         });
         root.append(&ib);
         root.append(&scale);
-        Slider { root, icon: ib, scale, touched }
+        let face = gtk4::Image::from_icon_name(icon);
+        Slider { root, icon: ib, face, scale, touched }
     }
 
     pub fn set(&self, v: f64, icon: &str) {
@@ -287,7 +299,9 @@ impl Slider {
         }
         if !icon.is_empty() {
             self.icon.set_icon_name(icon);
+            self.face.set_icon_name(Some(icon));
         }
+        self.face.set_tooltip_text(Some(&format!("{}%", (v * 100.0).round())));
     }
 }
 

@@ -5,19 +5,20 @@ mod service;
 mod widget;
 
 use super::{widget, Fut, Module, TOGGLE};
+use crate::cc::Show;
 use crate::services::Ctx;
 
 pub const VLESS: Module = Module {
     id: "vless",
     state: Some(vless),
-    widgets: &[widget("vless", "VLESS", "network-vpn-symbolic", TOGGLE, widget::vless)],
+    widgets: &[widget("vless", "VLESS", "network-vpn-symbolic", TOGGLE, widget::vless).bar(Show::Active)],
     ..Module::NONE
 };
 
 pub const OPENVPN: Module = Module {
     id: "openvpn",
     state: Some(openvpn),
-    widgets: &[widget("openvpn", "OpenVPN", "network-vpn-symbolic", TOGGLE, widget::openvpn)],
+    widgets: &[widget("openvpn", "OpenVPN", "network-vpn-symbolic", TOGGLE, widget::openvpn).bar(Show::Active)],
     ..Module::NONE
 };
 

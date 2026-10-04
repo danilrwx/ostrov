@@ -5,7 +5,7 @@ use std::time::Duration;
 use gtk4::prelude::*;
 use gtk4::{glib, Orientation};
 
-use crate::cc::{Ctx, Widget};
+use crate::cc::{Ctx, Face, Widget};
 use crate::hub::{s, service};
 use crate::style::{clear, label};
 use crate::ui::{arrow, menu, row, Memo, Slider};
@@ -61,7 +61,8 @@ pub fn brightness(c: &Ctx) -> Widget {
     items.append(&warm.root);
     let memo = Memo::default();
     let root = bri.root.clone();
-    Widget::new(&root, Some(&card), move |st| {
+    let face = Face::new(&bri.face);
+    let w = Widget::new(&root, Some(&card), move |st| {
         bri.set(st["brightness"].as_f64().unwrap_or(0.0) / 100.0, "display-brightness-symbolic");
         let n = &st["night"];
         if !memo.changed("night", n.to_string()) {
@@ -88,5 +89,6 @@ pub fn brightness(c: &Ctx) -> Widget {
         let k = n["temp"].as_f64().unwrap_or(4000.0);
         warm.set((6500.0 - k) / 4000.0, "night-light-symbolic");
         kelvin.set_text(&format!("{k} K"));
-    })
+    });
+    Widget { face: Some(face), ..w }
 }

@@ -7,6 +7,7 @@ mod widget;
 use std::time::Duration;
 
 use super::{widget, words, Fut, Module, SLIDER, TOGGLE};
+use crate::cc::Show;
 use crate::services::{every, Ctx, Kick, Res};
 
 pub const USAGE: &str = "audio volume ID LEVEL";
@@ -18,7 +19,7 @@ pub const MODULE: Module = Module {
     run: Some(run),
     worker: Some(worker),
     widgets: &[
-        widget("volume", "Volume", "audio-volume-high-symbolic", SLIDER, widget::volume),
+        widget("volume", "Volume", "audio-volume-high-symbolic", SLIDER, widget::volume).bar(Show::Always),
         widget("mic", "Microphone", "microphone-sensitivity-high-symbolic", SLIDER, widget::mic),
         widget("headset", "Headset", "audio-headphones-symbolic", TOGGLE, widget::headset),
     ],

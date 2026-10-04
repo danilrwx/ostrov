@@ -4,7 +4,7 @@ use gtk4::prelude::*;
 use gtk4::Orientation;
 use serde_json::Value;
 
-use crate::cc::{Ctx, Widget};
+use crate::cc::{Ctx, Face, Widget};
 use crate::hub::{run, s, service};
 use crate::style::{clear, label};
 use crate::ui::{app_icon, arrow, level_icon, menu, row, Memo, Slider, Toggle};
@@ -23,7 +23,8 @@ pub fn volume(c: &Ctx) -> Widget {
     let sliders: RefCell<Vec<Slider>> = RefCell::default();
     let memo = Memo::default();
     let root = vol.root.clone();
-    Widget::new(&root, Some(&card), move |st| {
+    let face = Face::new(&vol.face);
+    let w = Widget::new(&root, Some(&card), move |st| {
         let a = &st["audio"];
         let (v, m) = (a["volume"].as_f64().unwrap_or(0.0), a["muted"].as_bool().unwrap_or(false));
         vol.set(v, &level_icon("audio-volume", v, m));
@@ -52,7 +53,8 @@ pub fn volume(c: &Ctx) -> Widget {
         for (sl, x) in sliders.borrow().iter().zip(&streams) {
             sl.set(x["volume"].as_f64().unwrap_or(0.0), "");
         }
-    })
+    });
+    Widget { face: Some(face), ..w }
 }
 
 /// A list of sound devices, the default ticked, a click making one the default.
@@ -76,12 +78,14 @@ pub fn mic(c: &Ctx) -> Widget {
     let (card, items) = menu("audio-input-microphone-symbolic", "Sound Input");
     let memo = Memo::default();
     let root = mic.root.clone();
-    Widget::new(&root, Some(&card), move |st| {
+    let face = Face::new(&mic.face);
+    let w = Widget::new(&root, Some(&card), move |st| {
         let a = &st["audio"];
         let (v, m) = (a["mic"].as_f64().unwrap_or(0.0), a["micMuted"].as_bool().unwrap_or(false));
         mic.set(v, &level_icon("microphone-sensitivity", v, m));
         devices(&memo, "ins", &a["sources"], &items);
-    })
+    });
+    Widget { face: Some(face), ..w }
 }
 
 /// The headset's mode, handsfree (with its mic) or headphones; there only while a headset is.

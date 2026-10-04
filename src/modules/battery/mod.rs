@@ -4,13 +4,14 @@ pub mod service;
 mod widget;
 
 use super::{widget, Fut, Module};
+use crate::cc::Show;
 use crate::services::{signals, Ctx, Kick};
 
 pub const MODULE: Module = Module {
     id: "battery",
     state: Some(state),
     worker: Some(worker),
-    widgets: &[widget("battery", "Battery", "battery-good-symbolic", &[(5, 1), (2, 1), (3, 1), (4, 1), (8, 1)], widget::battery)],
+    widgets: &[widget("battery", "Battery", "battery-good-symbolic", &[(5, 1), (2, 1), (3, 1), (4, 1), (8, 1)], widget::battery).bar(Show::Active)],
     ..Module::NONE
 };
 

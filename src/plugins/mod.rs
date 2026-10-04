@@ -403,6 +403,7 @@ pub fn metas() -> Vec<Meta> {
                     sizes: Box::leak(w.sizes.clone().into_boxed_slice()),
                     make: Rc::new(move |c| p2.widget(&p2.m.widgets[n], c)),
                     settings: None,
+                    bar: crate::cc::Show::Never,
                 });
             }
         }

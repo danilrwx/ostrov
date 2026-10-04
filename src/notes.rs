@@ -178,6 +178,10 @@ impl Notes {
     }
     pub fn set_dnd(&self, on: bool) {
         *self.dnd.borrow_mut() = on;
+        self.changed();
+    }
+    pub fn dnd(&self) -> bool {
+        *self.dnd.borrow()
     }
     /// One notification gone: its toast, its place in the history; the app told (reason 2: dismissed).
     pub fn dismiss(&self, id: u32) {
@@ -326,6 +330,13 @@ impl Notes {
     }
 }
 
+thread_local!(static NOTES: std::cell::OnceCell<Rc<Notes>> = const { std::cell::OnceCell::new() });
+
+/// The notifications, once started (the panels' notifications widget).
+pub fn get() -> Option<Rc<Notes>> {
+    NOTES.with(|n| n.get().cloned())
+}
+
 pub fn start(app: &gtk4::Application) -> Rc<Notes> {
     let (in_tx, in_rx) = async_channel::unbounded::<In>();
     let (out_tx, out_rx) = tokio::sync::mpsc::unbounded_channel::<Out>();
@@ -401,6 +412,9 @@ pub fn start(app: &gtk4::Application) -> Rc<Notes> {
                 In::Notify(note) => n.show(note),
             }
         }
+    });
+    NOTES.with(|g| {
+        let _ = g.set(notes.clone());
     });
     notes
 }

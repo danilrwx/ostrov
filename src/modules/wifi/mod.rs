@@ -4,6 +4,7 @@ mod service;
 mod widget;
 
 use super::{widget, words, Fut, Module, TOGGLE};
+use crate::cc::Show;
 use crate::services::{signals, Ctx, Kick, Res};
 
 pub const USAGE: &str = "wifi on|off|scan|disconnect|connect SSID|forget SSID";
@@ -14,7 +15,7 @@ pub const MODULE: Module = Module {
     state: Some(state),
     run: Some(run),
     worker: Some(worker),
-    widgets: &[widget("wifi", "Wi-Fi", "network-wireless-symbolic", TOGGLE, widget::wifi)],
+    widgets: &[widget("wifi", "Wi-Fi", "network-wireless-symbolic", TOGGLE, widget::wifi).bar(Show::Always)],
 };
 
 fn state(c: &Ctx) -> Fut<'_, serde_json::Value> {

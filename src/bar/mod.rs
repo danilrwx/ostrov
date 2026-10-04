@@ -11,21 +11,19 @@ use gtk4::prelude::*;
 use gtk4::glib;
 
 use crate::hub::Hub;
-use crate::notes::Notes;
-use crate::popup::{Host, Popup, BAR};
+use crate::popup::{Host, Popup, Side, BAR};
 
-mod clock;
 mod layout;
+mod panel;
 mod privacy;
-mod status;
 mod tray;
+mod window;
 mod workspaces;
 
 /// What a block is built with.
 pub struct Ctx {
     pub host: Rc<Host>,
     pub hub: Rc<Hub>,
-    pub notes: Rc<Notes>,
     /// the compositor's events, each to every block that asked (wm.rs)
     wm: RefCell<Vec<Box<dyn Fn(&crate::wm::Event)>>>,
 }
@@ -53,15 +51,18 @@ impl Block {
     }
 }
 
-/// The blocks there are, by name.
-fn block(name: &str, cx: &Rc<Ctx>) -> Option<Block> {
+/// The blocks there are, by name; a panel's, panel.ID, unrolling on the side of the bar it is in. The names from
+/// before there were panels still work: status the control centre's, clock the calendar's.
+fn block(name: &str, cx: &Rc<Ctx>, side: Side) -> Option<Block> {
     Some(match name {
         "workspaces" => workspaces::build(cx),
-        "clock" => clock::build(cx),
+        "window" => window::build(cx),
         "layout" => layout::build(cx),
         "privacy" => privacy::build(cx),
         "tray" => tray::build(cx),
-        "status" => status::build(cx),
+        "status" => panel::build(cx, "control", side),
+        "clock" => panel::build(cx, "calendar", side),
+        n if n.starts_with("panel.") => panel::build(cx, &n["panel.".len()..], side),
         "record" => crate::record::block(),
         _ => {
             eprintln!("ostrov: no block {name}");
@@ -96,11 +97,10 @@ pub struct Bar {
 
 impl Bar {
     /// The bar of these blocks, left, middle and right.
-    pub fn build(host: &Rc<Host>, hub: &Rc<Hub>, notes: &Rc<Notes>, layout: [&[&str]; 3]) -> Rc<Bar> {
+    pub fn build(host: &Rc<Host>, hub: &Rc<Hub>, layout: [&[&str]; 3]) -> Rc<Bar> {
         let cx = Rc::new(Ctx {
             host: host.clone(),
             hub: hub.clone(),
-            notes: notes.clone(),
             wm: RefCell::default(),
         });
         let strip = gtk4::CenterBox::new();
@@ -117,9 +117,9 @@ impl Bar {
         right.append(&fill);
 
         let mut blocks = Vec::new();
-        for (names, into) in layout.iter().zip([&left, &center, &right]) {
+        for ((names, into), side) in layout.iter().zip([&left, &center, &right]).zip([Side::Left, Side::Center, Side::Right]) {
             for name in names.iter() {
-                if let Some(b) = block(name, &cx) {
+                if let Some(b) = block(name, &cx, side) {
                     into.append(&b.widget);
                     blocks.push((name.to_string(), b));
                 }
@@ -170,11 +170,6 @@ impl Bar {
         });
         cx.host.win.add_controller(click);
         bar
-    }
-
-    /// A block's popup, by the block's name.
-    pub fn popup(&self, name: &str) -> Option<Rc<Popup>> {
-        self.blocks.iter().find(|(n, _)| n == name).and_then(|(_, b)| b.popup.clone())
     }
 
     /// The name of the block whose popup is open.

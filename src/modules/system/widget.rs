@@ -1,7 +1,8 @@
 
 use gtk4::prelude::*;
 
-use crate::cc::{Ctx, Widget};
+use crate::cc::{Ctx, Face, Widget};
+use crate::style::label;
 use crate::hub::run;
 use crate::ui::{menu, round, row, Toggle};
 
@@ -60,4 +61,58 @@ pub fn awake(c: &Ctx) -> Widget {
         let on = crate::idle::awake();
         t2.set(on, "", if on { "the screen stays on" } else { "" });
     })
+}
+
+/// The notifications' history, newest first (a click dismisses one, its actions as buttons), Do Not Disturb and
+/// Clear under it; its badge a bell struck through while Do Not Disturb is on.
+pub fn notifications(_: &Ctx) -> Widget {
+    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
+    col.append(&label("Notifications", "title"));
+    let scroll = gtk4::ScrolledWindow::new();
+    scroll.set_vexpand(true);
+    scroll.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::Automatic);
+    let list = gtk4::Box::new(gtk4::Orientation::Vertical, 6);
+    scroll.set_child(Some(&list));
+    col.append(&scroll);
+    let foot = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
+    let dnd = gtk4::ToggleButton::with_label("Do Not Disturb");
+    dnd.add_css_class("chip");
+    dnd.set_hexpand(true);
+    dnd.set_halign(gtk4::Align::Start);
+    let clear_all = gtk4::Button::with_label("Clear");
+    clear_all.add_css_class("chip");
+    foot.append(&dnd);
+    foot.append(&clear_all);
+    col.append(&foot);
+    let (face, _) = Face::icon("notifications-disabled-symbolic");
+    let active = face.active.clone();
+    let Some(notes) = crate::notes::get() else { return Widget::new(&col, None, |_| ()) };
+
+    let (list2, n2, dnd2) = (list.downgrade(), notes.clone(), dnd.downgrade());
+    let draw = move || {
+        let (Some(list), Some(dnd)) = (list2.upgrade(), dnd2.upgrade()) else { return };
+        crate::style::clear(&list);
+        let hist = n2.history();
+        if hist.is_empty() {
+            let l = label("No notifications", "dim");
+            l.set_xalign(0.5);
+            l.set_margin_top(40);
+            list.append(&l);
+        }
+        for n in hist.iter().rev() {
+            list.append(&n2.card(n, true));
+        }
+        dnd.set_active(n2.dnd());
+        active.set(n2.dnd());
+    };
+    draw();
+    notes.on_change(draw);
+    let n3 = notes.clone();
+    dnd.connect_toggled(move |b| {
+        if n3.dnd() != b.is_active() {
+            n3.set_dnd(b.is_active());
+        }
+    });
+    clear_all.connect_clicked(move |_| notes.clear());
+    Widget { face: Some(face), ..Widget::new(&col, None, |_| ()) }
 }
