@@ -313,6 +313,7 @@ fn main() -> glib::ExitCode {
     // one ostrov: run again, it hands its arguments to the running one and exits
     // OSTROV_APP_ID: another id, a second ostrov beside the running one (a build tried out without stopping it)
     let id = std::env::var("OSTROV_APP_ID").unwrap_or_else(|_| "dev.ostrov.Ostrov".into());
+    i18n::follow_locale();
     // the shells' completion: the script printed here; its candidates by the running ostrov, nothing with none
     // (never this one made the shell)
     match std::env::args().nth(1).as_deref() {

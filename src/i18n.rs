@@ -45,6 +45,25 @@ fn catalogue(lang: &str) -> HashMap<String, &'static str> {
     out
 }
 
+/// GTK's own words (a calendar's months and weekdays) in the language too: LC_TIME a locale of it the system
+/// has, when the language is not the locale's. Before GTK starts, while ostrov is one thread.
+pub fn follow_locale() {
+    let lang = lang();
+    let now = std::env::var("LC_TIME").or_else(|_| std::env::var("LANG")).unwrap_or_default();
+    if lang.is_empty() || now.starts_with(lang) {
+        return;
+    }
+    let Ok(out) = std::process::Command::new("locale").arg("-a").output() else { return };
+    let all = String::from_utf8_lossy(&out.stdout);
+    let mine = all.lines().filter(|l| l.starts_with(&format!("{lang}_")) && l.to_lowercase().contains("utf"));
+    let region = format!("{lang}_{}", lang.to_uppercase());
+    let pick = mine.clone().find(|l| l.starts_with(&region)).or_else(|| mine.clone().next());
+    if let Some(l) = pick {
+        // SAFETY: called first thing in main, no other thread reads the environment yet
+        unsafe { std::env::set_var("LC_TIME", l) };
+    }
+}
+
 /// The text in the user's language; a text not 'static (a schema's, sent as JSON) comes back as long as it lives.
 pub fn t<'a>(en: &'a str) -> &'a str {
     WORDS.get_or_init(|| catalogue(lang())).get(en).copied().unwrap_or(en)
