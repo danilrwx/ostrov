@@ -153,6 +153,7 @@ pub fn previews(themes: &[Theme]) -> String {
 thread_local! {
     /// Hyprland's blur as last set from here: enabled, size, passes.
     static BLUR: RefCell<(Option<bool>, Option<u32>, Option<u32>)> = const { RefCell::new((None, None, None)) };
+    static RULE: RefCell<String> = const { RefCell::new(String::new()) };
 }
 
 /// What the appearance sets outside the CSS: GTK's animations and dark variant, and Hyprland's blur where the file
@@ -164,6 +165,11 @@ pub fn apply(a: &Appearance, t: &Theme) {
     }
     if crate::wm::wm() != crate::wm::Wm::Hyprland {
         return;
+    }
+    // the layer's blur threshold under the opacity as it changes: a later rule over the one before
+    let rule = crate::modules::hyprland::rule();
+    if RULE.with(|r| r.replace(rule.clone())) != rule && crate::config::load().hyprland.rules {
+        drop(crate::wm::hyprctl(&format!("keyword layerrule {rule}")));
     }
     let now = (a.blur.or(t.blur), a.blur_size, a.blur_passes);
     let last = BLUR.with(|b| b.replace(now));

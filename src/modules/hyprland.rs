@@ -19,10 +19,21 @@ pub const MODULE: Module = Module { id: "hyprland", worker: Some(worker), ..Modu
 
 /// Its layers' rules, as layerrule lines.
 const RULES: &[&str] = &[
-    "blur on, ignore_alpha 0.7, xray on, match:namespace ^ostrov$",
     "blur on, ignore_alpha 0.2, xray on, match:namespace ^(ostrov-toast|ostrov-osd|ostrov-prompt|ostrov-switcher|ostrov-overview)$",
     "no_anim on, match:namespace ^(ostrov-switcher|ostrov-overview)$",
 ];
+
+/// The bar's and its popups' rule: blurred where a surface or the bar is, the threshold under the least opaque of
+/// them as the appearance has them; not blurred at all when the appearance (or its theme) says no blur. A
+/// threshold among their opacities, or one left while blur is off, flickered: a block hovered crossing it.
+pub fn rule() -> String {
+    let a = crate::config::load().appearance;
+    if a.blur.or(crate::theme::get(&a.theme).blur) == Some(false) {
+        return "blur off, ignore_alpha 0, match:namespace ^ostrov$".into();
+    }
+    let least = a.opacity.min(crate::modules::wallpaper::service::bar_alpha());
+    format!("blur on, ignore_alpha {:.2}, xray on, match:namespace ^ostrov$", (least - 0.05).clamp(0.01, 0.7))
+}
 
 /// Its keys: a name ([hyprland.keys] moves one: run = "SUPER, R"), the bind's kind, the combination, the
 /// command's words after ostrov.
@@ -182,6 +193,7 @@ fn apply() {
     let _one = lock(&APPLYING);
     let mut batch = vec!["keyword misc:allow_session_lock_restore 1".to_string()];
     if cfg.rules {
+        batch.push(format!("keyword layerrule {}", rule()));
         batch.extend(RULES.iter().map(|r| format!("keyword layerrule {r}")));
     }
     if cfg.binds {
@@ -199,6 +211,7 @@ pub fn conf() -> String {
     let binds: Vec<Value> = serde_json::from_str(&hyprctl("j/binds")).unwrap_or_default();
     let mut out = vec!["# ostrov (put there by ostrov itself unless [hyprland] says rules or binds = false)".to_string()];
     out.push("misc {\n  allow_session_lock_restore = true\n}".into());
+    out.push(format!("layerrule = {}", rule()));
     out.extend(RULES.iter().map(|r| format!("layerrule = {r}")));
     for k in keys(&binds) {
         out.push(format!("{} = {}", k.kind, k.line));

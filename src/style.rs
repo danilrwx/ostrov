@@ -188,7 +188,7 @@ calendar > grid > label.day-number:selected { background: @accent; color: @ink; 
 .bar-bg, .slot { background: @bar; }
 .slot:hover, .slot.tab { background: transparent; }
 .pill { padding: 0 8px; margin: 2px 0 0 0; border: 1px solid transparent; border-bottom-width: 0;
-        border-radius: 6px 6px 0 0; transition: background 100ms; }
+        border-radius: 6px 6px 0 0; }
 .slot:hover > .pill, .slot.tab > .pill { background: @surface; box-shadow: 0 0 0 30px @bar; }
 .tray-item { padding: 0 5px; }
 .rec-dot { color: @urgent; }
