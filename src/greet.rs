@@ -22,17 +22,25 @@ const STATE: &str = "/var/cache/ostrov-greet/state";
 /// user's build, so not updated with it.
 const AT: &str = "/usr/local/bin/ostrov";
 
-/// Whether the login screen's ostrov is another build than this one; None with no login screen of ostrov's.
+/// The installed ostrov: this one's file, or what took its place since it started (cargo install replacing it
+/// leaves this one's link saying "… (deleted)").
+fn installed() -> std::io::Result<std::path::PathBuf> {
+    let me = std::env::current_exe()?;
+    let s = me.to_string_lossy();
+    Ok(s.strip_suffix(" (deleted)").map_or(me.clone(), std::path::PathBuf::from))
+}
+
+/// Whether the login screen's ostrov is another build than the installed one; None with no login screen of ostrov's.
 pub fn stale() -> Option<bool> {
     let theirs = std::fs::read(AT).ok()?;
-    let mine = std::env::current_exe().and_then(std::fs::read).ok()?;
+    let mine = installed().and_then(std::fs::read).ok()?;
     Some(theirs != mine)
 }
 
-/// `ostrov greeter update`: this build put where the login screen runs it, root's password asked by pkexec (in
+/// `ostrov greeter update`: the installed build put where the login screen runs it, root's password asked by pkexec (in
 /// ostrov's own dialog, it being the polkit agent).
 pub async fn update() -> Result<String, String> {
-    let me = std::env::current_exe().map_err(|e| e.to_string())?;
+    let me = installed().map_err(|e| e.to_string())?;
     let argv = [std::ffi::OsStr::new("pkexec"), "install".as_ref(), "-m755".as_ref(), me.as_os_str(), AT.as_ref()];
     let launcher = gio::SubprocessLauncher::new(gio::SubprocessFlags::STDERR_PIPE);
     let p = launcher.spawn(&argv).map_err(|e| format!("pkexec: {e}"))?;
