@@ -67,6 +67,11 @@ struct Audio {
     mic_apps: Vec<App>,
     #[serde(rename = "camApps")]
     cam_apps: Vec<String>,
+    /// the screen shared through the portal (its stream a Video/Source of no device: xdg-desktop-portal-hyprland's
+    /// xdph-streaming-N), and the apps taking it, kept out of camApps
+    screen: bool,
+    #[serde(rename = "screenApps")]
+    screen_apps: Vec<String>,
     streams: Vec<Stream>,
 }
 
@@ -131,6 +136,24 @@ fn parse(objs: &[Value]) -> Audio {
     let mut a = Audio::default();
     let mut defaults = HashMap::new();
     let mut routes = HashMap::new();
+    // the screens' streams, and what each node takes from: links, output node to input node
+    let mut screens = std::collections::HashSet::new();
+    let mut takes = HashMap::new();
+    for o in objs {
+        match str(o, &["type"]) {
+            "PipeWire:Interface:Node" => {
+                let p = &o["info"]["props"];
+                if str(p, &["media.class"]) == "Video/Source" && p.get("device.id").is_none() {
+                    screens.insert(num(o, &["id"]));
+                }
+            }
+            "PipeWire:Interface:Link" => {
+                takes.insert(num(o, &["info", "input-node-id"]), num(o, &["info", "output-node-id"]));
+            }
+            _ => {}
+        }
+    }
+    a.screen = !screens.is_empty();
     for o in objs {
         match str(o, &["type"]) {
             "PipeWire:Interface:Metadata" if str(o, &["props", "metadata.name"]) == "default" => {
@@ -162,7 +185,8 @@ fn parse(objs: &[Value]) -> Audio {
                 continue;
             }
             "Stream/Input/Video" if running => {
-                a.cam_apps.push(app_name(p));
+                let screen = takes.get(&num(o, &["id"])).is_some_and(|src| screens.contains(src));
+                if screen { &mut a.screen_apps } else { &mut a.cam_apps }.push(app_name(p));
                 continue;
             }
             "Stream/Output/Audio" => {
@@ -339,7 +363,9 @@ pub async fn events(kick: Kick) {
                     } else {
                         watched.remove(&id);
                     }
-                    if matches!(class, "Stream/Input/Audio" | "Stream/Input/Video" | "Stream/Output/Audio") {
+                    // a Video/Source among them for a screen's coming and going
+                    let stream = matches!(class, "Stream/Input/Audio" | "Stream/Input/Video" | "Stream/Output/Audio");
+                    if stream || class == "Video/Source" {
                         touched |= streams.insert(id);
                     }
                 }
@@ -471,6 +497,8 @@ mod tests {
         assert_eq!(v["volume"], serde_json::json!(0.5));
         assert_eq!(v["micApps"], serde_json::json!([{"id": 88, "name": "Chromium input"}]));
         assert_eq!(v["camApps"], serde_json::json!(["zoom"]));
+        assert_eq!(v["screen"], serde_json::json!(true));
+        assert_eq!(v["screenApps"], serde_json::json!(["obs"]));
         assert_eq!(
             v["streams"],
             serde_json::json!([

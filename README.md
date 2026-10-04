@@ -5,11 +5,11 @@ GTK 4 and gtk4-layer-shell. One process replaces the usual collection of bar, no
 locker, idle daemon, polkit agent, clipboard manager, screenshot tools and wallpaper setter:
 
 - **The bar**, made of blocks: workspaces, the focused window's title, the tray, the keyboard layout, the privacy
-  indicator (mic or camera in use), the faces of the panels, and any widget on its own
+  indicator (mic or camera in use, the screen shared), the faces of the panels, and any widget on its own
   (`widget.ID`: its badge in the bar, its menu on a click).
 - **Panels of widgets**, macOS-style: the control centre and the calendar are grids of widgets (Wi-Fi, Bluetooth,
   volume and mic with per-app sliders and device ports, brightness, power profiles, battery,
-  wallpaper, Keep Awake, the player, the month and its events (CalDAV and .ics by the plugin caldav),
+  Airplane Mode, wallpaper, Keep Awake, the player, the month and its events (CalDAV and .ics by the plugin caldav),
   the weather, notifications' history with Do Not Disturb). Each panel is edited in place: drag, resize, remove,
   add from the gallery, choose which widgets show a badge in the bar. Make panels of your own.
 - **A launcher** in the bar, dmenu-style: apps, a calculator, emoji (`:name`), files (`/name`), web search
@@ -252,6 +252,7 @@ The modules':
     ostrov audio volume ID LEVEL | port CARD PROFILE ROUTE DEVICE
     ostrov headset                     a Bluetooth headset between headphones (A2DP) and handsfree (with its mic)
     ostrov power set PROFILE
+    ostrov airplane on|off|toggle      every radio blocked (rfkill); off unblocks those that were on
     ostrov brightness PERCENT
     ostrov location CITY... | LAT LON
     ostrov media play-pause|next|previous

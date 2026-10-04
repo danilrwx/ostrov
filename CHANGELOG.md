@@ -5,15 +5,15 @@
 The first release: the whole shell in one binary.
 
 - The bar, made of blocks: workspaces with animated dots, the focused window's title, the keyboard layout, the
-  system tray with its menus, the privacy indicator, panels' faces made of their widgets'
-  badges. Docked or hidden and peeking (`ostrov bar toggle|peek|unpeek`); the blocks set in `[bar]` or with the
-  bar's editor in Settings.
+  system tray with its menus, the privacy indicator (mic, camera, the screen shared), panels' faces made of
+  their widgets' badges. Docked or hidden and peeking (`ostrov bar toggle|peek|unpeek`); the blocks set in
+  `[bar]` or with the bar's editor in Settings.
 - Panels: the control centre and the calendar as grids of widgets eight cells wide, unrolling out of the bar; Edit
   drags, resizes by a corner, removes and adds widgets from a gallery, an inspector per widget (sizes, its badge in
   the bar always, while active or never, the bar alone, its settings); panels of your own (`[panels.ID]`).
 - Widgets: Wi-Fi (iwd) with its networks and passphrases, Bluetooth with pairing, volume and mic with per-app
   sliders and devices, outputs in a card's other profiles switched to, a Bluetooth headset's profile, brightness,
-  power profiles, battery, wallpaper, Keep Awake, screenshot, lock and power off, the player (MPRIS), the
+  power profiles, battery, Airplane Mode, wallpaper, Keep Awake, screenshot, lock and power off, the player (MPRIS), the
   clock, the month and upcoming events (CalDAV's and .ics links' by the official plugin caldav), the weather
   (open-meteo), the notifications' history with Do Not Disturb.
 - The launcher in the bar: apps, a calculator, emoji, files (fd), web search (DuckDuckGo, `[launcher] search`),

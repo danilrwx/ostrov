@@ -213,6 +213,7 @@ impl Spec {
                 it("wallpaper", 4, 5, 4, 1),
                 it("awake", 0, 6, 4, 1),
                 it("headset", 4, 6, 4, 1),
+                it("airplane", 0, 7, 4, 1),
             ]),
             // the calendar as it was: the weather and the player over the notifications at the left; the
             // date, the month, the coming events at the right

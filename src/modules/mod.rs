@@ -13,6 +13,7 @@ use serde_json::Value;
 use crate::cc::{Ctx as Ui, Show, Widget};
 use crate::services::{Ctx, Kick, Res};
 
+pub mod airplane;
 pub mod audio;
 pub mod battery;
 pub mod brightness;
@@ -106,6 +107,7 @@ pub const SLIDER: &[(u8, u8)] = &[(8, 1)];
 pub const ALL: &[&Module] = &[
     &wifi::MODULE,
     &bt::MODULE,
+    &airplane::MODULE,
     &audio::MODULE,
     &audio::HEADSET,
     &power::MODULE,

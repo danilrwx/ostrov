@@ -258,6 +258,9 @@ fn listen() {
                     crate::events::emit("window", serde_json::json!({"class": class, "title": title}))
                 }
                 crate::wm::Event::Workspaces => crate::events::emit("workspace", serde_json::json!({})),
+                crate::wm::Event::Screencast(on, window) => {
+                    crate::events::emit("screencast", serde_json::json!({"on": on, "window": window}))
+                }
                 crate::wm::Event::Done => {}
             }
         }

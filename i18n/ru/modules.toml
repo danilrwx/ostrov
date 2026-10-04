@@ -118,3 +118,5 @@
 "no network {} in sight; scan first" = "сеть {} не видна; обновите список"
 "could not join (a wrong passphrase?)" = "не удалось подключиться (неверный пароль?)"
 "timed out joining" = "время подключения истекло"
+"Airplane Mode" = "Режим полёта"
+"every radio off" = "все радио выключены"

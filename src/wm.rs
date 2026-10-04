@@ -44,6 +44,9 @@ pub enum Event {
     Done,
     /// the window focused now, or its title changed: its class and title (empty: none)
     Window(String, String),
+    /// the screen shared or recorded, or no longer: whether, and whether a window alone (Hyprland's screencast,
+    /// said per client, so a share's end while another goes on reads as the end of all)
+    Screencast(bool, bool),
 }
 
 pub(crate) fn hypr_socket(name: &str) -> Option<String> {
@@ -144,20 +147,9 @@ pub fn events(tx: async_channel::Sender<Event>) {
         Wm::Hyprland => {
             let Some(Ok(s)) = hypr_socket(".socket2.sock").map(UnixStream::connect) else { return };
             for line in BufReader::new(s).lines().map_while(Result::ok) {
-                let Some((name, data)) = line.split_once(">>") else { continue };
-                let e = match name {
-                    "activewindow" => {
-                        let (class, title) = data.split_once(',').unwrap_or((data, ""));
-                        Event::Window(class.into(), title.into())
-                    }
-                    "workspace" | "createworkspace" | "destroyworkspace" | "urgent" | "focusedmon" | "moveworkspace" => {
-                        Event::Workspaces
-                    }
-                    "workspacev2" | "focusedmonv2" | "activewindowv2" | "openwindow" | "closewindow" | "movewindowv2"
-                    | "changefloatingmode" | "fullscreen" => Event::Done,
-                    _ => continue,
-                };
-                let _ = tx.send_blocking(e);
+                if let Some(e) = hypr_event(&line) {
+                    let _ = tx.send_blocking(e);
+                }
             }
         }
         Wm::Sway => {
@@ -175,6 +167,28 @@ pub fn events(tx: async_channel::Sender<Event>) {
         }
         Wm::Other => {}
     }
+}
+
+/// A line of Hyprland's event socket ("name>>data") as an event, None for one that is not followed.
+fn hypr_event(line: &str) -> Option<Event> {
+    let (name, data) = line.split_once(">>")?;
+    Some(match name {
+        "activewindow" => {
+            let (class, title) = data.split_once(',').unwrap_or((data, ""));
+            Event::Window(class.into(), title.into())
+        }
+        "workspace" | "createworkspace" | "destroyworkspace" | "urgent" | "focusedmon" | "moveworkspace" => {
+            Event::Workspaces
+        }
+        "workspacev2" | "focusedmonv2" | "activewindowv2" | "openwindow" | "closewindow" | "movewindowv2"
+        | "changefloatingmode" | "fullscreen" => Event::Done,
+        // STATE,OWNER: 1 or 0; 0 a monitor, 1 a window
+        "screencast" => {
+            let (state, owner) = data.split_once(',').unwrap_or((data, "0"));
+            Event::Screencast(state == "1", owner == "1")
+        }
+        _ => return None,
+    })
 }
 
 /// The screens on or off (idle.rs: off a while after the lock).
@@ -287,4 +301,19 @@ pub fn grab(windows: &[gtk4::Window], cleared: impl Fn() + 'static) -> Option<Gr
         });
         Some(Grab { grab, timer: Some(timer) })
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{hypr_event, Event};
+
+    #[test]
+    fn screencast() {
+        assert!(matches!(hypr_event("screencast>>1,0"), Some(Event::Screencast(true, false))));
+        assert!(matches!(hypr_event("screencast>>1,1"), Some(Event::Screencast(true, true))));
+        assert!(matches!(hypr_event("screencast>>0,1"), Some(Event::Screencast(false, true))));
+        let w = hypr_event("activewindow>>kitty,a,b");
+        assert!(matches!(w, Some(Event::Window(c, t)) if c == "kitty" && t == "a,b"));
+        assert!(hypr_event("submap>>").is_none());
+    }
 }

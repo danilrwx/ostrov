@@ -6,6 +6,8 @@
 //!
 //!     window      {"class", "title"}          the window focused ("" none)
 //!     workspace   {}                          a workspace made, gone, focused
+//!     screencast  {"on", "window"}            the screen (a window alone) shared or recorded, or no longer, as
+//!                                             Hyprland says
 //!     lock        {}  unlock {}               the screen locked, unlocked
 //!     wallpaper   {"on", "path"}              the wallpaper picked
 //!     network     {"on", "ssid"}              Wi-Fi on or off, a network joined or left
