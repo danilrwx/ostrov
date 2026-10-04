@@ -1,4 +1,4 @@
-# ostrov's example calendar: one event today, merged with the calendars of [calendar]
+# ostrov's example calendar: one event today, merged with the other calendars' (the plugin caldav's...)
 id = "calendar-demo"
 name = "Calendar Demo"
 version = "0.1.0"

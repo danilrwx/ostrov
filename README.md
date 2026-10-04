@@ -9,9 +9,9 @@ locker, idle daemon, polkit agent, clipboard manager, screenshot tools and wallp
   (`widget.ID`: its badge in the bar, its menu on a click).
 - **Panels of widgets**, macOS-style: the control centre and the calendar are grids of widgets (Wi-Fi, Bluetooth,
   volume and mic with per-app sliders and device ports, brightness, power profiles, battery,
-  displays, wallpaper, Keep Awake, the player, the month and its events from CalDAV or .ics, the weather,
-  notifications' history with Do Not Disturb). Each panel is edited in place: drag, resize, remove, add from the
-  gallery, choose which widgets show a badge in the bar. Make panels of your own.
+  displays, wallpaper, Keep Awake, the player, the month and its events (CalDAV and .ics by the plugin caldav),
+  the weather, notifications' history with Do Not Disturb). Each panel is edited in place: drag, resize, remove,
+  add from the gallery, choose which widgets show a badge in the bar. Make panels of your own.
 - **A launcher** in the bar, dmenu-style: apps, a calculator, emoji (`:name`), files (`/name`), web search
   (`s words`, DuckDuckGo or the engine in `[launcher] search`), the clipboard's history, and plugins' modes
   (`?question` to Claude, `g words` to Google: examples/plugins).
@@ -57,7 +57,7 @@ Services and programs, each optional; what a missing one costs is said by `ostro
 | systemd-logind | brightness, lock before sleep, `loginctl lock-session` |
 | polkit with its agent helper's socket, `/run/polkit/agent-helper.socket` (recent polkit under systemd) | the polkit agent |
 | `wf-recorder`, `wl-copy` (wl-clipboard); pipewire-pulse for audio | screen recording (the plugin `record`) |
-| a Secret Service (GNOME Keyring, KeePassXC...) | the calendar's password; without one secrets go to `~/.local/share/ostrov/secrets.toml` (0600) |
+| a Secret Service (GNOME Keyring, KeePassXC...) | plugins' secrets (caldav's password); without one they go to `~/.local/share/ostrov/secrets.toml` (0600) |
 | `fd` | the launcher's file search |
 | `/usr/share/unicode/emoji/emoji-test.txt` (unicode-data, unicode-emoji) | the launcher's emoji |
 
@@ -149,7 +149,6 @@ Everything lives under `~/.config/ostrov/`; every key has a default, so no file 
   surface, opacity, corners, density, animations, Hyprland's blur; any palette colour overridden. Applied as the
   file is saved.
 - `[hyprland]`, `[hyprland.keys]`: what ostrov puts into Hyprland, and keys moved.
-- `[calendar]`: a CalDAV account and .ics links.
 - `[launcher]`: the web search's engine (`search`, {} the query; DuckDuckGo's by default).
 - `[notifications]`: when toasts keep back: a game focused (`games`, window classes), quiet hours, apps let through.
 - `[panels.ID]`: panels of your own.
@@ -177,8 +176,8 @@ launcher modes into ostrov over JSON lines (the protocol is `wit/ostrov-plugin.w
 `sdk/python` and for Rust in `sdk/`, the crate `ostrov-plugin`). See [docs/plugins.md](docs/plugins.md),
 `examples/plugins/hello-python`, `plugins/hello`, and the launcher modes `examples/plugins/claude` (`?question`)
 and `examples/plugins/google` (`g words`). ostrov's official plugins come with it, off until `[plugin.ID] enabled =
-true`: `night`, the night light (`ostrov plugin night on|off|toggle | mode off|on|time|sun | warmth K`).
-The same document describes ostrov's D-Bus interface, `dev.ostrov.Shell`.
+true`: `night`, the night light (`ostrov plugin night on|off|toggle | mode off|on|time|sun | warmth K`);
+`caldav`, the calendar's CalDAV account and .ics links. The same document describes ostrov's D-Bus interface, `dev.ostrov.Shell`.
 
 ## Languages
 

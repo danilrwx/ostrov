@@ -1,4 +1,4 @@
-//! The calendars' events, CalDAV's and .ics links': their state, `ostrov calendar refresh`; the month and the
+//! The calendar's events, its sources' (plugins'): their state, `ostrov calendar refresh`; the month and the
 //! coming events.
 
 pub mod service;

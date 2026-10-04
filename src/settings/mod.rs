@@ -161,11 +161,6 @@ impl Field {
         self
     }
 
-    pub fn action(mut self, label: &str, run: impl Fn(&Value, Rc<dyn Fn(Result<String, String>)>) + 'static) -> Field {
-        self.actions.push(Action { label: label.into(), id: String::new(), run: Some(Rc::new(run)) });
-        self
-    }
-
     /// A number written as an integer: its range and step whole.
     pub fn integer(&self) -> bool {
         match self.kind {
@@ -418,17 +413,6 @@ fn own() -> Vec<Entry> {
             Field::new("screens_off", "Screens off after", Kind::Duration).default(900).help("0 never."),
         ])
         .help("Taken at ostrov's start.")]),
-        e("calendar", "Calendar", "x-office-calendar-symbolic", vec![Section::new("calendar", "Calendar", vec![
-            Field::new("caldav_url", "CalDAV server", Kind::Url)
-                .help("https://caldav.icloud.com, Fastmail's, Nextcloud's…"),
-            Field::new("user", "User", Kind::String),
-            Field::new("password", "App password", Kind::Secret)
-                .help("Kept in the keyring, never in the file.")
-                .action("Test", |_, done| off_thread(crate::modules::calendar::service::test, move |r| done(r))),
-            Field::new("password_command", "Password command", Kind::String)
-                .help("Prints the password when the keyring has none: secret-tool lookup service caldav"),
-            Field::new("ics", "Shared calendars", Kind::List).help(".ics and webcal:// links."),
-        ])]),
         e("notifications", "Notifications", "preferences-system-notifications-symbolic", vec![Section::new(
             "notifications",
             "Notifications",

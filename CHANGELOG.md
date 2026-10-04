@@ -15,8 +15,8 @@ The first release: the whole shell in one binary.
   sliders and devices, outputs in a card's other profiles switched to, a Bluetooth headset's profile, brightness,
   power profiles, battery, displays (modes, scale, position,
   mirroring, saved profiles), wallpaper, Keep Awake, screenshot, lock and power off, the player (MPRIS), the
-  clock, the month with CalDAV and .ics events, upcoming events, the weather (open-meteo), the notifications'
-  history with Do Not Disturb.
+  clock, the month and upcoming events (CalDAV's and .ics links' by the official plugin caldav), the weather
+  (open-meteo), the notifications' history with Do Not Disturb.
 - The launcher in the bar: apps, a calculator, emoji, files (fd), web search (DuckDuckGo, `[launcher] search`),
   the clipboard's history with previews; plugins' modes (`[[launcher]]`: `?question` to Claude and `g words` to
   Google in the examples).

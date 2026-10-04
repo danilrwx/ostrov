@@ -78,14 +78,6 @@ binds = true
 [hyprland.keys]
 # run = "SUPER, R"
 
-# The calendar's events: one CalDAV account (iCloud's https://caldav.icloud.com, Fastmail's, Nextcloud's...) and/or
-# .ics links. The password is never kept here: the Settings page puts it in the
-# Secret Service (or ~/.local/share/ostrov/secrets.toml, mode 0600, without one), else password_command prints it.
-[calendar]
-caldav_url = ""
-user = ""
-password_command = ""   # e.g. "secret-tool lookup service caldav"
-ics = []                # .ics and webcal:// links
 
 # The launcher's web search, `s words` in it: the engine's URL, {} the words escaped.
 [launcher]

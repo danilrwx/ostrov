@@ -245,10 +245,11 @@ false` binds none.
 
 ## Calendars
 
-A plugin whose manifest says `calendar = true` (permission `calendar`) is one of the calendar's calendars, beside
-`[calendar]`'s CalDAV and .ics ones. As the calendar fetches (as ostrov starts, every 15 min, on `ostrov calendar
-refresh`, and when the plugin starts), ostrov calls `calendar_events(from, to)`, the span it shows (this month and
-a week either side) as local ISO times, and the plugin answers with its events in it:
+A plugin whose manifest says `calendar = true` (permission `calendar`) is one of the calendar's calendars, the
+only ones it has (a CalDAV account and .ics links are the official plugin `caldav`'s). As the calendar asks (as
+ostrov starts, every 15 min, on `ostrov calendar refresh`, and when the plugin starts), ostrov calls
+`calendar_events(from, to)`, the span it shows (this month and a week either side) as local ISO times, and the
+plugin answers with its events in it:
 
 ```json
 [{"title": "Lunch", "start": "2026-10-05T12:00:00", "end": "2026-10-05T13:00:00", "all_day": false,
@@ -259,7 +260,8 @@ Times are local, ISO 8601 without a zone, as the calendar's own; a day's event s
 ends at the next, `all_day` true. `title` and `start` are needed (an event without them is dropped); `end` is the
 start if left out, `all_day` false, `location` and `color` empty (the theme's). The events are merged with the
 other calendars' and sorted by their starts. A plugin that fails or does not answer in 10 s is said on stderr,
-the others' events kept. See `examples/plugins/calendar-demo`.
+the others' events kept. See `examples/plugins/calendar-demo`, and `plugins/caldav` for one that fetches from the
+network on a thread of its own and answers from what it last fetched.
 
 ## Nodes
 
@@ -492,6 +494,27 @@ The night light, once built into ostrov (`plugins/night`): Hyprland's screen sha
   (the modes, the hours, the warmth in its menu; a badge in the bar while warm), `ostrov plugin night
   on|off|toggle | mode off|on|time|sun | time FROM TO | warmth K`. It keeps its settings where ostrov did,
   `~/.local/state/ostrov/night.json`, so turning it on picks them up; it has no `[plugin.night]` keys of its own.
+
+### caldav
+
+The calendar's events from the network: one CalDAV account (iCloud's `https://caldav.icloud.com`, Fastmail's,
+Nextcloud's...; Google's wants OAuth, not had) and calendars shared as .ics and webcal:// links, in the month and
+Coming Up. Fetched as it starts, every 15 min (1 min after a failure), on `ostrov plugin caldav refresh` and as
+its settings change; ostrov's calendar asks it then, and is answered from what it last fetched.
+
+```toml
+[plugin.caldav]
+enabled = true
+caldav_url = "https://caldav.icloud.com"
+user = "you@example.com"
+password_command = ""   # prints the app password when the keyring has none, e.g. "secret-tool lookup service caldav"
+ics = []                # .ics and webcal:// links
+```
+
+The app password goes in the keyring from Settings, Calendars (`plugin.caldav.password`), never in the file.
+ostrov before it had these keys in `[calendar]`: move them to `[plugin.caldav]` with `enabled = true`. A password
+the Settings page kept then is the keyring's `calendar.password`: type it again in Settings, or let
+`password_command = "secret-tool lookup app ostrov key calendar.password"` print it.
 
 ## D-Bus
 

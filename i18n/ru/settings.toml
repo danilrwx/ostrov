@@ -22,7 +22,6 @@
 "Appearance" = "Оформление"
 "Bar" = "Панель"
 "Idle" = "Бездействие"
-"Calendar" = "Календарь"
 "Notifications" = "Уведомления"
 "Launcher" = "Запуск приложений"
 
@@ -37,15 +36,6 @@
 "0 never." = "0 — никогда."
 "Taken at ostrov's start." = "Применяется при запуске ostrov."
 
-"CalDAV server" = "Сервер CalDAV"
-"https://caldav.icloud.com, Fastmail's, Nextcloud's…" = "https://caldav.icloud.com, сервер Fastmail, Nextcloud…"
-"User" = "Пользователь"
-"App password" = "Пароль приложения"
-"Kept in the keyring, never in the file." = "Хранится в связке ключей, а не в файле."
-"Password command" = "Команда для пароля"
-"Prints the password when the keyring has none: secret-tool lookup service caldav" = "Выводит пароль, если его нет в связке ключей: secret-tool lookup service caldav"
-"Shared calendars" = "Общие календари"
-".ics and webcal:// links." = "Ссылки .ics и webcal://."
 
 "Quiet in games" = "Тихо в играх"
 "Their toasts kept back while a game below has the focus." = "Всплывающие уведомления придерживаются, пока в фокусе игра из списка ниже."

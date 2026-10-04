@@ -1,0 +1,15 @@
+# ostrov's calendars from the network: a CalDAV account's (iCloud, Fastmail, Nextcloud...) and .ics links', the
+# events in the calendar's month and Coming Up; its settings [plugin.caldav], the password in the keyring
+id = "caldav"
+name = "Calendars"
+version = "0.1.0"
+api = 1
+exec = "ostrov-plugin-caldav"
+icon = "x-office-calendar-symbolic"
+description = "Events from a CalDAV account and .ics links in the calendar."
+permissions = ["network", "secrets", "run", "calendar"]
+calendar = true
+
+[[commands]]
+name = "refresh"
+help = "the calendars fetched now"

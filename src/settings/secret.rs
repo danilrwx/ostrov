@@ -1,6 +1,6 @@
 //! Secrets kept out of config.toml: in the Secret Service (GNOME Keyring, KeePassXC...), its default collection,
 //! an item a key with the attributes {app: "ostrov", key: "<section>.<key>"} (secret-tool lookup app ostrov key
-//! calendar.password finds it). Without a Secret Service, ~/.local/share/ostrov/secrets.toml, the user's alone.
+//! plugin.caldav.password finds it). Without a Secret Service, ~/.local/share/ostrov/secrets.toml, the user's alone.
 //! Every call blocks (a locked keyring asks for its password first), so none is made on GTK's thread.
 
 use std::collections::HashMap;
@@ -31,7 +31,7 @@ fn file() -> PathBuf {
     crate::hub::home().join(".local/share/ostrov/secrets.toml")
 }
 
-/// The secret kept for key ("calendar.password"), from the Secret Service, else the file.
+/// The secret kept for key ("plugin.caldav.password"), from the Secret Service, else the file.
 pub fn secret(key: &str) -> Option<String> {
     match block(lookup(key.to_string())) {
         Ok(Some(v)) => Some(v),
@@ -200,12 +200,12 @@ mod tests {
     fn the_file_kept_private() {
         let dir = std::env::temp_dir().join(format!("ostrov-secrets-{}", std::process::id()));
         let path = dir.join("secrets.toml");
-        file_set(&path, "calendar.password", Some("hunter2")).unwrap();
+        file_set(&path, "plugin.caldav.password", Some("hunter2")).unwrap();
         file_set(&path, "widget.x.token", Some("t")).unwrap();
-        assert_eq!(file_get(&path, "calendar.password").as_deref(), Some("hunter2"));
+        assert_eq!(file_get(&path, "plugin.caldav.password").as_deref(), Some("hunter2"));
         assert_eq!(std::fs::metadata(&path).unwrap().permissions().mode() & 0o777, 0o600);
-        file_set(&path, "calendar.password", None).unwrap();
-        assert_eq!(file_get(&path, "calendar.password"), None);
+        file_set(&path, "plugin.caldav.password", None).unwrap();
+        assert_eq!(file_get(&path, "plugin.caldav.password"), None);
         assert_eq!(file_get(&path, "widget.x.token").as_deref(), Some("t"));
         std::fs::remove_dir_all(dir).unwrap();
     }

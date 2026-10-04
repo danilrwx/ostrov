@@ -1,0 +1,18 @@
+# the manifest's
+"Calendars" = "Календари"
+"Events from a CalDAV account and .ics links in the calendar." = "События из учётной записи CalDAV и ссылок .ics в календаре."
+"the calendars fetched now" = "загрузить календари сейчас"
+
+# its settings
+"CalDAV server" = "Сервер CalDAV"
+"https://caldav.icloud.com, Fastmail's, Nextcloud's…" = "https://caldav.icloud.com, сервер Fastmail, Nextcloud…"
+"User" = "Пользователь"
+"App password" = "Пароль приложения"
+"Kept in the keyring, never in the file." = "Хранится в связке ключей, а не в файле."
+"Test" = "Проверить"
+"Password command" = "Команда для пароля"
+"Prints the password when the keyring has none: secret-tool lookup service caldav" = "Выводит пароль, если его нет в связке ключей: secret-tool lookup service caldav"
+"Shared calendars" = "Общие календари"
+".ics and webcal:// links." = "Ссылки .ics и webcal://."
+"{} events around this month" = "Событий около этого месяца: {}"
+"no password: in Settings, or a password command" = "нет пароля: задайте его в настройках или команду для пароля"

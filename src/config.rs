@@ -15,12 +15,6 @@
 //!     [colors]            # any of style.rs's palette
 //!     surface = "rgba(0, 0, 0, 0.75)"
 //!
-//!     [calendar]          # the calendar popup's events (services/calendar.rs), read anew on every fetch
-//!     caldav_url = "https://caldav.example.com"                   # any CalDAV server: iCloud's
-//!     user = "you@example.com"                                    # https://caldav.icloud.com, Fastmail's,
-//!     password_command = "secret-tool lookup service caldav"      # Nextcloud's...; prints the app password
-//!     ics = ["https://example.org/calendar.ics"]                  # and/or calendars' shared links
-//!
 //!     [launcher]          # the launcher's web search (s words), {} the query
 //!     search = "https://duckduckgo.com/?q={}"
 //!
@@ -40,7 +34,7 @@
 //!     [plugin.hello]      # a plugin's own settings (plugins/), handed to it, and again as they change
 //!     greeting = "Hi"
 //!
-//! The Settings page (settings/) edits this file in place, its comments and order kept; secrets (the calendar's
+//! The Settings page (settings/) edits this file in place, its comments and order kept; secrets (a plugin's
 //! password) go to the Secret Service, never here.
 
 use std::collections::BTreeMap;
@@ -137,28 +131,6 @@ impl Default for Launcher {
     }
 }
 
-/// The calendars: a CalDAV account (its password never here: in the Secret Service, else printed by a command)
-/// and .ics links.
-#[derive(Deserialize)]
-#[serde(default)]
-pub struct Calendar {
-    pub caldav_url: String,
-    pub user: String,
-    pub password_command: String,
-    pub ics: Vec<String>,
-}
-
-impl Default for Calendar {
-    fn default() -> Calendar {
-        Calendar {
-            caldav_url: String::new(),
-            user: String::new(),
-            password_command: String::new(),
-            ics: Vec::new(),
-        }
-    }
-}
-
 /// The look: a theme's palette, the accent and the surface over it, the shapes, the density, the motion.
 /// Hyprland's blur is set only from what is given, so a file without it leaves Hyprland's own.
 #[derive(Deserialize)]
@@ -226,7 +198,6 @@ pub struct Config {
     pub bar: Bar,
     pub idle: Idle,
     pub colors: BTreeMap<String, String>,
-    pub calendar: Calendar,
     pub launcher: Launcher,
     pub notifications: Notifications,
     pub appearance: Appearance,

@@ -1,0 +1,13 @@
+[package]
+name = "ostrov-plugin-caldav"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+description = "ostrov's calendars from the network: a CalDAV account and .ics links"
+license = "MIT"
+publish = false
+
+[dependencies]
+glib = { version = "0.22", features = ["v2_68"] }
+ostrov-plugin = { path = "../../sdk" }
+ureq = "3"

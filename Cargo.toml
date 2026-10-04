@@ -82,4 +82,7 @@ assets = [
     ["target/release/ostrov-plugin-night", "usr/bin/", "755"],
     ["plugins/night/manifest.toml", "usr/share/ostrov/plugins/night/", "644"],
     ["plugins/night/i18n/*", "usr/share/ostrov/plugins/night/i18n/", "644"],
+    ["target/release/ostrov-plugin-caldav", "usr/bin/", "755"],
+    ["plugins/caldav/manifest.toml", "usr/share/ostrov/plugins/caldav/", "644"],
+    ["plugins/caldav/i18n/*", "usr/share/ostrov/plugins/caldav/i18n/", "644"],
 ]
