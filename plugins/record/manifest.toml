@@ -1,0 +1,25 @@
+# ostrov's screen recorder: a region picked with ostrov's selector, recorded by wf-recorder until asked again
+id = "record"
+name = "Screen Recording"
+version = "0.1.0"
+api = 1
+exec = "ostrov-plugin-record"
+icon = "media-record-symbolic"
+description = "Records the screen or a region of it to ~/Videos/Recordings, with wf-recorder."
+permissions = ["run", "keys"]
+
+[[widgets]]
+id = "record"
+name = "Screen Recording"
+sizes = [[4, 1], [2, 1]]
+badge = true
+bar = "active"
+
+[[commands]]
+name = "toggle"
+usage = "toggle [--audio]"
+help = "a region recorded, with the sound playing for --audio; the recording stopped if one is going"
+
+[[keys]]
+combo = "SUPER SHIFT, R"
+command = "toggle"

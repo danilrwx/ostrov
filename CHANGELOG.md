@@ -5,7 +5,7 @@
 The first release: the whole shell in one binary.
 
 - The bar, made of blocks: workspaces with animated dots, the focused window's title, the keyboard layout, the
-  system tray with its menus, the privacy indicator, the recording's timer, panels' faces made of their widgets'
+  system tray with its menus, the privacy indicator, panels' faces made of their widgets'
   badges. Docked or hidden and peeking (`ostrov bar toggle|peek|unpeek`); the blocks set in `[bar]` or with the
   bar's editor in Settings.
 - Panels: the control centre and the calendar as grids of widgets eight cells wide, unrolling out of the bar; Edit
@@ -26,8 +26,8 @@ The first release: the whole shell in one binary.
   ext-idle-notify (lock, screens off, lock before sleep, Keep Awake).
 - The polkit agent and an SSH askpass in ostrov's own dialogs; `ostrov dialog JSON` for scripts.
 - The clipboard's history through wlr-data-control, text and pictures, password managers' entries left out.
-- Screenshots of a region or the screen through wlr-screencopy; screen recording through GStreamer (VA-API or
-  openh264, optional audio).
+- Screenshots of a region or the screen through wlr-screencopy; `ostrov pick-region` printing a region as slurp
+  does. Screen recording the official plugin `record` (wf-recorder, optional audio, its badge the time going).
 - The wallpaper, picked from a directory, with a hook run on every change.
 - Games played in the performance power profile: the official plugin `games` (`[plugin.games]`).
 - Settings and Appearance pages in the control centre, editing `config.toml` in place; themes (dark, light,

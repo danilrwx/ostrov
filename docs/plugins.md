@@ -475,6 +475,16 @@ profile = "performance"   # performance, balanced, power-saver
 games = ["dota2", "cs2", "steam_app_*"]
 ```
 
+### record
+
+Screen recording (was `ostrov record`): `ostrov plugin record toggle [--audio]`, SUPER SHIFT+R, a
+  region picked with ostrov's selector (`ostrov pick-region`, which prints it as slurp does) recorded by
+  `wf-recorder` to ~/Videos/Recordings/DATE_TIME.mp4 until asked again, `--audio` with what the default sink plays;
+  its path then on the clipboard (`wl-copy`) and in a toast. Its widget `plugin.record.record` has a badge, a red
+  dot and the time gone by, while recording: the bar's old `"record"` block is `"widget.plugin.record.record"` now,
+  or the widget is put in a panel. `[hyprland.keys] record` is gone with it; a bind of the user's on SUPER SHIFT+R
+  wins over the plugin's.
+
 ## D-Bus
 
 ostrov owns `dev.ostrov.Shell` on the session bus, object `/dev/ostrov/Shell`, interface `dev.ostrov.Shell`:

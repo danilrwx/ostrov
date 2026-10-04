@@ -69,7 +69,7 @@ impl Dispatch<ZwlrScreencopyFrameV1, ()> for Take {
 }
 
 /// The screen's copier: a Wayland connection of its own, off GTK's thread, and the shared memory the
-/// compositor copies into, kept for the next frame of the same size (a recording's, record.rs).
+/// compositor copies into, kept for the next frame of the same size.
 pub struct Screen {
     queue: EventQueue<Take>,
     qh: QueueHandle<Take>,
@@ -182,9 +182,9 @@ impl Frame {
     }
 }
 
-/// What is done with a region picked: the frozen screen's frame, the region in its pixels (x, y, w, h), and
-/// the frame's pixels to a logical one.
-pub type Then = Rc<dyn Fn(&Frame, (u32, u32, u32, u32), f64)>;
+/// What is done with a region picked: the frozen screen's frame, the region in its pixels (x, y, w, h), and the
+/// same in the desktop's logical coordinates (the monitor's place added), as slurp prints one.
+pub type Then = Rc<dyn Fn(&Frame, (u32, u32, u32, u32), (i32, i32, i32, i32))>;
 
 /// The whole screen as a PNG into a file, no region asked (ostrov capture FILE: for scripts).
 pub fn capture(path: String) {
@@ -232,7 +232,18 @@ impl Shot {
         }));
     }
 
-    /// The screen taken, then a region asked for over it, handed to then (a screenshot's, a recording's).
+    /// A region asked for, as slurp would (`ostrov pick-region`, for a recorder): "X,Y WxH" in the desktop's
+    /// logical coordinates, the whole screen for a click alone; an error for Escape.
+    pub async fn pick(self: &Rc<Self>) -> Result<String, String> {
+        let (tx, rx) = async_channel::bounded(1);
+        self.ask(Rc::new(move |_, _, (x, y, w, h)| {
+            let _ = tx.try_send(format!("{x},{y} {w}x{h}"));
+        }));
+        // the sender dropped with the selector's window, nothing picked
+        rx.recv().await.map_err(|_| "cancelled".into())
+    }
+
+    /// The screen taken, then a region asked for over it, handed to then.
     pub fn ask(self: &Rc<Self>, then: Then) {
         if self.busy.replace(true) {
             return;
@@ -310,6 +321,9 @@ impl Shot {
             let (me, win) = (self.clone(), win.clone());
             Rc::new(move |shot: Option<Option<(f64, f64, f64, f64)>>| {
                 let k = frame.width as f64 / win.width().max(1) as f64;
+                // the window's monitor's place on the desktop, for the region in the desktop's coordinates
+                let at = win.surface().and_then(|s| s.display().monitor_at_surface(&s)).map(|m| m.geometry());
+                let (mx, my) = at.map_or((0, 0), |g| (g.x(), g.y()));
                 win.close();
                 me.busy.set(false);
                 // the frozen screen let go of once the window has gone
@@ -319,7 +333,8 @@ impl Shot {
                 let px = |v: f64| (v * k).round() as u32;
                 let (x, y) = (px(x).min(frame.width - 1), px(y).min(frame.height - 1));
                 let (w, h) = (px(w).clamp(1, frame.width - x), px(h).clamp(1, frame.height - y));
-                then(&frame, (x, y, w, h), k);
+                let l = |v: u32| (v as f64 / k).round() as i32;
+                then(&frame, (x, y, w, h), (mx + l(x), my + l(y), l(w).max(1), l(h).max(1)));
             })
         };
 

@@ -5,7 +5,7 @@
 //!     [bar]
 //!     left = ["workspaces"]
 //!     center = ["panel.calendar"]  # a panel: its widgets' badges, the panel unrolled out of them
-//!     right = ["record", "privacy", "layout", "tray", "panel.control"]
+//!     right = ["privacy", "layout", "tray", "panel.control"]
 //!     monitors = "all"            # "primary", or the ones named: ["eDP-1", "DP-2"]
 //!
 //!     [idle]
@@ -80,7 +80,7 @@ impl Default for Bar {
         Bar {
             left: v(&["workspaces", "window"]),
             center: v(&["panel.calendar"]),
-            right: v(&["record", "privacy", "layout", "tray", "panel.control"]),
+            right: v(&["privacy", "layout", "tray", "panel.control"]),
             monitors: Monitors::Which(Which::All),
         }
     }

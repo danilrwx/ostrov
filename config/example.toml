@@ -6,7 +6,6 @@
 # The bar's blocks, left to right in each part. The blocks:
 #   workspaces      the workspaces' dots
 #   window          the focused window's title
-#   record          the recording's red dot and time, only while recording
 #   privacy         the mic or the camera in use
 #   layout          the keyboard's layout
 #   tray            the system tray (StatusNotifierItem)
@@ -17,7 +16,7 @@
 [bar]
 left = ["workspaces", "window"]
 center = ["panel.calendar"]
-right = ["record", "privacy", "layout", "tray", "panel.control"]
+right = ["privacy", "layout", "tray", "panel.control"]
 # the monitors with a bar: "all", "primary" (the one Hyprland has focused as ostrov starts, else the first), or the
 # ones named, ["eDP-1", "DP-2"], the first named the launcher's. A command (ostrov panel...) opens on the focused one's.
 monitors = "all"
@@ -74,7 +73,7 @@ binds = true
 # A key moved: its name, then the combination as Hyprland writes it. The names and their defaults:
 #   run SUPER+D, panel SUPER+X, calendar SUPER+C,
 #   clip SUPER SHIFT+V, screenshot SUPER SHIFT+S,
-#   print Print, record SUPER SHIFT+R, lock SUPER SHIFT+X, bar SUPER+B, vol-up, vol-down, vol-mute, mic,
+#   print Print, lock SUPER SHIFT+X, bar SUPER+B, vol-up, vol-down, vol-mute, mic,
 #   bright-up, bright-down, play-pause, next, previous (the XF86 media keys)
 [hyprland.keys]
 # run = "SUPER, R"

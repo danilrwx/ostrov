@@ -191,7 +191,6 @@ calendar > grid > label.day-number:selected { background: @accent; color: @ink; 
         border-radius: 6px 6px 0 0; }
 .slot:hover > .pill, .slot.tab > .pill { background: @surface; box-shadow: 0 0 0 30px @bar; }
 .tray-item { padding: 0 5px; }
-.rec-dot { color: @urgent; }
 .recording image { color: @recording; }
 .dot { min-width: 8px; min-height: 8px; border-radius: 4px; background: @idle; transition: background 100ms; }
 .dot.focused, .dot:hover { background: @accent; }

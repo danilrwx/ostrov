@@ -46,7 +46,6 @@ pub const KEYS: &[(&str, &str, &str, &str)] = &[
     ("clip", "bind", "SUPER SHIFT, V", "clip"),
     ("screenshot", "bind", "SUPER SHIFT, S", "screenshot"),
     ("print", "bind", ", Print", "screenshot"),
-    ("record", "bind", "SUPER SHIFT, R", "record"),
     ("lock", "bind", "SUPER SHIFT, X", "lock"),
     ("bar", "bind", "SUPER, B", "bar toggle"),
     ("vol-up", "bindel", ", XF86AudioRaiseVolume", "key vol-up"),

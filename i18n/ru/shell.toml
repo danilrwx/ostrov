@@ -27,14 +27,6 @@
 "{} for {}" = "{} для {}"
 "Wrong password, try again" = "Неверный пароль, попробуйте ещё раз"
 
-# Screen recording
-"Recording saved" = "Запись сохранена"
-"Recording failed" = "Не удалось записать экран"
-"a region too small to record" = "область слишком мала для записи"
-"no H.264 encoder in GStreamer" = "в GStreamer нет кодировщика H.264"
-"gst-launch-1.0 ended with {}" = "gst-launch-1.0 завершился: {}"
-"the encoder quit: {}" = "кодировщик остановился: {}"
-
 # Keys' OSD and battery
 "Power profile  {}" = "Режим питания  {}"
 "Power Saver" = "Энергосбережение"

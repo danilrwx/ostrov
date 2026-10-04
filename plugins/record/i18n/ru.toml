@@ -1,0 +1,11 @@
+# Russian: "English" = "Русский"
+"Off" = "Выключена"
+"Record with sound" = "Записать со звуком"
+"Stop" = "Остановить"
+"Recording saved" = "Запись сохранена"
+"Recording failed" = "Не удалось записать экран"
+
+# its manifest's, translated by ostrov
+"Screen Recording" = "Запись экрана"
+"Records the screen or a region of it to ~/Videos/Recordings, with wf-recorder." = "Записывает экран или его область в ~/Videos/Recordings с помощью wf-recorder."
+"a region recorded, with the sound playing for --audio; the recording stopped if one is going" = "записать область, со звуком при --audio; остановить идущую запись"

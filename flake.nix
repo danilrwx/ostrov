@@ -20,13 +20,11 @@
           cargoTestFlags = [ "--workspace" ];
 
           nativeBuildInputs = with pkgs; [ pkg-config wrapGAppsHook4 ];
-          # the GStreamer plugins here put in the wrapper's plugin path by wrapGAppsHook4, for the recorder
-          buildInputs = (with pkgs; [ gtk4 gtk4-layer-shell glib pam wayland ])
-            ++ (with pkgs.gst_all_1; [ gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav ]);
+          buildInputs = with pkgs; [ gtk4 gtk4-layer-shell glib pam wayland ];
 
-          # the programs ostrov runs: the sound's, the recorder's, the games plugin's powerprofilesctl
+          # the programs ostrov runs: the sound's; the plugins record's and games' (wf-recorder, powerprofilesctl)
           preFixup = ''
-            gappsWrapperArgs+=(--prefix PATH : ${pkgs.lib.makeBinPath (with pkgs; [ wireplumber pipewire gst_all_1.gstreamer power-profiles-daemon ])})
+            gappsWrapperArgs+=(--prefix PATH : ${pkgs.lib.makeBinPath (with pkgs; [ wireplumber pipewire wf-recorder wl-clipboard power-profiles-daemon ])})
           '';
 
           # NixOS reads no PAM file of a package's: security.pam.services.ostrov = {}; makes the lock screen's

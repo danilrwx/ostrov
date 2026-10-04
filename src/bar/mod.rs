@@ -76,7 +76,6 @@ fn block(name: &str, cx: &Rc<Ctx>, side: Side) -> Option<Block> {
         "status" => panel::build(cx, "control", side),
         "clock" => panel::build(cx, "calendar", side),
         n if n.starts_with("panel.") => panel::build(cx, &n["panel.".len()..], side),
-        "record" => crate::record::block(),
         _ => {
             eprintln!("ostrov: no block {name}");
             return None;

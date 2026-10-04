@@ -399,7 +399,7 @@ fn own() -> Vec<Entry> {
         icon: icon.into(),
         schema: Schema { sections },
     };
-    let blocks = "workspaces, window, record, privacy, layout, tray, panel.control (status), panel.calendar (clock), \
+    let blocks = "workspaces, window, privacy, layout, tray, panel.control (status), panel.calendar (clock), \
                   panel.ID";
     // the bar's defaults the ones config.rs takes, so the form shows what an empty file means
     let bar = crate::config::Bar::default();

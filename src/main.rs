@@ -28,7 +28,6 @@ mod plugins;
 mod polkit;
 mod popup;
 mod prompt;
-mod record;
 mod services;
 mod settings;
 mod shot;
@@ -52,13 +51,15 @@ thread_local! {
     static COMMAND: std::cell::RefCell<Option<Box<dyn Fn(&[String]) -> Result<String, String>>>> = Default::default();
     /// The questions ostrov puts (polkit's, askpass's), set once it is built.
     static PROMPTS: std::cell::RefCell<Option<Rc<prompt::Prompts>>> = Default::default();
+    /// The screenshot's selector, which `pick-region` asks a region with, set once it is built.
+    static SHOT: std::cell::RefCell<Option<Rc<shot::Shot>>> = Default::default();
 }
 
 /// ostrov's own commands, in forms.rs's grammar; besides them a bar block's (BLOCK ARGS) and a module's (MODULE
 /// ARGS).
 const FORMS: &[&str] = &[
     "panel", "menu NAME", "settings [SECTION]", "appearance", "calendar", "run", "clip",
-    "lock", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "record [--audio]",
+    "lock", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region",
     "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
     "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID",
     "theme list", "theme set ID", "theme install PATH|GIT-URL", "theme remove ID",
@@ -119,7 +120,7 @@ fn activate(app: &gtk4::Application) {
     let lock = lock::build(app);
     idle::start(&lock, &cfg.idle);
     let shot = shot::Shot::new(app);
-    record::init(app, &shot);
+    SHOT.with(|s| *s.borrow_mut() = Some(shot.clone()));
     keys::battery(&hub, &notes, &prompts);
     let keys = keys::Keys::new(&hub, &notes);
     PROMPTS.with(|p| *p.borrow_mut() = Some(prompts));
@@ -154,8 +155,6 @@ fn activate(app: &gtk4::Application) {
                 ["screenshot"] => shot.take(),
                 ["awake"] => idle::set_awake(!idle::awake()),
                 ["capture", path] => shot::capture(path.to_string()),
-                ["record"] => record::toggle(false),
-                ["record", "--audio"] => record::toggle(true),
                 ["key", name] => keys.key(name)?,
                 ["bar", what @ ("toggle" | "peek" | "unpeek")] => {
                     let docked = !host.docked.get();
@@ -225,6 +224,11 @@ fn command(args: &[String], input: Option<String>) -> Reply {
     match args {
         [first, rest @ ..] if first == "plugin" => return plugins::run(rest, input),
         [first] if first == "doctor" => return Box::pin(doctor::report()),
+        // the region waits for the user: answered once dragged out (plugins/record's, in place of slurp)
+        [first] if first == "pick-region" => {
+            let shot = SHOT.with(|s| s.borrow().clone());
+            return Box::pin(async move { shot.ok_or("ostrov is starting")?.pick().await });
+        }
         // a theme's install clones a repository: awaited, ostrov going on meanwhile
         [first, rest @ ..] if first == "theme" => return Box::pin(theme::command(rest.to_vec())),
         [first, rest @ ..] if first == "dialog" => {

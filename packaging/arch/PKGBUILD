@@ -6,8 +6,7 @@ pkgdesc='A whole desktop shell for Hyprland in one binary: bar, panels, launcher
 arch=('x86_64' 'aarch64')
 url='https://github.com/ostrov-shell/ostrov'
 license=('MIT')
-depends=('gtk4' 'gtk4-layer-shell' 'glib2' 'pam' 'wayland' 'pipewire' 'wireplumber'
-         'gstreamer' 'gst-plugins-base' 'gst-plugins-good')
+depends=('gtk4' 'gtk4-layer-shell' 'glib2' 'pam' 'wayland' 'pipewire' 'wireplumber')
 makedepends=('git' 'cargo' 'pkgconf')
 optdepends=('hyprland: the compositor ostrov is made for'
             'iwd: Wi-Fi'
@@ -16,10 +15,9 @@ optdepends=('hyprland: the compositor ostrov is made for'
             'upower: the battery'
             'power-profiles-daemon: the power modes, powerprofilesctl for the games plugin'
             'polkit: the polkit agent'
-            'gst-plugin-va: screen recording with VA-API H.264'
-            'gst-plugins-bad: screen recording with openh264 when VA-API has no encoder'
-            'gst-libav: screen recording with audio'
-            'pipewire-pulse: screen recording with audio'
+            'wf-recorder: screen recording (the plugin record)'
+            'wl-clipboard: a recording's path on the clipboard (the plugin record)'
+            'pipewire-pulse: screen recording with audio (the plugin record)'
             'fd: the launcher finding files'
             'unicode-emoji: the launcher finding emoji'
             'gnome-keyring: secrets in the Secret Service')

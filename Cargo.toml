@@ -52,10 +52,9 @@ ostrov is a desktop shell for Hyprland: the bar, panels of widgets (Wi-Fi, Bluet
 calendar...), a launcher, notifications and the OSD, the lock screen, the polkit agent, the clipboard's history, \
 screenshots and screen recording, a window switcher and an overview, the wallpaper and the night light, in one \
 binary."""
-depends = "$auto, pipewire-bin, wireplumber, gstreamer1.0-tools, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good"
+depends = "$auto, pipewire-bin, wireplumber"
 recommends = """\
-hyprland, iwd | network-manager, bluez, upower, power-profiles-daemon, polkitd, gstreamer1.0-plugins-bad, \
-gstreamer1.0-libav, gstreamer1.0-pulseaudio, pipewire-pulse"""
+hyprland, iwd | network-manager, bluez, upower, power-profiles-daemon, polkitd, wf-recorder, wl-clipboard"""
 suggests = "fd-find, unicode-data, gnome-keyring"
 assets = [
     ["target/release/ostrov", "usr/bin/", "755"],
@@ -77,4 +76,7 @@ assets = [
     # ["target/release/ostrov-plugin-ID", "usr/bin/", "755"],
     # ["plugins/ID/manifest.toml", "usr/share/ostrov/plugins/ID/", "644"],
     # ["plugins/ID/i18n/*", "usr/share/ostrov/plugins/ID/i18n/", "644"],
+    ["target/release/ostrov-plugin-record", "usr/bin/", "755"],
+    ["plugins/record/manifest.toml", "usr/share/ostrov/plugins/record/", "644"],
+    ["plugins/record/i18n/*", "usr/share/ostrov/plugins/record/i18n/", "644"],
 ]

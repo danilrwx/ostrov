@@ -1,0 +1,11 @@
+[package]
+name = "ostrov-plugin-record"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+description = "ostrov's screen recorder, over wf-recorder"
+license = "MIT"
+publish = false
+
+[dependencies]
+ostrov-plugin = { path = "../../sdk" }

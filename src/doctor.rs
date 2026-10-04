@@ -114,7 +114,6 @@ fn programs(out: &mut Vec<Line>) {
         ("wpctl", "no volume, no sound devices"),
         ("pw-dump", "no sound devices nor apps playing"),
         ("pw-cli", "an output in another of a card's profiles not switched to"),
-        ("gst-launch-1.0", "no screen recording"),
         ("loginctl", "the lock button does nothing"),
     ] {
         out.push(if on_path(p) { ('✓', p.into()) } else { ('!', fill(t("{} missing: {}"), &[&p, &t(cost)])) });

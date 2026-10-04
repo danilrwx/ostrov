@@ -5,7 +5,7 @@ GTK 4 and gtk4-layer-shell. One process replaces the usual collection of bar, no
 locker, idle daemon, polkit agent, clipboard manager, screenshot tools and wallpaper setter:
 
 - **The bar**, made of blocks: workspaces, the focused window's title, the tray, the keyboard layout, the privacy
-  indicator (mic or camera in use), the recording's timer, the faces of the panels, and any widget on its own
+  indicator (mic or camera in use), the faces of the panels, and any widget on its own
   (`widget.ID`: its badge in the bar, its menu on a click).
 - **Panels of widgets**, macOS-style: the control centre and the calendar are grids of widgets (Wi-Fi, Bluetooth,
   volume and mic with per-app sliders and device ports, brightness, power profiles, battery, night light,
@@ -21,8 +21,8 @@ locker, idle daemon, polkit agent, clipboard manager, screenshot tools and wallp
   sleep, inhibitors honoured.
 - **The polkit agent** and an **SSH askpass**, in ostrov's own dialogs.
 - **The clipboard's history** (wlr-data-control), text and pictures, password managers' entries left out.
-- **Screenshots** of a region or the whole screen, and **screen recording** (GStreamer, VA-API or openh264,
-  optionally with audio).
+- **Screenshots** of a region or the whole screen, and **screen recording** (the official plugin `record`, over
+  wf-recorder, optionally with audio).
 - **The wallpaper** and **the night light** (on, by the clock or from sunset to sunrise).
 - **A settings UI** in the control centre, writing `config.toml` in place, and an Appearance page with themes.
 - **Extensible**: widgets declared in KDL without code, plugins in any language, a D-Bus interface, and shell
@@ -56,7 +56,7 @@ Services and programs, each optional; what a missing one costs is said by `ostro
 | power-profiles-daemon (`powerprofilesctl` for the games plugin) | power modes, the games' profile |
 | systemd-logind | brightness, lock before sleep, `loginctl lock-session` |
 | polkit with its agent helper's socket, `/run/polkit/agent-helper.socket` (recent polkit under systemd) | the polkit agent |
-| GStreamer: `gst-launch-1.0`, plugins base and good; `vah264enc` (va) or `openh264enc` (bad); `avenc_aac` (libav) and `pulsesrc` (pipewire-pulse) for audio | screen recording |
+| `wf-recorder`, `wl-copy` (wl-clipboard); pipewire-pulse for audio | screen recording (the plugin `record`) |
 | a Secret Service (GNOME Keyring, KeePassXC...) | the calendar's password; without one secrets go to `~/.local/share/ostrov/secrets.toml` (0600) |
 | `fd` | the launcher's file search |
 | `/usr/share/unicode/emoji/emoji-test.txt` (unicode-data, unicode-emoji) | the launcher's emoji |
@@ -117,7 +117,7 @@ and set `rules = false` and `binds = false` under `[hyprland]` in the config. Th
 | Super+C | `ostrov calendar` |
 | Super+Shift+V | `ostrov clip`, the clipboard's history |
 | Print, Super+Shift+S | `ostrov screenshot` |
-| Super+Shift+R | `ostrov record` |
+| Super+Shift+R | `ostrov plugin record`, the plugin `record`'s while it is on |
 | Super+Shift+X | `ostrov lock` |
 | Super+B | `ostrov bar toggle` |
 | the XF86 volume, mic, brightness and media keys | `ostrov key ...` |
@@ -221,7 +221,7 @@ ostrov's own:
     ostrov awake                       Keep Awake on or off
     ostrov screenshot                  a region or the screen to the clipboard
     ostrov capture FILE                the whole screen to a PNG
-    ostrov record [--audio]            start or stop recording to ~/Videos/Recordings
+    ostrov pick-region                 a region dragged out, printed as slurp does: X,Y WxH
     ostrov bar toggle|peek|unpeek      the bar docked or hidden
     ostrov key NAME                    a media or Fn key (vol-up, vol-down, vol-mute, mic-up, mic-down, mic,
                                        bright-up, bright-down, touchpad-on, touchpad-off, touchpad-toggle,

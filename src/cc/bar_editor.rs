@@ -21,7 +21,6 @@ const BLOCKS: &[(&str, &str, &str)] = &[
     ("layout", "Keyboard Layout", "input-keyboard-symbolic"),
     ("tray", "Tray", "application-x-addon-symbolic"),
     ("privacy", "Privacy", "camera-web-symbolic"),
-    ("record", "Recording", "media-record-symbolic"),
 ];
 
 /// The parts: their keys in [bar], their titles, the button moving a chip to one.
