@@ -21,6 +21,8 @@ mod widget;
 mod window;
 mod workspaces;
 
+pub use window::app_icon;
+
 thread_local! {
     /// every bar's blocks, for the compositor's events: one connection to it, started with the first bar
     static BARS: RefCell<Option<Vec<Weak<Ctx>>>> = const { RefCell::new(None) };

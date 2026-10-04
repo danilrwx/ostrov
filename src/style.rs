@@ -78,7 +78,7 @@ calendar > header > button:hover, .hit:hover { background: @hover; }
 button.round.open, button.arrow.open, .tile.open button.round, .tile.open button.arrow:not(.toggle-side), button.item.on, button.chip:checked, .hit.picked { background: @accent; }
 button.round.open image, button.arrow.open image, .tile.open button.round image,
 .tile.open button.arrow:not(.toggle-side) image, button.item.on label, button.item.on image,
-button.chip:checked label, .hit.picked label, .hit.picked image { color: @ink; }
+button.chip:checked label, button.chip:checked image, .hit.picked label, .hit.picked image { color: @ink; }
 button.arrow image { transition: -gtk-icon-transform 100ms; }
 button.arrow.open image, .tile.open button.arrow image { }
 button.item { padding: 0 10px; min-height: 34px; border-radius: 6px; }

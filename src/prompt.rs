@@ -2,10 +2,10 @@
 //! as root), ssh's askpass (a key's passphrase, or a yes to use a key), a script's (`ostrov dialog JSON`), a
 //! plugin's. The screen dimmed, a surface in its middle with an icon, a title, what is asked, then what it asks
 //! for: a yes or no alone, a line of text, a password, one of some options, a form (settings/'s, its answers
-//! written nowhere), and what went wrong last time. A plugin's says whose it is above it all, so none passes for
-//! polkit or ostrov. The keyboard is all its own while it is up, and works it all: Tab and Shift+Tab around, the
-//! focused one ringed, Enter or Space its own, Escape a no. One question at a time: the next waits for the last's
-//! answer.
+//! written nowhere), what of the screen to share (share.rs), and what went wrong last time. A plugin's says whose
+//! it is above it all, so none passes for polkit or ostrov. The keyboard is all its own while it is up, and works
+//! it all: Tab and Shift+Tab around, the focused one ringed, Enter or Space its own, Escape a no. One question at
+//! a time: the next waits for the last's answer.
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -34,6 +34,9 @@ pub enum Kind {
     /// a settings form, its schema as JSON (read already: an Ask goes between threads, a Schema does not), its
     /// answers as a JSON object
     Form(Value),
+    /// xdg-desktop-portal-hyprland's: what to share (share.rs), its windows as it lists them and whether to remember
+    /// the choice to start with; the line it reads
+    Share { list: String, remember: bool },
 }
 
 /// A question.
@@ -285,8 +288,9 @@ impl Prompts {
         self.cancel.set_label(&a.cancel);
         self.entry.set_visible(matches!(a.kind, Kind::Secret));
         self.line.set_visible(matches!(a.kind, Kind::Text { .. }));
-        self.body.set_visible(matches!(a.kind, Kind::Choice(_) | Kind::Form(_)));
+        self.body.set_visible(matches!(a.kind, Kind::Choice(_) | Kind::Form(_) | Kind::Share { .. }));
         self.ok.set_visible(!matches!(a.kind, Kind::Choice(_)));
+        self.ok.set_sensitive(true);
         let answer: Box<dyn Fn() -> String> = match &a.kind {
             Kind::Confirm => Box::new(String::new),
             Kind::Secret => {
@@ -317,6 +321,7 @@ impl Prompts {
                 self.body.append(&form);
                 Box::new(move || Value::Object(answers.borrow().clone()).to_string())
             }
+            Kind::Share { list, remember } => crate::share::body(&self.body, list, *remember, &self.ok),
         };
         *self.answer.borrow_mut() = answer;
         *self.current.borrow_mut() = Some(a.reply);
@@ -327,7 +332,7 @@ impl Prompts {
         let _ = match a.kind {
             Kind::Secret => self.entry.grab_focus(),
             Kind::Text { .. } => self.line.grab_focus(),
-            Kind::Choice(_) | Kind::Form(_) => self.body.child_focus(gtk4::DirectionType::TabForward),
+            Kind::Choice(_) | Kind::Form(_) | Kind::Share { .. } => self.body.child_focus(gtk4::DirectionType::TabForward),
             Kind::Confirm => self.ok.grab_focus(),
         };
     }

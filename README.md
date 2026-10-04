@@ -18,7 +18,7 @@ Hyprland desktop is usually pieced together from, made to look and work as one t
 - **Notifications** (it is the notification server), with toasts and an OSD for volume and brightness.
 - **The lock screen and idle**: ext-session-lock with PAM, locked and screens off after a while and before
   sleep, inhibitors honoured.
-- **The polkit agent and SSH's askpass**, in ostrov's own dialogs.
+- **The polkit agent, SSH's askpass and the screen-share picker**, in ostrov's own dialogs.
 - **The clipboard's history** (text and pictures, password managers' entries left out), **screenshots** of a
   region or the screen, **the wallpaper**.
 - **Settings and themes in the UI**: a Settings page for every section, an Appearance page with five built-in
@@ -116,6 +116,10 @@ binary's directory, so for `~/.cargo/bin`:
         cp -r plugins/$p/manifest.toml plugins/$p/i18n ~/.cargo/share/ostrov/plugins/$p/
     done
 
+and the screen-share picker's name (see [Screen sharing](#screen-sharing)):
+
+    ln -sf ostrov ~/.cargo/bin/ostrov-share-picker
+
 ### Packages
 
 Made from this repository, the official plugins included:
@@ -161,6 +165,24 @@ Only one ostrov runs: `ostrov ARGS` hands its arguments to the running one and p
 lists every command, the plugins' too. For SSH, point `SSH_ASKPASS` at a script running
 `exec ostrov askpass "$@"`. ostrov does not restart itself when it dies; run it under a supervisor if you want
 that (a lock survives: the next ostrov locks again at once).
+
+### Screen sharing
+
+When an app asks to share the screen, xdg-desktop-portal-hyprland asks which screen, window or region with its
+own Qt picker. ostrov has its own, in its dialog's look: Screen (a card per monitor), Window (the windows the portal
+lists), Region (dragged out with the screenshot's selector), and Remember this choice (the portal's restore
+token, on to start with when `allow_token_by_default` is set). The portal runs the picker by a path, with no
+arguments, so ostrov answers as the picker when run as `ostrov-share-picker`, a link to it that the Arch and Nix
+packages install (from source, `ln -sf ostrov ~/.cargo/bin/ostrov-share-picker`; for the Debian package,
+`sudo ln -sf ostrov /usr/bin/ostrov-share-picker`). Point the portal at it in `~/.config/hypr/xdph.conf`, by its
+full path:
+
+    screencopy {
+        custom_picker_binary = /usr/bin/ostrov-share-picker
+    }
+
+then `systemctl --user restart xdg-desktop-portal-hyprland` (it reads the file at its start). `ostrov doctor` says
+whether it is set. With no ostrov running the link runs the portal's own picker.
 
 For an overview of the workspaces, Hyprland's own plugin [hyprexpo](https://github.com/hyprwm/hyprland-plugins)
 goes well beside it.

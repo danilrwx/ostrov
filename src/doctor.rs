@@ -137,9 +137,27 @@ fn programs(out: &mut Vec<Line>) {
         }
         Answering::Unknown => ('!', t("polkit agent: none (polkit not there, or not answering)").into()),
     });
+    out.push(share_picker());
     out.push(if std::path::Path::new("/etc/pam.d/ostrov").exists() {
         ('✓', "PAM: /etc/pam.d/ostrov".into())
     } else {
         ('·', t("PAM: no /etc/pam.d/ostrov, the lock screen checks passwords as login does").into())
     });
+}
+
+/// Whether xdg-desktop-portal-hyprland asks ostrov what to share (share.rs): its custom_picker_binary in xdph.conf
+/// naming ostrov-share-picker, else the lines to put there, the link beside ostrov's binary.
+fn share_picker() -> Line {
+    let conf = gtk4::glib::user_config_dir().join("hypr/xdph.conf");
+    let text = std::fs::read_to_string(&conf).unwrap_or_default();
+    let lines = text.lines().filter_map(|l| l.split('#').next()?.split_once('='));
+    let set = lines.into_iter().find(|(k, _)| k.trim().ends_with("custom_picker_binary"));
+    if let Some((_, v)) = set.filter(|(_, v)| v.trim().ends_with("ostrov-share-picker")) {
+        return ('·', fill(t("screen sharing: xdph asks ostrov ({})"), &[&v.trim()]));
+    }
+    let me = std::env::current_exe().unwrap_or_else(|_| "/usr/bin/ostrov".into());
+    let link = me.with_file_name("ostrov-share-picker");
+    let line = format!("screencopy:custom_picker_binary = {}", link.display());
+    ('·', fill(t("screen sharing: xdph's own picker; for ostrov's, in {}: {} (the link: ln -sf ostrov {})"),
+        &[&conf.display(), &line, &link.display()]))
 }

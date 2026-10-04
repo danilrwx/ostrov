@@ -36,8 +36,8 @@ pub fn build(cx: &Rc<Ctx>) -> Block {
 }
 
 /// A window's app icon: its class's desktop file ("<class>.desktop", as is or lowercased), else the app whose
-/// StartupWMClass is the class.
-fn app_icon(class: &str) -> Option<gio::Icon> {
+/// StartupWMClass is the class. The screen-share picker's windows' too (share.rs).
+pub fn app_icon(class: &str) -> Option<gio::Icon> {
     let by_name = [class.to_string(), class.to_lowercase()]
         .into_iter()
         .find_map(|c| gio_unix::DesktopAppInfo::new(&format!("{c}.desktop")));

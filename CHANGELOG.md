@@ -25,6 +25,8 @@ The first release: the whole shell in one binary.
 - The lock screen through ext-session-lock and PAM, surviving a restart of ostrov; idle handling through
   ext-idle-notify (lock, screens off, lock before sleep, Keep Awake).
 - The polkit agent and an SSH askpass in ostrov's own dialogs; `ostrov dialog JSON` for scripts.
+- The screen-share picker for xdg-desktop-portal-hyprland (`custom_picker_binary`, `ostrov-share-picker`, a link
+  to ostrov) in ostrov's dialog: a screen, a window, or a region dragged out, the restore token allowed or not.
 - The clipboard's history through wlr-data-control, text and pictures, password managers' entries left out.
 - Screenshots of a region or the screen through wlr-screencopy; `ostrov pick-region` printing a region as slurp
   does. Screen recording the official plugin `record` (wf-recorder, optional audio, its badge the time going).

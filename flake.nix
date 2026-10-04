@@ -30,6 +30,8 @@
           # NixOS reads no PAM file of a package's: security.pam.services.ostrov = {}; makes the lock screen's
           postInstall = ''
             install -Dm644 completions/_ostrov $out/share/zsh/site-functions/_ostrov
+            # xdg-desktop-portal-hyprland's screen-share picker, ostrov run by that name (README.md, Screen sharing)
+            ln -s ostrov $out/bin/ostrov-share-picker
             install -Dm644 completions/ostrov.bash $out/share/bash-completion/completions/ostrov
             install -Dm644 completions/ostrov.fish $out/share/fish/vendor_completions.d/ostrov.fish
             # the official plugins' manifests and texts, read from share/ beside ostrov's bin/; hello, the SDK's

@@ -30,6 +30,7 @@ mod popup;
 mod prompt;
 mod services;
 mod settings;
+mod share;
 mod shot;
 mod style;
 mod theme;
@@ -60,6 +61,7 @@ thread_local! {
 const FORMS: &[&str] = &[
     "panel", "menu NAME", "settings [SECTION]", "appearance", "calendar", "run", "clip",
     "lock", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region",
+    "share-pick [--allow-token]",
     "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
     "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID",
     "theme list", "theme set ID", "theme install PATH|GIT-URL", "theme remove ID",
@@ -229,6 +231,11 @@ fn command(args: &[String], input: Option<String>) -> Reply {
             let shot = SHOT.with(|s| s.borrow().clone());
             return Box::pin(async move { shot.ok_or("ostrov is starting")?.pick().await });
         }
+        // xdph's screen-share picker (share.rs): the line it reads once picked, the region dragged out after
+        [first, rest @ ..] if first == "share-pick" => {
+            let shot = SHOT.with(|s| s.borrow().clone());
+            return Box::pin(share::pick(rest.to_vec(), shot));
+        }
         // a theme's install clones a repository: awaited, ostrov going on meanwhile
         [first, rest @ ..] if first == "theme" => return Box::pin(theme::command(rest.to_vec())),
         [first, rest @ ..] if first == "dialog" => {
@@ -325,6 +332,22 @@ fn main() -> glib::ExitCode {
         Some("complete") if !forms::running(&id) => return glib::ExitCode::SUCCESS,
         _ => {}
     }
+    // xdph's screen-share picker (share.rs), run by it as ostrov-share-picker (a link to ostrov: it takes a path and
+    // no arguments) or as `ostrov share-pick`: its windows' list in this environment, not the running ostrov's,
+    // handed on as an argument; with no ostrov running, its own Qt picker
+    let mut argv: Vec<String> = std::env::args().collect();
+    let linked = argv.first().is_some_and(|a| std::path::Path::new(a).ends_with("ostrov-share-picker"));
+    if linked || argv.get(1).is_some_and(|a| a == "share-pick") {
+        let flags = argv.split_off(if linked { 1 } else { 2 });
+        if !forms::running(&id) {
+            use std::os::unix::process::CommandExt;
+            let e = std::process::Command::new("hyprland-share-picker").args(&flags).exec();
+            eprintln!("ostrov: hyprland-share-picker: {e}");
+            return glib::ExitCode::FAILURE;
+        }
+        let list = std::env::var("XDPH_WINDOW_SHARING_LIST").unwrap_or_default();
+        argv = [argv[0].clone(), "share-pick".into(), list].into_iter().chain(flags).collect();
+    }
     let app = gtk4::Application::builder()
         .application_id(id.as_str())
         .flags(gtk4::gio::ApplicationFlags::HANDLES_COMMAND_LINE)
@@ -380,5 +403,5 @@ fn main() -> glib::ExitCode {
         });
         glib::ExitCode::SUCCESS
     });
-    app.run()
+    app.run_with_args(&argv)
 }
