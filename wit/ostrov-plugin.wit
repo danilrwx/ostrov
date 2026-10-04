@@ -46,6 +46,13 @@ interface plugin {
     on-config: func(json: string);
     /// The desktop's state as JSON (`ostrov dump`'s), whenever it changes, to a plugin with "state".
     on-state: func(json: string);
+    /// A launcher mode of its manifest ([[launcher]], named by its prefix), what is typed after the prefix: its
+    /// hits as JSON, a list of {id, text, note, icon, open, copy} shown as the launcher's rows (null for none).
+    /// Called as the user types, once typing pauses; an answer later than 2 s, or to older text, is dropped.
+    query: func(mode: string, text: string) -> string;
+    /// One of its hits picked (Enter or a click), what was typed after the prefix beside it; not called for a hit
+    /// with "open" (a URI ostrov opens in its default app) or "copy" (text ostrov puts on the clipboard).
+    pick: func(mode: string, id: string, text: string);
 }
 
 world ostrov-plugin {

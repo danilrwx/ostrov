@@ -17,8 +17,9 @@ The first release: the whole shell in one binary.
   mirroring, saved profiles), wallpaper, Keep Awake, screenshot, lock and power off, the player (MPRIS), the
   clock, the month with CalDAV and .ics events, upcoming events, the weather (open-meteo), the notifications'
   history with Do Not Disturb.
-- The launcher in the bar: apps, a calculator, emoji, files (fd), web search, questions to Claude in the
-  browser, the clipboard's history with previews.
+- The launcher in the bar: apps, a calculator, emoji, files (fd), web search (DuckDuckGo, `[launcher] search`),
+  the clipboard's history with previews; plugins' modes (`[[launcher]]`: `?question` to Claude and `g words` to
+  Google in the examples).
 - Notifications server with toasts and an OSD; the media and Fn keys (`ostrov key NAME`) shown in the OSD;
   battery warnings.
 - The lock screen through ext-session-lock and PAM, surviving a restart of ostrov; idle handling through

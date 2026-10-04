@@ -76,6 +76,10 @@ ics = []                # .ics and webcal:// links
 classes = [] # none unless said, e.g. ["dota2", "cs2", "steam_app_*"]
 profile = "performance" # performance, balanced, power-saver
 
+# The launcher's web search, `s words` in it: the engine's URL, {} the words escaped.
+[launcher]
+search = "https://duckduckgo.com/?q={}"
+
 # Panels of your own, put in the bar as panel.ID; the built-in ones (control, calendar) take the same keys to be
 # renamed or resized. Their widgets are laid out with Edit and kept in ~/.config/ostrov/panel.toml.
 # [panels.music]

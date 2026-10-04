@@ -1,0 +1,18 @@
+# A launcher mode: ?question asks Claude, claude.ai opened in the browser with it
+id = "claude"
+name = "Claude"
+version = "0.1.0"
+api = 1
+exec = "python3 main.py"
+icon = "dialog-question-symbolic"
+description = "Questions to Claude in the browser: ?question in the launcher."
+
+[[launcher]]
+prefix = "?"
+name = "Ask Claude"
+icon = "dialog-question-symbolic"
+
+[[commands]]
+name = "ask"
+usage = "ask QUESTION..."
+help = "Claude in the browser, the question asked"

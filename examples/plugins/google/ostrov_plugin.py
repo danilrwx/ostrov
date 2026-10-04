@@ -1,0 +1,1 @@
+../../../sdk/python/ostrov_plugin.py

@@ -442,6 +442,11 @@ fn own() -> Vec<Entry> {
             })
             .default("performance"),
         ])]),
+        e("launcher", "Launcher", "system-search-symbolic", vec![Section::new("launcher", "Launcher", vec![
+            Field::new("search", "Web search", Kind::Url)
+                .default(crate::config::Launcher::default().search)
+                .help("`s words` in the launcher; {} the words: https://www.google.com/search?q={}"),
+        ])]),
     ]
 }
 

@@ -1,6 +1,6 @@
 # ostrov plugins
 
-A plugin is a program, in any language, that puts widgets on ostrov's control centre. It is written against one
+A plugin is a program, in any language, that puts widgets on ostrov's control centre, or modes in its launcher. It is written against one
 protocol, `wit/ostrov-plugin.wit` (package `ostrov:plugin@1.0.0`, world `ostrov-plugin`): the plugin's
 **exports**, called by ostrov, and ostrov's **imports**, called by the plugin. Today a plugin runs as a process
 and the calls go as JSON lines over its stdin and stdout; a WebAssembly component could speak the same WIT later,
@@ -40,6 +40,11 @@ icon = "face-smile-symbolic"   # the plugin's if left out
 sizes = [[4, 1], [2, 1], [8, 1]]  # cells [w, h] the grid (8 wide) allows, the first the default; [[4, 1]] if none
 badge = true                   # a badge in its panel's face in the bar (see Badges); false if left out
 bar = "active"                 # when the badge shows: always, active (while it says so), never (the default)
+
+[[launcher]]
+prefix = "?"                   # what is typed starting with it is the plugin's (see Launcher modes)
+name = "Ask"                   # the launcher's prompt while in it
+icon = "dialog-question-symbolic"
 ```
 
 Unknown keys are ignored.
@@ -103,6 +108,8 @@ Two systematic differences from the WIT:
 | `on-event(widget, node, event, value)`   | `{"type":"on_event","widget":"counter","node":"count","event":"toggle","value":"true"}` | –                          |
 | `on-timer(id)`                           | `{"type":"on_timer","id":7}`                                                | –                                      |
 | `on-state(json)`                         | `{"type":"on_state","json":{...}}`, with permission `state`                 | –                                      |
+| `query(mode, text) -> string`            | `{"type":"query","call":N,"mode":"?","text":"why"}`                         | `return` with a list of hits, or `null` |
+| `pick(mode, id, text)`                   | `{"type":"pick","mode":"?","id":"1","text":"why"}`                          | –                                      |
 
 ### Imports: the plugin calls ostrov
 
@@ -160,6 +167,27 @@ alternatives at one place, an UPPERCASE word a placeholder, `[X]` optional, a tr
 
 `ostrov plugin <id>` or `ostrov plugin <id> help` prints them, `ostrov plugin` every plugin's, `ostrov help`
 ostrov's own and every plugin's.
+
+## Launcher modes
+
+A `[[launcher]]` of the manifest is a mode of the launcher (`ostrov run`): what is typed starting with its
+`prefix` goes to the plugin, its `name` the prompt. As the user types (once typing pauses, 150 ms), ostrov calls
+`query(mode, text)`, `mode` the prefix and `text` what follows it; an answer later than 2 s, or to text since
+changed, is dropped. The answer is the launcher's rows:
+
+```json
+[{"id": "1", "text": "Ask: why", "note": "claude.ai", "icon": "dialog-question-symbolic",
+  "open": "https://example.org/?q=why"}]
+```
+
+Every field but `text` may be left out. A row picked (Enter or a click) with `open` has ostrov open that URI in
+its default app, with `copy` put that text on the clipboard; any other calls `pick(mode, id, text)`. So a plugin
+whose rows open or copy needs no `pick`.
+
+The launcher's own prefixes come first, and a plugin's may not overlap them (`:` emoji, `s ` web search, `/`
+files), nor another plugin's (the first by id keeps it): neither may start with the other. A prefix that may not
+is said on ostrov's stderr and left out. A prefix may end in a space (`g `), so `gimp` still runs as an app. A
+mode comes before the calculator and the apps: a prefix of letters takes what is typed from them.
 
 ## Nodes
 
@@ -243,6 +271,7 @@ once and asks later (`set_timer(0, id)`, then `ask` from `on_timer`; see the exa
 `api = 1` is this protocol. Within it, both sides ignore what they do not know: unknown fields, unknown message
 types, unknown node types (drawn as nothing). New things come as new optional fields, new messages, new node types;
 a change that breaks plugins is a new `api`, and a plugin asking for an API ostrov does not speak is not run.
+Launcher modes (`[[launcher]]`, `query`, `pick`) came so, within `api = 1`.
 
 ## Permissions
 
@@ -263,7 +292,8 @@ permissions would be which imports the component is linked with.
 
 `sdk/python/ostrov_plugin.py`: subclass `Plugin`, override the exports, call `log`, `host_run`, `ask`, `secret`,
 `http_get`, `set_timer`, `kick`, `set_settings_schema` (and `push_render`, `push_state`), run `main()`. See
-`examples/plugins/hello-python/main.py`.
+`examples/plugins/hello-python/main.py`; a launcher mode in
+`examples/plugins/claude/main.py` and `examples/plugins/google/main.py`.
 
 ## D-Bus
 

@@ -20,6 +20,9 @@
 //!     password_command = "secret-tool lookup service caldav"      # Nextcloud's...; prints the app password
 //!     ics = ["https://example.org/calendar.ics"]                  # and/or calendars' shared links
 //!
+//!     [launcher]          # the launcher's web search (s words), {} the query
+//!     search = "https://duckduckgo.com/?q={}"
+//!
 //!     [games]             # their windows focused, the power profile theirs (services/games.rs)
 //!     classes = ["dota2", "cs2", "steam_app_*"]
 //!     profile = "performance"
@@ -92,6 +95,19 @@ impl Default for Games {
     }
 }
 
+/// The launcher's: its web search's URL, {} the query escaped.
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct Launcher {
+    pub search: String,
+}
+
+impl Default for Launcher {
+    fn default() -> Launcher {
+        Launcher { search: "https://duckduckgo.com/?q={}".into() }
+    }
+}
+
 /// The calendars: a CalDAV account (its password never here: in the Secret Service, else printed by a command)
 /// and .ics links.
 #[derive(Deserialize)]
@@ -156,6 +172,7 @@ pub struct Config {
     pub colors: BTreeMap<String, String>,
     pub calendar: Calendar,
     pub games: Games,
+    pub launcher: Launcher,
     pub appearance: Appearance,
     /// the control centre widgets' own sections, [widget.ID]
     pub widget: BTreeMap<String, toml::Table>,
@@ -214,6 +231,7 @@ mod tests {
         assert_eq!((c.idle.lock, c.idle.screens_off), (d.idle.lock, d.idle.screens_off));
         assert_eq!((c.appearance.theme, c.appearance.opacity, c.appearance.radius), (d.appearance.theme, 0.75, 10));
         assert_eq!((c.games.classes, c.games.profile), (d.games.classes, d.games.profile));
+        assert_eq!(c.launcher.search, d.launcher.search);
         assert!(c.hyprland.rules && c.hyprland.binds && c.hyprland.keys.is_empty() && c.panels.is_empty());
     }
 }

@@ -56,7 +56,7 @@ thread_local! {
 /// ostrov's own commands, in forms.rs's grammar; besides them a bar block's (BLOCK ARGS) and a module's (MODULE
 /// ARGS).
 const FORMS: &[&str] = &[
-    "panel", "menu NAME", "settings [SECTION]", "appearance", "calendar", "run", "ask QUESTION...", "clip",
+    "panel", "menu NAME", "settings [SECTION]", "appearance", "calendar", "run", "clip",
     "windows [app]", "overview [close]", "lock", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "record [--audio]",
     "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
     "plugin [ID] [ARGS...]", "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor",
@@ -146,11 +146,6 @@ fn activate(app: &gtk4::Application) {
                 ["settings", ref entry @ ..] => panel("control")?.open_page("settings", entry.first().copied()),
                 ["appearance"] => panel("control")?.open_page("appearance", None),
                 ["run"] => launcher.toggle(false),
-                ["ask", ref question @ ..] if !question.is_empty() => {
-                    let ctx = gtk4::gdk::Display::default().map(|d| d.app_launch_context());
-                    let uri = launcher::claude(&question.join(" "));
-                    gtk4::gio::AppInfo::launch_default_for_uri(&uri, ctx.as_ref()).map_err(|e| e.to_string())?;
-                }
                 ["clip"] => launcher.toggle(true),
                 ["lock"] => lock.lock(),
                 ["restart"] => restart(),
