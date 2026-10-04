@@ -24,7 +24,10 @@ pub fn month(_: &Ctx) -> Widget {
     agenda.set_visible(false);
     let scroll = gtk4::ScrolledWindow::new();
     scroll.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::Automatic);
-    scroll.set_vexpand(true);
+    // the month spread over the tile, the day's events under it only when there are any
+    cal.set_vexpand(true);
+    scroll.set_propagate_natural_height(true);
+    scroll.set_max_content_height(160);
     scroll.set_child(Some(&agenda));
     col.append(&scroll);
 

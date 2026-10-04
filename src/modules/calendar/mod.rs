@@ -15,8 +15,8 @@ pub const MODULE: Module = Module {
     run: Some(run),
     worker: Some(worker),
     widgets: &[
-        widget("month", "Month", "x-office-calendar-symbolic", &[(4, 5), (8, 5), (4, 6)], widget::month),
-        widget("agenda", "Coming Up", "view-list-symbolic", &[(4, 4), (4, 2), (8, 2), (8, 4)], widget::agenda).bar(Show::Active),
+        widget("month", "Month", "x-office-calendar-symbolic", &[(4, 5), (4, 6), (4, 7), (8, 5), (8, 6), (8, 7)], widget::month),
+        widget("agenda", "Coming Up", "view-list-symbolic", &[(4, 4), (4, 2), (4, 3), (4, 5), (4, 6), (8, 2), (8, 3), (8, 4)], widget::agenda).bar(Show::Active),
     ],
     ..Module::NONE
 };
