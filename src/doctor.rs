@@ -110,7 +110,7 @@ fn programs(out: &mut Vec<Line>) {
     } else {
         ('·', "PAM: no /etc/pam.d/ostrov, the lock screen checks passwords as login does".into())
     });
-    for (s, what) in [("theme", "the Wallpaper widget"), ("vless", "the VLESS widget"), ("openvpn-ctl", "the OpenVPN widget")] {
+    for (s, what) in [("theme", "the Wallpaper widget")] {
         if !std::path::Path::new(&crate::hub::bin(s)).is_file() {
             out.push(('·', format!("{s}: not in the dotfiles' bin, {what} cannot switch")));
         }

@@ -211,11 +211,9 @@ impl Spec {
                 it("bt", 4, 4, 4, 1),
                 it("power", 0, 5, 4, 1),
                 it("wallpaper", 4, 5, 4, 1),
-                it("openvpn", 0, 6, 4, 1),
-                it("vless", 4, 6, 4, 1),
-                it("awake", 0, 7, 4, 1),
-                it("headset", 4, 7, 4, 1),
-                it("displays", 0, 8, 4, 1),
+                it("awake", 0, 6, 4, 1),
+                it("headset", 4, 6, 4, 1),
+                it("displays", 0, 7, 4, 1),
             ]),
             // the calendar as it was: the weather and the player over the notifications at the left; the
             // date, the month, the coming events at the right
@@ -320,7 +318,8 @@ fn load(reg: &[Meta], spec: &Spec) -> (Vec<Item>, Vec<Item>, HashMap<String, Sho
                 Some(it)
             })
             .collect(),
-        None => spec.layout.clone(),
+        // the spec's, of the widgets there are (a plugin or a KDL file gone, its place empty no more)
+        None => spec.layout.iter().filter(|i| reg.iter().any(|m| m.id == i.key)).cloned().collect(),
     };
     let mut seen = std::collections::HashSet::new();
     items.retain(|i| seen.insert(i.key.clone()));

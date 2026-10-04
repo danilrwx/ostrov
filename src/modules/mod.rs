@@ -29,7 +29,6 @@ pub mod night;
 pub mod power;
 pub mod system;
 pub mod theme;
-pub mod vpn;
 pub mod weather;
 pub mod wifi;
 
@@ -119,8 +118,6 @@ pub const ALL: &[&Module] = &[
     &location::MODULE,
     &keymap::MODULE,
     &media::MODULE,
-    &vpn::VLESS,
-    &vpn::OPENVPN,
     &theme::MODULE,
     &weather::MODULE,
     &displays::MODULE,
