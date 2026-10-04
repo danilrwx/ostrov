@@ -1,7 +1,8 @@
-//! The media keys and a laptop's Fn keys: `ostrov key NAME` from the compositor's binds. The volume and the mic through wpctl, the backlight through logind, the
-//! player through MPRIS, the touchpad through Hyprland's per-device setting; what each did shown in the OSD
-//! (notes.rs), its level the new one. The performance and camera keys, on a laptop whose vendor
-//! service acts on them (HONOR's honor-hotkey-actions), show only what it did. And the battery's warnings as it runs down (battery).
+//! The media keys and a laptop's Fn keys: `ostrov key NAME` from the compositor's binds. The volume and the mic
+//! through wpctl, the backlight through logind, the player through MPRIS, the touchpad through Hyprland's
+//! per-device setting; what each did shown in the OSD (notes.rs), its level the new one. The performance and
+//! camera keys, on a laptop whose firmware or vendor service acts on them (HONOR's honor-hotkey-actions, say),
+//! show only what it did. And the battery's warnings as it runs down (battery).
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -13,7 +14,7 @@ use crate::hub::Hub;
 use crate::notes::Notes;
 use crate::modules::{audio::service as audio, brightness::service as backlight};
 
-/// A level's step, in percent, as the script's.
+/// A level's step, in percent.
 const STEP: i64 = 2;
 /// How long the OSD stays: a level a second, a word a second and a half.
 const LEVEL_MS: u64 = 1000;
@@ -92,7 +93,7 @@ impl Keys {
         Ok(())
     }
 
-    /// f after ms: what the HONOR's service did, given the time to do it.
+    /// f after ms: what the vendor's service did, given the time to do it.
     fn later(self: &Rc<Self>, ms: u64, f: impl FnOnce(&Keys) + 'static) {
         let k = self.clone();
         glib::timeout_add_local_once(Duration::from_millis(ms), move || f(&k));

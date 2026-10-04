@@ -1,0 +1,54 @@
+{
+  description = "ostrov: a whole desktop shell for Hyprland in one binary";
+
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+  outputs = { self, nixpkgs }:
+    let
+      systems = [ "x86_64-linux" "aarch64-linux" ];
+      forAll = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+    in
+    {
+      packages = forAll (pkgs: rec {
+        ostrov = pkgs.rustPlatform.buildRustPackage {
+          pname = "ostrov";
+          version = "0.1.0";
+          src = ./.;
+          cargoLock.lockFile = ./Cargo.lock;
+
+          nativeBuildInputs = with pkgs; [ pkg-config wrapGAppsHook4 ];
+          # the GStreamer plugins here put in the wrapper's plugin path by wrapGAppsHook4, for the recorder
+          buildInputs = (with pkgs; [ gtk4 gtk4-layer-shell glib pam wayland ])
+            ++ (with pkgs.gst_all_1; [ gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav ]);
+
+          # the programs ostrov runs: the sound's, the recorder's
+          preFixup = ''
+            gappsWrapperArgs+=(--prefix PATH : ${pkgs.lib.makeBinPath (with pkgs; [ wireplumber pipewire gst_all_1.gstreamer ])})
+          '';
+
+          # NixOS reads no PAM file of a package's: security.pam.services.ostrov = {}; makes the lock screen's
+          postInstall = ''
+            install -Dm644 completions/_ostrov $out/share/zsh/site-functions/_ostrov
+            install -Dm644 completions/ostrov.bash $out/share/bash-completion/completions/ostrov
+            install -Dm644 completions/ostrov.fish $out/share/fish/vendor_completions.d/ostrov.fish
+          '';
+
+          meta = with pkgs.lib; {
+            description = "A whole desktop shell for Hyprland in one binary";
+            homepage = "https://github.com/ostrov-shell/ostrov";
+            license = licenses.mit;
+            platforms = platforms.linux;
+            mainProgram = "ostrov";
+          };
+        };
+        default = ostrov;
+      });
+
+      devShells = forAll (pkgs: {
+        default = pkgs.mkShell {
+          inputsFrom = [ self.packages.${pkgs.system}.ostrov ];
+          packages = with pkgs; [ cargo rustc clippy rustfmt ];
+        };
+      });
+    };
+}

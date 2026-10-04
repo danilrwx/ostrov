@@ -1,0 +1,70 @@
+# ostrov from git's master: makepkg -si in this directory.
+pkgname=ostrov-git
+pkgver=0.1.0.r0.g0000000
+pkgrel=1
+pkgdesc='A whole desktop shell for Hyprland in one binary: bar, panels, launcher, notifications, lock screen and more'
+arch=('x86_64' 'aarch64')
+url='https://github.com/ostrov-shell/ostrov'
+license=('MIT')
+depends=('gtk4' 'gtk4-layer-shell' 'glib2' 'pam' 'wayland' 'pipewire' 'wireplumber'
+         'gstreamer' 'gst-plugins-base' 'gst-plugins-good')
+makedepends=('git' 'cargo' 'pkgconf')
+optdepends=('hyprland: the compositor ostrov is made for'
+            'iwd: Wi-Fi'
+            'networkmanager: Wi-Fi, in place of iwd'
+            'bluez: Bluetooth'
+            'upower: the battery'
+            'power-profiles-daemon: the power modes'
+            'polkit: the polkit agent'
+            'gst-plugin-va: screen recording with VA-API H.264'
+            'gst-plugins-bad: screen recording with openh264 when VA-API has no encoder'
+            'gst-libav: screen recording with audio'
+            'pipewire-pulse: screen recording with audio'
+            'fd: the launcher finding files'
+            'unicode-emoji: the launcher finding emoji'
+            'gnome-keyring: secrets in the Secret Service'
+            'greetd: the login screen (ostrov greet)'
+            'cage: the login screen (ostrov greet)')
+provides=('ostrov')
+conflicts=('ostrov')
+backup=('etc/pam.d/ostrov')
+source=('git+https://github.com/ostrov-shell/ostrov.git')
+sha256sums=('SKIP')
+
+pkgver() {
+  cd ostrov
+  git describe --long --tags --abbrev=7 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' ||
+    printf '0.1.0.r%s.g%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+prepare() {
+  cd ostrov
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd ostrov
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release
+}
+
+check() {
+  cd ostrov
+  export RUSTUP_TOOLCHAIN=stable
+  cargo test --frozen --release
+}
+
+package() {
+  cd ostrov
+  install -Dm755 target/release/ostrov "$pkgdir/usr/bin/ostrov"
+  install -Dm644 packaging/pam/ostrov "$pkgdir/etc/pam.d/ostrov"
+  install -Dm644 completions/_ostrov "$pkgdir/usr/share/zsh/site-functions/_ostrov"
+  install -Dm644 completions/ostrov.bash "$pkgdir/usr/share/bash-completion/completions/ostrov"
+  install -Dm644 completions/ostrov.fish "$pkgdir/usr/share/fish/vendor_completions.d/ostrov.fish"
+  install -Dm644 -t "$pkgdir/usr/share/doc/ostrov" README.md CHANGELOG.md config/example.toml docs/* \
+    wit/ostrov-plugin.wit
+  install -Dm644 -t "$pkgdir/usr/share/doc/ostrov/examples/widgets" examples/widgets/*
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

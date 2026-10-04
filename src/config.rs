@@ -16,7 +16,7 @@
 //!
 //!     [calendar]          # the calendar popup's events (services/calendar.rs), read anew on every fetch
 //!     caldav_url = "https://caldav.example.com"                     # any CalDAV server: Example, iCloud's
-//!     user = "login@example.com"                                    # https://caldav.icloud.com, Fastmail's,
+//!     user = "you@example.com"                                    # https://caldav.icloud.com, Fastmail's,
 //!     password_command = "secret-tool lookup service caldav"      # Nextcloud's...; prints the app password
 //!     ics = ["https://example.org/calendar.ics"]                  # and/or calendars' shared links
 //!
@@ -201,4 +201,19 @@ pub fn load() -> Config {
         eprintln!("ostrov: {}: {e}", path().display());
         Config::default()
     })
+}
+
+#[cfg(test)]
+mod tests {
+    /// config/example.toml, the documented defaults, reads as the config and says what the defaults say.
+    #[test]
+    fn example_is_the_defaults() {
+        let c: super::Config = toml::from_str(include_str!("../config/example.toml")).expect("example.toml");
+        let d = super::Config::default();
+        assert_eq!((c.bar.left, c.bar.center, c.bar.right), (d.bar.left, d.bar.center, d.bar.right));
+        assert_eq!((c.idle.lock, c.idle.screens_off), (d.idle.lock, d.idle.screens_off));
+        assert_eq!((c.appearance.theme, c.appearance.opacity, c.appearance.radius), (d.appearance.theme, 0.75, 10));
+        assert_eq!((c.games.classes, c.games.profile), (d.games.classes, d.games.profile));
+        assert!(c.hyprland.rules && c.hyprland.binds && c.hyprland.keys.is_empty() && c.panels.is_empty());
+    }
 }

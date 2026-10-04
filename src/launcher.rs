@@ -325,8 +325,8 @@ impl Launcher {
         }
     }
 
-    /// An app launched (a terminal one in alacritty), a clip copied back, a result or an emoji copied, a search or
-    /// a file opened; with none, what was typed run, when it is a run.
+    /// An app launched (a terminal one in $TERMINAL, else in the terminal GIO finds), a clip copied back, a result
+    /// or an emoji copied, a search or a file opened; with none, what was typed run, when it is a run.
     fn pick(self: &Rc<Self>, n: usize) {
         let typed = self.query.text().to_string();
         let run_mode = self.prompt.text() == "run";
@@ -336,10 +336,12 @@ impl Launcher {
         match &hit {
             Some(Hit::App(a)) => {
                 let term = a.downcast_ref::<gio_unix::DesktopAppInfo>().is_some_and(|d| d.boolean("Terminal"));
-                if term {
+                // GIO's own list of terminals knows none of the Wayland ones (foot, kitty, alacritty)
+                let terminal = std::env::var("TERMINAL").ok().filter(|t| !t.is_empty());
+                if let (true, Some(terminal)) = (term, terminal) {
                     let cmd = a.commandline().map(|c| c.to_string_lossy().into_owned()).unwrap_or_default();
                     let cmd: Vec<&str> = cmd.split_whitespace().filter(|w| !w.starts_with('%')).collect();
-                    run(&[&["alacritty", "-e"], &cmd[..]].concat());
+                    run(&[&[terminal.as_str(), "-e"], &cmd[..]].concat());
                 } else {
                     let _ = a.launch(&[], ctx.as_ref());
                 }

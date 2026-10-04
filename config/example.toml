@@ -1,0 +1,96 @@
+# ostrov's config: ~/.config/ostrov/config.toml. Every key here is at its default and may be left out; an empty
+# file (or none) is all defaults. A file that does not parse is reported on ostrov's stderr and the defaults taken.
+# The control centre's Settings page (the gear beside Edit) edits this file in place, keeping comments and order.
+# [colors] and [appearance] are applied as the file is saved; the rest is read when ostrov starts (`ostrov restart`).
+
+# The bar's blocks, left to right in each part. The blocks:
+#   workspaces      the workspaces' dots
+#   window          the focused window's title
+#   record          the recording's red dot and time, only while recording
+#   privacy         the mic or the camera in use
+#   layout          the keyboard's layout
+#   tray            the system tray (StatusNotifierItem)
+#   panel.ID        a panel's face in the bar, made of its widgets' badges, unrolling the panel on a click:
+#                   panel.control (the control centre, alias "status"), panel.calendar (alias "clock"), or one of
+#                   [panels.ID] below
+[bar]
+left = ["workspaces", "window"]
+center = ["panel.calendar"]
+right = ["record", "privacy", "layout", "tray", "panel.control"]
+
+# Idle, as the compositor reports it (ext-idle-notify; inhibitors such as a playing video are honoured). The screen
+# is also locked before the machine sleeps and on `loginctl lock-session`. Seconds; 0 never. The Settings page
+# also takes durations such as "10m".
+[idle]
+lock = 600
+screens_off = 900
+
+# The look. Applied as the file is saved; the Appearance page (the palette beside Edit) edits it.
+[appearance]
+theme = "dark"          # dark, light, graphite, nord, solarized
+accent = ""             # a colour (#5e81ac, rgb(94, 129, 172), a name); "" the theme's own
+surface = ""            # the colour under everything that opens; "" the theme's own
+opacity = 0.75          # the surface's, 0.3 to 1
+radius = 10             # a surface's corners in px, 0 to 20; what is on it 4 less
+density = "normal"      # compact, normal, comfortable: the control centre's rows
+animations = true
+# Hyprland's blur behind the bar and what opens: set only when given here, Hyprland's own otherwise.
+# blur = true
+# blur_size = 8         # 1 to 20
+# blur_passes = 1       # 1 to 4
+
+# Any of the palette's colours over the theme's (the names in src/style.rs): fg, dim, ink, accent, accent-rule,
+# accent-pressed, bar, surface, hover, raised, card, well, sunk, rule, idle, handle, urgent, recording, lock,
+# ground, shade.
+[colors]
+# urgent = "#cd0000"
+
+# What ostrov puts into Hyprland itself over its IPC, at start and after every config reload: its layers' rules
+# (blur behind its surfaces) and its keys, each only where the combination is free (a bind of yours is never
+# replaced). `ostrov hyprland` prints all of it as hyprland.conf lines, for keeping it there instead.
+[hyprland]
+rules = true
+binds = true
+
+# A key moved: its name, then the combination as Hyprland writes it. The names and their defaults:
+#   run SUPER+D, panel SUPER+X, calendar SUPER+C, windows SUPER+Tab, windows-app SUPER+grave,
+#   windows-release SUPER+Super_L (release), overview SUPER+Up, clip SUPER SHIFT+V, screenshot SUPER SHIFT+S,
+#   print Print, record SUPER SHIFT+R, lock SUPER SHIFT+X, bar SUPER+B, vol-up, vol-down, vol-mute, mic,
+#   bright-up, bright-down, play-pause, next, previous (the XF86 media keys)
+[hyprland.keys]
+# run = "SUPER, R"
+
+# The calendar's events: one CalDAV account (iCloud's https://caldav.icloud.com, Fastmail's, Nextcloud's, Example's
+# https://caldav.example.com...) and/or .ics links. The password is never kept here: the Settings page puts it in the
+# Secret Service (or ~/.local/share/ostrov/secrets.toml, mode 0600, without one), else password_command prints it.
+[calendar]
+caldav_url = ""
+user = ""
+password_command = ""   # e.g. "secret-tool lookup service caldav"
+ics = []                # .ics and webcal:// links
+
+# Games played in a power profile of their own: while a window of one of these classes has the focus (a trailing *
+# a prefix), the power profile is this one, the previous one put back as the focus leaves.
+[games]
+classes = ["dota2", "cs2", "steam_app_*"]
+profile = "performance" # performance, balanced, power-saver
+
+# Panels of your own, put in the bar as panel.ID; the built-in ones (control, calendar) take the same keys to be
+# renamed or resized. Their widgets are laid out with Edit and kept in ~/.config/ostrov/panel.toml.
+# [panels.music]
+# name = "Music"
+# icon = "audio-x-generic-symbolic"
+# width = 390                 # px; the control centre is 390 wide
+
+# Widgets' own settings, [widget.ID], as each widget's schema says (the inspector in Edit, or the Settings page).
+[widget.clock]
+format = "%a %b %-d  %H:%M"     # strftime's, the time in the bar
+
+[widget.wallpaper]
+dir = "~/Pictures/wallpapers"   # the JPEG, PNG and WebP pictures the wallpaper's menu lists
+bar = 0.65                      # how solid the bar's black is over a picture: 1 solid, 0 clear
+on_change = ""                  # a command run after every pick, the picture in $OSTROV_WALLPAPER
+
+# A KDL widget's settings are [widget.ID] too (docs/widgets.md); a plugin's are [plugin.ID] (docs/plugins.md).
+# [plugin.hello-python]
+# greeting = "Hi"

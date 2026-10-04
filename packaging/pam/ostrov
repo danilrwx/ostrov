@@ -1,0 +1,3 @@
+#%PAM-1.0
+# ostrov's lock screen: the password checked as the console's login checks it.
+auth include login

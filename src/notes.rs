@@ -1,10 +1,10 @@
 //! Notifications, ostrov being the notification server (org.freedesktop.Notifications over zbus, in its own Tokio
-//! thread). Toasts at the top right under the bar: the app, the summary, the body, the actions as buttons; a
-//! click runs the default action, a right click dismisses; gone after their timeout (5 s unless they say), a
-//! critical one stays. What bin/wm-fnkeys sends (app "fnkeys": a level in its "value" hint, or a word, its icon
-//! as the image) is the OSD instead, at the bottom centre; ostrov's own keys (keys.rs) show it directly (osd), its
-//! own warnings (the battery's) are posted directly too (post). The rest stays in the history (the calendar's)
-//! until dismissed; Do Not Disturb keeps the toasts back, not the history.
+//! thread). Toasts at the top right under the bar: the app, the summary, the body, the actions as buttons; a click runs
+//! the default action, a right click dismisses; gone after their timeout (5 s unless they say), a critical one stays.
+//! What a script of the user's Fn keys sends (app "fnkeys": a level in its "value" hint, or a word, its icon as the
+//! image) is the OSD instead, at the bottom centre; ostrov's own keys (keys.rs) show it directly (osd), its own
+//! warnings (the battery's) are posted directly too (post). The rest stays in the history (the calendar's) until
+//! dismissed; Do Not Disturb keeps the toasts back, not the history.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
