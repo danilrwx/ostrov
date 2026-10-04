@@ -95,6 +95,23 @@ impl Default for Games {
     }
 }
 
+/// When the notifications keep quiet (their toasts back, the history kept): while a game has the focus, between
+/// two times of day ("23:00", "08:00"; empty, never), and the apps let through all the same.
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct Notifications {
+    pub quiet_in_games: bool,
+    pub quiet_from: String,
+    pub quiet_to: String,
+    pub allow: Vec<String>,
+}
+
+impl Default for Notifications {
+    fn default() -> Notifications {
+        Notifications { quiet_in_games: true, quiet_from: String::new(), quiet_to: String::new(), allow: Vec::new() }
+    }
+}
+
 /// The launcher's: its web search's URL, {} the query escaped.
 #[derive(Deserialize)]
 #[serde(default)]
@@ -195,6 +212,7 @@ pub struct Config {
     pub calendar: Calendar,
     pub games: Games,
     pub launcher: Launcher,
+    pub notifications: Notifications,
     pub appearance: Appearance,
     /// the control centre widgets' own sections, [widget.ID]
     pub widget: BTreeMap<String, toml::Table>,

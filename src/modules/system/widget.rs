@@ -64,7 +64,8 @@ pub fn awake(c: &Ctx) -> Widget {
 }
 
 /// The notifications' history, newest first (a click dismisses one, its actions as buttons), Do Not Disturb and
-/// Clear under it; its badge a bell struck through while Do Not Disturb is on.
+/// Clear under it; its badge a bell struck through while they keep quiet (Do Not Disturb, a game, the quiet
+/// hours of [notifications]).
 pub fn notifications(_: &Ctx) -> Widget {
     let col = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
     col.add_css_class("card");
@@ -104,7 +105,10 @@ pub fn notifications(_: &Ctx) -> Widget {
             list.append(&n2.card(n, true));
         }
         dnd.set_active(n2.dnd());
-        active.set(n2.dnd());
+        // quiet by itself (a game focused, the quiet hours): its bell struck through all the same, the chip said so
+        let quiet = n2.quiet_now();
+        active.set(quiet);
+        dnd.set_label(if quiet && !n2.dnd() { "Quiet for now" } else { "Do Not Disturb" });
     };
     draw();
     notes.on_change(draw);

@@ -162,6 +162,8 @@ pub struct Notes {
     shown: RefCell<Vec<(u32, gtk4::Widget)>>,
     /// the toasts being answered, kept up past their time till the answer goes
     replying: RefCell<std::collections::HashSet<u32>>,
+    /// the window focused's class, for quiet while a game is
+    focused: RefCell<String>,
     osd: Osd,
 }
 
@@ -192,6 +194,21 @@ impl Notes {
     }
     pub fn dnd(&self) -> bool {
         *self.dnd.borrow()
+    }
+
+    /// Whether toasts keep back now: Do Not Disturb, a game focused, the quiet hours ([notifications]).
+    pub fn quiet_now(&self) -> bool {
+        let cfg = crate::config::load();
+        let n = &cfg.notifications;
+        *self.dnd.borrow()
+            || n.quiet_in_games && crate::modules::games::service::is_game(&self.focused.borrow(), &cfg.games.classes)
+            || quiet_hours(&n.quiet_from, &n.quiet_to)
+    }
+
+    /// Whether an app's toast keeps back now: quiet, and the app not one let through.
+    fn quiet(&self, app: &str) -> bool {
+        let allowed = crate::config::load().notifications.allow.iter().any(|a| a.eq_ignore_ascii_case(app));
+        !allowed && self.quiet_now()
     }
     /// One notification gone: its toast, its place in the history; the app told (reason 2: dismissed).
     pub fn dismiss(&self, id: u32) {
@@ -260,7 +277,7 @@ impl Notes {
             h.push(note.clone());
         }
         self.unshow(id);
-        if !*self.dnd.borrow() {
+        if note.critical || !self.quiet(&note.app) {
             let card = self.card(&note, false);
             self.toasts.append(&card);
             self.shown.borrow_mut().push((id, card.upcast()));
@@ -410,6 +427,35 @@ impl Notes {
     }
 }
 
+/// Whether now is between from and to ("23:00", "08:00"; over midnight when from is the later), neither empty.
+fn quiet_hours(from: &str, to: &str) -> bool {
+    let min = |t: &str| {
+        let (h, m) = t.trim().split_once(':')?;
+        Some(h.parse::<u32>().ok()? * 60 + m.parse::<u32>().ok()?)
+    };
+    let (Some(f), Some(t)) = (min(from), min(to)) else { return false };
+    let Ok(now) = glib::DateTime::now_local() else { return false };
+    within(now.hour() as u32 * 60 + now.minute() as u32, f, t)
+}
+
+/// A minute of the day between from and to, the span over midnight when from is the later.
+fn within(now: u32, from: u32, to: u32) -> bool {
+    if from <= to { from <= now && now < to } else { now >= from || now < to }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn quiet_hours_over_midnight() {
+        use super::within;
+        assert!(within(23 * 60 + 30, 23 * 60, 8 * 60));
+        assert!(within(7 * 60, 23 * 60, 8 * 60));
+        assert!(!within(12 * 60, 23 * 60, 8 * 60));
+        assert!(within(13 * 60, 12 * 60, 14 * 60));
+        assert!(!within(14 * 60, 12 * 60, 14 * 60));
+    }
+}
+
 thread_local!(static NOTES: std::cell::OnceCell<Rc<Notes>> = const { std::cell::OnceCell::new() });
 
 /// The notifications, once started (the panels' notifications widget).
@@ -472,6 +518,7 @@ pub fn start(app: &gtk4::Application) -> Rc<Notes> {
         toast_win,
         shown: RefCell::default(),
         replying: RefCell::default(),
+        focused: RefCell::default(),
         osd: Osd { win: osd, icon: oicon, text: otext, level: olevel, hide: Rc::default() },
     });
 
@@ -494,6 +541,17 @@ pub fn start(app: &gtk4::Application) -> Rc<Notes> {
                 }
                 In::Notify(note) => n.show(note),
             }
+        }
+    });
+    let n2 = notes.clone();
+    crate::events::on(move |name, payload| {
+        if name != "window" {
+            return;
+        }
+        let was = n2.quiet_now();
+        *n2.focused.borrow_mut() = payload["class"].as_str().unwrap_or_default().to_string();
+        if n2.quiet_now() != was {
+            n2.changed();
         }
     });
     NOTES.with(|g| {

@@ -89,6 +89,14 @@ profile = "performance" # performance, balanced, power-saver
 [launcher]
 search = "https://duckduckgo.com/?q={}"
 
+# When toasts keep back (the history kept; a critical one always shows): a game focused, quiet hours, the apps let
+# through all the same.
+[notifications]
+quiet_in_games = true
+quiet_from = ""          # a time of day, 23:00; "" never
+quiet_to = ""            # 08:00
+allow = []               # ["Telegram Desktop"]
+
 # Panels of your own, put in the bar as panel.ID; the built-in ones (control, calendar) take the same keys to be
 # renamed or resized. Their widgets are laid out with Edit and kept in ~/.config/ostrov/panel.toml.
 # [panels.music]

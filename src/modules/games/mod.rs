@@ -1,6 +1,6 @@
 //! A game focused played in a power profile of its own ([games]).
 
-mod service;
+pub mod service;
 
 use super::{Fut, Module};
 use crate::services::{Ctx, Kick};

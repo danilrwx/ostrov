@@ -12,7 +12,7 @@ use crate::services::Ctx;
 use crate::wm::hypr_socket;
 
 /// A window's class one of the games: equal, or a prefix before a trailing *.
-fn is_game(class: &str, classes: &[String]) -> bool {
+pub fn is_game(class: &str, classes: &[String]) -> bool {
     classes.iter().any(|c| match c.strip_suffix('*') {
         Some(prefix) => class.starts_with(prefix),
         None => class == c,
