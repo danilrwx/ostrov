@@ -450,12 +450,6 @@ fn own() -> Vec<Entry> {
     ]
 }
 
-/// A panel's row and gap as the density alone gives them, the form's defaults.
-fn density_now() -> (i32, i32) {
-    let a = crate::config::load().appearance;
-    crate::look::density(&crate::config::Appearance { row_height: None, gap: None, ..a })
-}
-
 /// [appearance]: the Appearance page draws theme and accent its own way, the rest as this form.
 pub fn appearance() -> Vec<Section> {
     let opts = |o: &[&str]| o.iter().map(|v| Opt::Plain(v.to_string())).collect();
@@ -482,12 +476,7 @@ pub fn appearance() -> Vec<Section> {
             .help("A surface's; what is on it 4 less."),
         Field::new("density", "Density", Kind::Choice { options: opts(&["compact", "normal", "comfortable"]) })
             .default(theme.density.unwrap_or("normal".into()))
-            .help("The panels' rows and gaps, unless set below."),
-        Field::new("row_height", "Row height", slider(24.0, 96.0, 1.0))
-            .default(density_now().0)
-            .help("A panel's row in px, over the density's."),
-        Field::new("gap", "Tile gap", slider(0.0, 32.0, 1.0)).default(density_now().1),
-        Field::new("panel_padding", "Panel padding", slider(0.0, 40.0, 1.0)).default(14),
+            .help("The control centre's rows."),
         Field::new("animations", "Animations", Kind::Bool).default(true),
         Field::new("blur", "Blur", Kind::Bool)
             .default(live("enabled", 1) != 0)

@@ -46,9 +46,6 @@ bar_icon_size = 14      # px, in the bar
 bar_padding = 10        # px at a bar block's sides
 bar_spacing = 7         # px between a block's icons
 bar_height = 25         # px
-# row_height = 48       # px, a panel's row; unset: the density's
-# gap = 8               # px between a panel's tiles; unset: the density's
-# panel_padding = 14    # px round what opens
 
 # Any of the palette's colours over the theme's (the names in src/style.rs): fg, dim, ink, accent, accent-rule,
 # accent-pressed, bar, surface, hover, raised, card, well, sunk, rule, idle, handle, urgent, recording, lock,
