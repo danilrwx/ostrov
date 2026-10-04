@@ -1,5 +1,5 @@
-# ostrov's example plugin: a toggle counting its clicks, its menu adding and resetting, its settings a greeting
-# and a token kept in the keyring
+# ostrov's example plugin: a toggle counting its clicks, its menu adding and resetting and showing the window
+# focused, its settings a greeting and a token kept in the keyring; Super+F12 flips it
 id = "hello-python"
 name = "Hello"
 version = "0.1.0"
@@ -7,7 +7,12 @@ api = 1
 exec = "python3 main.py"
 icon = "face-smile-symbolic"
 description = "Counts its clicks; the SDK's example."
-permissions = ["secrets", "dialogs"]
+permissions = ["secrets", "dialogs", "events", "keys"]
+events = ["window"]            # ostrov's events it follows: on_shell_event("window", {"class", "title"})
+
+[[keys]]
+combo = "SUPER, F12"           # bound where free, to `ostrov plugin hello-python toggle`
+command = "toggle"
 
 [[widgets]]
 id = "counter"
@@ -25,6 +30,10 @@ help = "the count now"
 name = "set"
 usage = "set N"
 help = "the count set to N"
+
+[[commands]]
+name = "toggle"
+help = "the toggle flipped"
 
 [[commands]]
 name = "reset"

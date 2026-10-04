@@ -5,7 +5,8 @@
 package ostrov:plugin@1.0.0;
 
 /// What ostrov gives a plugin. Its permissions are which of these it gets: run needs "run", ask "dialogs",
-/// http-get "network", secret "secrets"; called without, they answer as denied (err, none).
+/// http-get "network", secret "secrets"; called without, they answer as denied (err, none). Of its exports,
+/// on-state needs "state", on-shell-event "events", calendar-events "calendar"; its manifest's keys need "keys".
 interface host {
     /// A line in ostrov's log, the plugin's id before it.
     log: func(msg: string);
@@ -53,6 +54,15 @@ interface plugin {
     /// One of its hits picked (Enter or a click), what was typed after the prefix beside it; not called for a hit
     /// with "open" (a URI ostrov opens in its default app) or "copy" (text ostrov puts on the clipboard).
     pick: func(mode: string, id: string, text: string);
+    /// One of ostrov's events as it happens (window, workspace, lock, unlock, wallpaper, network, power, bluetooth,
+    /// output, media), its payload as JSON: to a plugin with "events", of the names its manifest's events lists
+    /// ("*" for all).
+    on-shell-event: func(name: string, json: string);
+    /// Its calendar's events (manifest `calendar = true`, permission "calendar") between two local times, ISO
+    /// ("2026-10-05T00:00:00"): a JSON list of {title, start, end, all_day, location, color}, times the same way,
+    /// merged with the other calendars'. Called on the calendar's schedule (every 15 min, on `ostrov calendar
+    /// refresh`).
+    calendar-events: func(from: string, to: string) -> string;
 }
 
 world ostrov-plugin {

@@ -61,6 +61,15 @@ class Plugin:
     def pick(self, mode, id, text):
         """A hit without "open" or "copy" picked, text what was typed after the prefix."""
 
+    def on_shell_event(self, name, payload):
+        """One of ostrov's events (permission "events", the manifest's events listing it): "window" with
+        {"class", "title"}, "power", "network"... (docs/plugins.md)."""
+
+    def calendar_events(self, start, end):
+        """Its calendar's events (calendar = true, permission "calendar") between two local ISO times: a list of
+        {"title", "start", "end", "all_day", "location", "color"}, times as ISO too."""
+        return []
+
     # the imports, called on ostrov
     def log(self, msg):
         self._send({"type": "log", "msg": str(msg)})
@@ -149,12 +158,16 @@ class Plugin:
                 return self.on_timer(m["id"])
             if t == "pick":
                 return self.pick(m["mode"], m["id"], m["text"])
+            if t == "on_shell_event":
+                return self.on_shell_event(m["name"], m.get("json"))
             if t == "state":
                 value = self.state()
             elif t == "render":
                 value = self.render(m["widget"])
             elif t == "query":
                 value = self.query(m["mode"], m["text"])
+            elif t == "calendar_events":
+                value = self.calendar_events(m["from"], m["to"])
             elif t == "run_request":
                 try:
                     r = {"ok": str(self.run(m["args"], m.get("input")) or "")}
@@ -166,7 +179,7 @@ class Plugin:
             self._send({"type": "return", "call": call, "value": value})
         except Exception as e:  # a broken handler answers, and the plugin goes on
             print(f"{t}: {e!r}", file=sys.stderr)
-            if call is not None and t in ("state", "render", "query"):
+            if call is not None and t in ("state", "render", "query", "calendar_events"):
                 self._send({"type": "return", "call": call, "error": repr(e)})
 
     def main(self):

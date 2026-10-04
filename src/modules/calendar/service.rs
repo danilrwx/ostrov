@@ -1,18 +1,20 @@
 //! The calendar's events for the calendar popup: a CalDAV account's (any server's: iCloud, Fastmail,
 //! Nextcloud...; Google's wants OAuth, not had here; the login, and an app password printed by a command, never
 //! kept in the config), and calendars shared as .ics
-//! links, as config.toml's [calendar] says. Fetched every 15 min and on `calendar refresh`; the events of this
-//! month and a week either side of it, their repeats unrolled here, in local time.
+//! links, as config.toml's [calendar] says; and the plugins' that are calendars (Source). Fetched every 15 min and
+//! on `calendar refresh`; the events of this month and a week either side of it, their repeats unrolled here, in
+//! local time.
 //!
 //! iCalendar is read by hand, as much of it as meetings use: a start and an end (a date for a day's event, UTC,
 //! or a zone's clock), SUMMARY, LOCATION, RRULE's daily, weekly (on its days), monthly and yearly repeats with
 //! INTERVAL, COUNT and UNTIL, EXDATE, and a repeat moved (RECURRENCE-ID) in place of the one it moves.
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use gtk4::glib;
 use serde_json::{json, Value};
 
+use crate::backend::BoxFut;
 use crate::modules::night::service::{civil, days, local, now_ns};
 use crate::services::{Kick, Res};
 use crate::config::Calendar;
@@ -586,6 +588,70 @@ pub async fn cmd(args: &[&str]) -> Res {
     }
 }
 
+/// A calendar besides the config's: a plugin's (`calendar = true`), asked for its events between two local ISO
+/// times, a JSON list in the state's shape. Its call may run anywhere (a plugin's on the plugins' runtime), its
+/// answer awaited here.
+pub type Source = Arc<dyn Fn(String, String) -> BoxFut<Result<Value, String>> + Send + Sync>;
+
+/// The sources by their plugin's id.
+static SOURCES: Mutex<Vec<(String, Source)>> = Mutex::new(Vec::new());
+
+/// A source set under an id (None takes it away), the calendars fetched anew for it.
+pub fn source(id: &str, f: Option<Source>) {
+    if let Ok(mut all) = SOURCES.lock() {
+        all.retain(|(i, _)| i != id);
+        all.extend(f.map(|f| (id.to_string(), f)));
+    }
+    REFRESH.notify_one();
+}
+
+/// Every source's events in the span; one that fails said on stderr and left out, the others' kept.
+async fn sourced() -> Vec<Value> {
+    let all: Vec<(String, Source)> = SOURCES.lock().map(|s| s.clone()).unwrap_or_default();
+    let (from, to) = span();
+    let calls = all.iter().map(|(id, f)| {
+        let call = f(iso(from), iso(to));
+        async move { (id, call.await) }
+    });
+    let mut out = Vec::new();
+    for (id, r) in futures_util::future::join_all(calls).await {
+        match r {
+            Ok(Value::Array(events)) => out.extend(events),
+            Ok(Value::Null) => {}
+            Ok(v) => eprintln!("ostrov: calendar: plugin {id}: not a list of events: {v}"),
+            Err(e) => eprintln!("ostrov: calendar: plugin {id}: {e}"),
+        }
+    }
+    out
+}
+
+/// The config's calendars' events (null for none) with the sources', sorted by their starts. A source's event
+/// needs a title and a start; the rest has defaults (the end its start, not all day, no place, no colour), and
+/// what else it carries is dropped.
+fn merge(events: Value, extra: Vec<Value>) -> Value {
+    if extra.is_empty() {
+        return events;
+    }
+    let mut all = match events {
+        Value::Array(a) => a,
+        _ => Vec::new(),
+    };
+    let text = |e: &Value, k: &str| e[k].as_str().map(String::from);
+    all.extend(extra.iter().filter_map(|e| {
+        let (title, start) = (text(e, "title")?, text(e, "start")?);
+        Some(json!({
+            "title": title,
+            "end": text(e, "end").unwrap_or(start.clone()),
+            "start": start,
+            "all_day": e["all_day"].as_bool().unwrap_or(false),
+            "location": text(e, "location").unwrap_or_default(),
+            "color": text(e, "color").unwrap_or_default(),
+        }))
+    }));
+    all.sort_by(|a, b| a["start"].as_str().cmp(&b["start"].as_str()));
+    Value::Array(all)
+}
+
 /// The events now and every 15 min (sooner, 1 min, after a failure, said on stderr) or on a refresh, a kick each
 /// time; the config read anew each time, so a calendar added needs no restart.
 pub async fn run(kick: Kick) {
@@ -596,6 +662,10 @@ pub async fn run(kick: Kick) {
             Ok(Value::Null)
         } else {
             tokio::task::spawn_blocking(move || fetch(&c)).await.map_err(|e| e.to_string()).and_then(|r| r)
+        };
+        let got = match got {
+            Ok(v) => Ok(merge(v, sourced().await)),
+            e => e,
         };
         match got {
             Ok(v) => {
@@ -717,6 +787,30 @@ SUMMARY:<b>\nEND:VCALENDAR]]></cal:calendar-data></d:prop></d:propstat></d:respo
         assert_eq!(join("https://caldav.example.com/", "/c/"), "https://caldav.example.com/c/");
         assert_eq!(base64(b"user:pass"), "dXNlcjpwYXNz");
         assert_eq!(base64(b"ab"), "YWI=");
+    }
+
+    #[test]
+    fn plugins_events_merged() {
+        let own = json!([
+            {"title": "A", "start": "2026-10-05T10:00:00", "end": "2026-10-05T11:00:00", "all_day": false,
+                "location": "", "color": ""},
+            {"title": "C", "start": "2026-10-07T00:00:00", "end": "2026-10-08T00:00:00", "all_day": true,
+                "location": "", "color": ""},
+        ]);
+        let extra = vec![
+            json!({"title": "B", "start": "2026-10-06T09:00:00", "color": "#f00", "extra": 1}),
+            json!({"title": "no start"}),
+            json!({"start": "2026-10-06T09:00:00"}),
+        ];
+        let all = merge(own.clone(), extra.clone());
+        let titles: Vec<&str> = all.as_array().unwrap().iter().map(|e| e["title"].as_str().unwrap()).collect();
+        assert_eq!(titles, ["A", "B", "C"]);
+        assert_eq!(all[1], json!({"title": "B", "start": "2026-10-06T09:00:00", "end": "2026-10-06T09:00:00",
+            "all_day": false, "location": "", "color": "#f00"}));
+        // no calendar of the config's: the plugins' alone; none of theirs either: still none
+        assert_eq!(merge(Value::Null, extra).as_array().unwrap().len(), 1);
+        assert_eq!(merge(Value::Null, vec![]), Value::Null);
+        assert_eq!(merge(own.clone(), vec![]), own);
     }
 
     /// The calendars fetched once as the config says: cargo test -- --ignored --nocapture calendar_once

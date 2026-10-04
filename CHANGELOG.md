@@ -40,5 +40,7 @@ The first release: the whole shell in one binary.
 - At home in a bare Hyprland: its layer rules, the lock's takeover and its keys put in over IPC where free
   (`[hyprland]`, `ostrov hyprland`); `ostrov doctor` checks the system.
 - Extensibility: widgets in KDL (`~/.config/ostrov/widgets/*.kdl`), plugins in any language over JSON lines
-  (`wit/ostrov-plugin.wit`, a Python SDK), a D-Bus interface (`dev.ostrov.Shell`).
+  (`wit/ostrov-plugin.wit`, a Python SDK), following ostrov's events, binding keys where free, adding calendars,
+  installed and removed while ostrov runs (`ostrov plugin install PATH|GIT-URL`, `remove ID`); a D-Bus interface
+  (`dev.ostrov.Shell`).
 - Shell completion for zsh, bash and fish, answered by the running ostrov.
