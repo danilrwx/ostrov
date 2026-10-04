@@ -88,7 +88,7 @@ pub struct Games {
 
 impl Default for Games {
     fn default() -> Games {
-        Games { classes: ["dota2", "cs2", "steam_app_*"].map(String::from).to_vec(), profile: "performance".into() }
+        Games { classes: Vec::new(), profile: "performance".into() }
     }
 }
 

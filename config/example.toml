@@ -72,7 +72,7 @@ ics = []                # .ics and webcal:// links
 # Games played in a power profile of their own: while a window of one of these classes has the focus (a trailing *
 # a prefix), the power profile is this one, the previous one put back as the focus leaves.
 [games]
-classes = ["dota2", "cs2", "steam_app_*"]
+classes = [] # none unless said, e.g. ["dota2", "cs2", "steam_app_*"]
 profile = "performance" # performance, balanced, power-saver
 
 # Panels of your own, put in the bar as panel.ID; the built-in ones (control, calendar) take the same keys to be

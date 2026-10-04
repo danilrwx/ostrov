@@ -432,8 +432,7 @@ fn own() -> Vec<Entry> {
         ])]),
         e("games", "Games", "input-gaming-symbolic", vec![Section::new("games", "Games", vec![
             Field::new("classes", "Window classes", Kind::List)
-                .default(["dota2", "cs2", "steam_app_*"].to_vec())
-                .help("Their windows focused, the power profile below; a trailing * a prefix."),
+                .help("Their windows focused, the power profile below; a trailing * a prefix: dota2, cs2, steam_app_*."),
             Field::new("profile", "Power profile", Kind::Choice {
                 options: options(&[
                     ("performance", "Performance"),
