@@ -8,6 +8,7 @@ use zbus::zvariant::ObjectPath;
 
 use crate::services::rfkill;
 use crate::services::dbus::{call, err, managed, prop, set_property};
+use crate::i18n::t;
 use crate::services::{Ctx, Res};
 
 const BLUEZ: &str = "org.bluez";
@@ -96,7 +97,7 @@ async fn adapters(c: &Ctx) -> Result<Vec<String>, String> {
 }
 
 async fn adapter(c: &Ctx) -> Result<String, String> {
-    adapters(c).await?.into_iter().next().ok_or_else(|| "no Bluetooth adapter".into())
+    adapters(c).await?.into_iter().next().ok_or_else(|| t("no Bluetooth adapter").into())
 }
 
 pub async fn cmd(c: &Ctx, args: &[&str]) -> Res {

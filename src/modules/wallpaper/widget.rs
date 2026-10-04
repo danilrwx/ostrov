@@ -3,6 +3,7 @@ use gtk4::Orientation;
 
 use crate::cc::{Ctx, Widget};
 use crate::hub::{s, service};
+use crate::i18n::t;
 use crate::settings::{Field, Kind, Schema, Section};
 use crate::style::clear;
 use crate::ui::{menu, row, Memo, Toggle};
@@ -10,14 +11,14 @@ use crate::ui::{menu, row, Memo, Toggle};
 /// The wallpaper's toggle: on (the picture) or off (a plain ground); its menu a random one and the pictures.
 pub fn wallpaper(c: &Ctx) -> Widget {
     let st = c.state.clone();
-    let t = Toggle::new("preferences-desktop-wallpaper-symbolic", "Wallpaper", move || {
+    let tg = Toggle::new("preferences-desktop-wallpaper-symbolic", t("Wallpaper"), move || {
         let on = st.borrow()["wallpaper"]["on"].as_bool().unwrap_or(false);
         service(&["wallpaper", if on { "off" } else { "on" }]);
     }, Some(c.flip.clone()));
-    let (card, items) = menu("preferences-desktop-wallpaper-symbolic", "Wallpaper");
+    let (card, items) = menu("preferences-desktop-wallpaper-symbolic", t("Wallpaper"));
     let memo = Memo::default();
-    let t2 = t.clone();
-    Widget::toggle(&t, Some(&card), move |st| {
+    let t2 = tg.clone();
+    Widget::toggle(&tg, Some(&card), move |st| {
         let w = &st["wallpaper"];
         let on = w["on"].as_bool().unwrap_or(false);
         let name = s(w, &["path"]).rsplit('/').next().unwrap_or("").to_string();
@@ -26,7 +27,7 @@ pub fn wallpaper(c: &Ctx) -> Widget {
             return;
         }
         clear(&items);
-        items.append(&row("", "Random", "", false, || service(&["wallpaper", "random"])));
+        items.append(&row("", t("Random"), "", false, || service(&["wallpaper", "random"])));
         items.append(&gtk4::Separator::new(Orientation::Horizontal));
         for p in w["wallpapers"].as_array().into_iter().flatten().filter_map(|p| p.as_str()) {
             let name = p.rsplit('/').next().unwrap_or("").to_string();

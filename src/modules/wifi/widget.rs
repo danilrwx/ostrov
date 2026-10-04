@@ -6,6 +6,7 @@ use gtk4::{glib, Orientation};
 
 use crate::cc::{Ctx, Widget};
 use crate::hub::{s, service, service_then};
+use crate::i18n::t;
 use crate::style::{clear, label};
 use crate::ui::{menu, on_right_click, row, Memo, Toggle};
 
@@ -13,18 +14,18 @@ const BARS: [&str; 5] = ["none", "weak", "ok", "good", "excellent"];
 
 pub fn wifi(c: &Ctx) -> Widget {
     let st = c.state.clone();
-    let t = Toggle::new("network-wireless-symbolic", "Wi-Fi", move || {
+    let tg = Toggle::new("network-wireless-symbolic", t("Wi-Fi"), move || {
         let on = st.borrow()["wifi"]["on"].as_bool().unwrap_or(false);
         service(&["wifi", if on { "off" } else { "on" }]);
     }, Some(c.flip.clone()));
-    let (card, items) = menu("network-wireless-symbolic", "Wi-Fi");
+    let (card, items) = menu("network-wireless-symbolic", t("Wi-Fi"));
     // the network whose passphrase is asked for, and what went wrong joining it, kept across redraws
     let asking: Rc<RefCell<String>> = Rc::default();
     let error: Rc<RefCell<String>> = Rc::default();
     let memo = Memo::default();
     let again = c.again.clone();
-    let t2 = t.clone();
-    Widget::toggle(&t, Some(&card), move |st| {
+    let t2 = tg.clone();
+    Widget::toggle(&tg, Some(&card), move |st| {
         let w = &st["wifi"];
         let on = w["on"].as_bool().unwrap_or(false);
         let icon = if !on {
@@ -76,7 +77,7 @@ pub fn wifi(c: &Ctx) -> Widget {
             }
         }
         items.append(&gtk4::Separator::new(Orientation::Horizontal));
-        items.append(&row("", "Scan", "", false, || service(&["wifi", "scan"])));
+        items.append(&row("", t("Scan"), "", false, || service(&["wifi", "scan"])));
     })
 }
 
@@ -88,7 +89,7 @@ fn passphrase(items: &gtk4::Box, ssid: &str, asking: &Rc<RefCell<String>>, error
     bx.set_margin_bottom(4);
     let pass = gtk4::PasswordEntry::new();
     pass.set_hexpand(true);
-    let go = gtk4::Button::with_label("Connect");
+    let go = gtk4::Button::with_label(t("Connect"));
     go.add_css_class("connect");
     bx.append(&pass);
     bx.append(&go);
@@ -104,7 +105,7 @@ fn passphrase(items: &gtk4::Box, ssid: &str, asking: &Rc<RefCell<String>>, error
             if p.is_empty() {
                 return;
             }
-            go.set_label("Joining…");
+            go.set_label(t("Joining…"));
             go.set_sensitive(false);
             let (ask, err, again) = (ask.clone(), err.clone(), again.clone());
             service_then(vec!["wifi".into(), "connect".into(), ssid.clone()], Some(p), move |r| {

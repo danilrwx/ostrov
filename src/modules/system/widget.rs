@@ -4,6 +4,7 @@ use gtk4::prelude::*;
 use crate::cc::{Ctx, Face, Widget};
 use crate::style::label;
 use crate::hub::run;
+use crate::i18n::t;
 use crate::ui::{menu, round, row, Toggle};
 
 pub fn screenshot(c: &Ctx) -> Widget {
@@ -14,7 +15,7 @@ pub fn screenshot(c: &Ctx) -> Widget {
         let me = std::env::current_exe().unwrap_or_default();
         run(&["sh", "-c", "sleep 0.2; exec \"$0\" screenshot", &me.to_string_lossy()]);
     });
-    b.set_tooltip_text(Some("Screenshot"));
+    b.set_tooltip_text(Some(t("Screenshot")));
     Widget::new(&b, None, |_| ())
 }
 
@@ -24,7 +25,7 @@ pub fn lock(c: &Ctx) -> Widget {
         close();
         run(&["loginctl", "lock-session"]);
     });
-    b.set_tooltip_text(Some("Lock"));
+    b.set_tooltip_text(Some(t("Lock")));
     Widget::new(&b, None, |_| ())
 }
 
@@ -32,8 +33,8 @@ pub fn lock(c: &Ctx) -> Widget {
 pub fn session(c: &Ctx) -> Widget {
     let flip = c.flip.clone();
     let b = round("system-shutdown-symbolic", move || flip());
-    b.set_tooltip_text(Some("Power Off"));
-    let (card, items) = menu("system-shutdown-symbolic", "Power Off");
+    b.set_tooltip_text(Some(t("Power Off")));
+    let (card, items) = menu("system-shutdown-symbolic", t("Power Off"));
     for (icon, text, cmd) in [
         ("weather-clear-night-symbolic", "Suspend", vec!["systemctl", "suspend"]),
         ("view-refresh-symbolic", "Restart…", vec!["systemctl", "reboot"]),
@@ -41,7 +42,7 @@ pub fn session(c: &Ctx) -> Widget {
         ("system-log-out-symbolic", "Log Out", vec!["sh", "-c", "hyprctl dispatch exit || swaymsg exit"]),
     ] {
         let close = c.close.clone();
-        items.append(&row(icon, text, "", false, move || {
+        items.append(&row(icon, t(text), "", false, move || {
             close();
             run(&cmd);
         }));
@@ -52,14 +53,14 @@ pub fn session(c: &Ctx) -> Widget {
 /// Keep Awake: idle neither locks nor turns the screens off while it is on (idle.rs).
 pub fn awake(c: &Ctx) -> Widget {
     let again = c.again.clone();
-    let t = Toggle::new("weather-clear-symbolic", "Keep Awake", move || {
+    let tg = Toggle::new("weather-clear-symbolic", t("Keep Awake"), move || {
         crate::idle::set_awake(!crate::idle::awake());
         again();
     }, None);
-    let t2 = t.clone();
-    Widget::toggle(&t, None, move |_| {
+    let t2 = tg.clone();
+    Widget::toggle(&tg, None, move |_| {
         let on = crate::idle::awake();
-        t2.set(on, "", if on { "the screen stays on" } else { "" });
+        t2.set(on, "", if on { t("the screen stays on") } else { "" });
     })
 }
 
@@ -69,7 +70,7 @@ pub fn awake(c: &Ctx) -> Widget {
 pub fn notifications(_: &Ctx) -> Widget {
     let col = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
     col.add_css_class("card");
-    col.append(&label("Notifications", "title"));
+    col.append(&label(t("Notifications"), "title"));
     let scroll = gtk4::ScrolledWindow::new();
     scroll.set_vexpand(true);
     scroll.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::Automatic);
@@ -77,11 +78,11 @@ pub fn notifications(_: &Ctx) -> Widget {
     scroll.set_child(Some(&list));
     col.append(&scroll);
     let foot = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
-    let dnd = gtk4::ToggleButton::with_label("Do Not Disturb");
+    let dnd = gtk4::ToggleButton::with_label(t("Do Not Disturb"));
     dnd.add_css_class("chip");
     dnd.set_hexpand(true);
     dnd.set_halign(gtk4::Align::Start);
-    let clear_all = gtk4::Button::with_label("Clear");
+    let clear_all = gtk4::Button::with_label(t("Clear"));
     clear_all.add_css_class("chip");
     foot.append(&dnd);
     foot.append(&clear_all);
@@ -96,7 +97,7 @@ pub fn notifications(_: &Ctx) -> Widget {
         crate::style::clear(&list);
         let hist = n2.history();
         if hist.is_empty() {
-            let l = label("No notifications", "dim");
+            let l = label(t("No notifications"), "dim");
             l.set_xalign(0.5);
             l.set_margin_top(40);
             list.append(&l);
@@ -108,7 +109,7 @@ pub fn notifications(_: &Ctx) -> Widget {
         // quiet by itself (a game focused, the quiet hours): its bell struck through all the same, the chip said so
         let quiet = n2.quiet_now();
         active.set(quiet);
-        dnd.set_label(if quiet && !n2.dnd() { "Quiet for now" } else { "Do Not Disturb" });
+        dnd.set_label(if quiet && !n2.dnd() { t("Quiet for now") } else { t("Do Not Disturb") });
     };
     draw();
     notes.on_change(draw);

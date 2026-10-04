@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use crate::cc::{Ctx, Face, Widget};
 use crate::hub::s;
+use crate::i18n::{fill, t};
 use crate::style::label;
 use crate::ui::battery_time;
 
@@ -53,36 +54,40 @@ pub fn battery(_: &Ctx) -> Widget {
 /// again; its menu the limits to pick. Off and said so where the thresholds are not the user's to write.
 pub fn charge(c: &Ctx) -> Widget {
     let st = c.state.clone();
-    let t = crate::ui::Toggle::new(
+    let tg = crate::ui::Toggle::new(
         "battery-level-80-symbolic",
-        "Charge Limit",
+        t("Charge Limit"),
         move || {
             let on = st.borrow()["battery"]["limit"]["end"].as_u64().is_some_and(|e| e < 100);
             crate::hub::service(&["battery", "limit", if on { "100" } else { "80" }]);
         },
         Some(c.flip.clone()),
     );
-    let (card, items) = crate::ui::menu("battery-level-80-symbolic", "Charge Limit");
+    let (card, items) = crate::ui::menu("battery-level-80-symbolic", t("Charge Limit"));
     let memo = crate::ui::Memo::default();
-    let t2 = t.clone();
-    Widget::toggle(&t, Some(&card), move |st| {
+    let t2 = tg.clone();
+    Widget::toggle(&tg, Some(&card), move |st| {
         let l = &st["battery"]["limit"];
         t2.root.set_visible(!l.is_null());
         let end = l["end"].as_u64().unwrap_or(100);
         let writable = l["writable"].as_bool().unwrap_or(false);
-        let sub = if !writable { "needs a udev rule".to_string() } else if end < 100 { format!("to {end}%") } else { String::new() };
+        let sub = match (writable, end) {
+            (false, _) => t("needs a udev rule").to_string(),
+            (true, 0..=99) => fill(t("to {}%"), &[&end]),
+            _ => String::new(),
+        };
         t2.set(end < 100, "", &sub);
         if !memo.changed("limit", l.to_string()) {
             return;
         }
         crate::style::clear(&items);
-        for (n, text) in [(60, "60%"), (80, "80%, kinder to it"), (90, "90%"), (100, "Full")] {
+        for (n, text) in [(60, "60%"), (80, t("80%, kinder to it")), (90, "90%"), (100, t("Full"))] {
             items.append(&crate::ui::row("", text, "", end == n, move || {
                 crate::hub::service(&["battery", "limit", &n.to_string()])
             }));
         }
         if !writable {
-            items.append(&label("ostrov doctor tells how to allow it", "dim"));
+            items.append(&label(t("ostrov doctor tells how to allow it"), "dim"));
         }
     })
 }

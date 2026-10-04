@@ -10,6 +10,7 @@ use gtk4::{glib, Orientation};
 
 use crate::cc::{Ctx, Face, Widget};
 use crate::hub::s;
+use crate::i18n::t;
 use crate::style::label;
 
 fn media(cmd: &str) {
@@ -25,7 +26,7 @@ pub fn player(_: &Ctx) -> Widget {
     art.add_css_class("art");
     let pcol = gtk4::Box::new(Orientation::Vertical, 2);
     pcol.set_hexpand(true);
-    let title = label("Nothing playing", "bold");
+    let title = label(t("Nothing playing"), "bold");
     title.set_ellipsize(gtk4::pango::EllipsizeMode::End);
     let artist = label("", "dim");
     artist.set_ellipsize(gtk4::pango::EllipsizeMode::End);
@@ -78,7 +79,7 @@ pub fn player(_: &Ctx) -> Widget {
             let playing = has && m["playing"].as_bool().unwrap_or(false);
             active.set(playing);
             if !has {
-                title.set_text("Nothing playing");
+                title.set_text(t("Nothing playing"));
                 artist.set_visible(false);
                 progress.set_visible(false);
                 art.set_paintable(None::<&gtk4::gdk::Paintable>);

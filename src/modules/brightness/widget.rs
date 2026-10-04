@@ -7,6 +7,7 @@ use gtk4::{glib, Orientation};
 
 use crate::cc::{Ctx, Face, Widget};
 use crate::hub::{s, service};
+use crate::i18n::t;
 use crate::style::{clear, label};
 use crate::ui::{arrow, menu, row, Memo, Slider};
 
@@ -15,14 +16,14 @@ use crate::ui::{arrow, menu, row, Memo, Slider};
 pub fn brightness(c: &Ctx) -> Widget {
     let bri = Slider::new("display-brightness-symbolic", |v| service(&["brightness", &format!("{}", (v * 100.0).round() as i64)]));
     bri.root.append(&arrow(c.flip.clone()));
-    let (card, items) = menu("night-light-symbolic", "Night Light");
+    let (card, items) = menu("night-light-symbolic", t("Night Light"));
     let modes = gtk4::Box::new(Orientation::Vertical, 0);
     items.append(&modes);
     let hours = gtk4::Box::new(Orientation::Horizontal, 8);
     hours.set_margin_start(36);
     let from = gtk4::Entry::new();
     let to = gtk4::Entry::new();
-    for (name, e) in [("from", &from), ("to", &to)] {
+    for (name, e) in [(t("from"), &from), (t("to"), &to)] {
         e.set_max_width_chars(5);
         e.set_width_chars(5);
         hours.append(&label(name, "dim"));
@@ -36,7 +37,7 @@ pub fn brightness(c: &Ctx) -> Widget {
     items.append(&hours);
     let warm_head = gtk4::Box::new(Orientation::Horizontal, 0);
     warm_head.set_margin_top(6);
-    let wl = label("Warmth", "dim");
+    let wl = label(t("Warmth"), "dim");
     wl.set_hexpand(true);
     let kelvin = label("", "dim");
     warm_head.append(&wl);
@@ -73,13 +74,13 @@ pub fn brightness(c: &Ctx) -> Widget {
         let sun = if n["located"].as_bool().unwrap_or(false) {
             format!("{} – {}", s(n, &["sunset"]), s(n, &["sunrise"]))
         } else {
-            "no location".into()
+            t("no location").into()
         };
         for (m, text, note) in [
-            ("off", "Off", String::new()),
-            ("on", "Always on", String::new()),
-            ("time", "Scheduled", format!("{} – {}", s(n, &["from"]), s(n, &["to"]))),
-            ("sun", "Sunset to sunrise", sun),
+            ("off", t("Off"), String::new()),
+            ("on", t("Always on"), String::new()),
+            ("time", t("Scheduled"), format!("{} – {}", s(n, &["from"]), s(n, &["to"]))),
+            ("sun", t("Sunset to sunrise"), sun),
         ] {
             modes.append(&row("", text, &note, mode == m, move || service(&["night", "mode", m])));
         }

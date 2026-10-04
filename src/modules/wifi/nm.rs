@@ -7,6 +7,7 @@ use zbus::zvariant::{self, ObjectPath, OwnedObjectPath, OwnedValue};
 
 use super::service::{Network, Wifi, IWD};
 use crate::services::dbus::{call, prop, set_property, Objects, Props};
+use crate::i18n::{fill, t};
 use crate::services::{Ctx, Res};
 
 pub(super) const NM: &str = "org.freedesktop.NetworkManager";
@@ -182,12 +183,12 @@ pub(super) async fn cmd(c: &Ctx, args: &[&str], passphrase: Option<String>) -> R
         }
         ["connect", ssid] => {
             let objs = objects(c).await?;
-            let (dev, props) = device(&objs).ok_or("Wi-Fi is off")?;
+            let (dev, props) = device(&objs).ok_or(t("Wi-Fi is off"))?;
             let (ap, _, ap_props) = aps(&objs, props)
                 .into_iter()
                 .filter(|(_, s, _)| s == ssid.as_bytes())
                 .max_by_key(|(_, _, p)| strength(p))
-                .ok_or_else(|| format!("no network {ssid:?} in sight; scan first"))?;
+                .ok_or_else(|| fill(t("no network {} in sight; scan first"), &[&format!("{ssid:?}")]))?;
             if let Some((conn, _)) = saved(c, &objs).await.into_iter().find(|(_, s)| s == ssid.as_bytes()) {
                 let active: OwnedObjectPath =
                     call(&c.system, NM, ROOT, &method("ActivateConnection"), &(&conn, dev, ap)).await?;
@@ -221,10 +222,10 @@ async fn joined(c: &Ctx, active: &OwnedObjectPath) -> Res {
         match st.ok().and_then(|v| u32::try_from(v).ok()) {
             Some(2) => return Ok(()),
             Some(0 | 1) => tokio::time::sleep(Duration::from_millis(500)).await,
-            _ => return Err("could not join (a wrong passphrase?)".into()),
+            _ => return Err(t("could not join (a wrong passphrase?)").into()),
         }
     }
-    Err("timed out joining".into())
+    Err(t("timed out joining").into())
 }
 
 #[cfg(test)]

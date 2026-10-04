@@ -7,6 +7,7 @@ use zbus::zvariant::{self, OwnedObjectPath, OwnedValue};
 use super::nm;
 use crate::services::dbus::{call, err, managed, prop, Objects};
 use crate::services::rfkill;
+use crate::i18n::{fill, t};
 use crate::services::{Ctx, Res};
 
 pub(super) const IWD: &str = "net.connman.iwd";
@@ -90,7 +91,7 @@ async fn network(c: &Ctx, ssid: &str) -> Result<String, String> {
     objs.iter()
         .find(|(_, ifaces)| prop::<&str>(ifaces.get("net.connman.iwd.Network"), "Name") == Some(ssid))
         .map(|(p, _)| p.to_string())
-        .ok_or_else(|| format!("no network {ssid:?} in sight; scan first"))
+        .ok_or_else(|| fill(t("no network {} in sight; scan first"), &[&format!("{ssid:?}")]))
 }
 
 /// Answers iwd's passphrase request with the one the command was given, for a network iwd does not know yet.
@@ -122,7 +123,7 @@ pub async fn cmd(c: &Ctx, args: &[&str], input: Option<String>) -> Res {
         [w @ ("on" | "off")] => rfkill::set_blocked(rfkill::WLAN, *w == "off"),
         [w @ ("scan" | "disconnect")] => {
             let objs = managed(&c.system, IWD).await?;
-            let st = station(&objs).ok_or("Wi-Fi is off")?;
+            let st = station(&objs).ok_or(t("Wi-Fi is off"))?;
             let method = if *w == "scan" { "Scan" } else { "Disconnect" };
             call(&c.system, IWD, &st, &format!("net.connman.iwd.Station.{method}"), &()).await
         }

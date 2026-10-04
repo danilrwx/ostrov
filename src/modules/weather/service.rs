@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 
 use crate::services::location::{self, Location};
 use crate::modules::night::service::{civil, hhmm, local, now_ns};
+use crate::i18n::t;
 use crate::services::Kick;
 
 /// The last weather fetched, null before the first, refreshed every 15 min by run.
@@ -16,14 +17,14 @@ static LAST: Mutex<Value> = Mutex::new(Value::Null);
 fn wmo(code: i64, day: bool) -> (String, &'static str) {
     let n = if day { "" } else { "-night" };
     match code {
-        0 => (format!("weather-clear{n}-symbolic"), "Clear"),
-        c if c <= 2 => (format!("weather-few-clouds{n}-symbolic"), "Partly cloudy"),
-        3 => ("weather-overcast-symbolic".into(), "Overcast"),
-        c if c <= 48 => ("weather-fog-symbolic".into(), "Fog"),
-        c if c <= 57 => ("weather-showers-scattered-symbolic".into(), "Drizzle"),
-        c if c <= 67 || (80..=82).contains(&c) => ("weather-showers-symbolic".into(), "Rain"),
-        c if c <= 77 || c == 85 || c == 86 => ("weather-snow-symbolic".into(), "Snow"),
-        _ => ("weather-storm-symbolic".into(), "Thunderstorm"),
+        0 => (format!("weather-clear{n}-symbolic"), t("Clear sky")),
+        c if c <= 2 => (format!("weather-few-clouds{n}-symbolic"), t("Partly cloudy")),
+        3 => ("weather-overcast-symbolic".into(), t("Overcast")),
+        c if c <= 48 => ("weather-fog-symbolic".into(), t("Fog")),
+        c if c <= 57 => ("weather-showers-scattered-symbolic".into(), t("Drizzle")),
+        c if c <= 67 || (80..=82).contains(&c) => ("weather-showers-symbolic".into(), t("Rain")),
+        c if c <= 77 || c == 85 || c == 86 => ("weather-snow-symbolic".into(), t("Snow")),
+        _ => ("weather-storm-symbolic".into(), t("Thunderstorm")),
     }
 }
 

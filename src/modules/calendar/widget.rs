@@ -10,6 +10,7 @@ use serde_json::Value;
 
 use crate::cc::{Ctx, Face, Widget};
 use crate::hub::s;
+use crate::i18n::t;
 use crate::style::{clear, label};
 
 /// The month, the picked day's events under it (none, no card).
@@ -83,7 +84,7 @@ pub fn agenda(c: &Ctx) -> Widget {
     scroll.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::Automatic);
     scroll.set_vexpand(true);
     scroll.set_child(Some(&list));
-    col.append(&label("Coming Up", "title"));
+    col.append(&label(t("Coming Up"), "title"));
     col.append(&scroll);
     let badge = gtk4::Label::new(None);
     badge.set_ellipsize(gtk4::pango::EllipsizeMode::End);
@@ -103,7 +104,7 @@ pub fn agenda(c: &Ctx) -> Widget {
                 .take(6)
                 .collect();
             if coming.is_empty() {
-                list.append(&label("Nothing coming", "dim"));
+                list.append(&label(t("Nothing coming"), "dim"));
             }
             for e in &coming {
                 let day = glib::DateTime::from_iso8601(s(e, &["start"]), Some(&glib::TimeZone::local())).unwrap_or(now.clone());
@@ -148,7 +149,7 @@ fn event(e: &serde_json::Value, day: &glib::DateTime) -> gtk4::Box {
         if t < from || t >= to { "…" } else { t.get(11..16).unwrap_or("") }
     }
     let when = if e["all_day"].as_bool() == Some(true) {
-        "all day".to_string()
+        t("all day").to_string()
     } else {
         format!("{}–{}", hour(s(e, &["start"]), &from, &to), hour(s(e, &["end"]), &from, &to))
     };

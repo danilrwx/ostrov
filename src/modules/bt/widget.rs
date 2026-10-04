@@ -7,24 +7,25 @@ use serde_json::Value;
 
 use crate::cc::{Ctx, Widget};
 use crate::hub::{s, service, service_then};
+use crate::i18n::t;
 use crate::style::{clear, label};
 use crate::ui::{menu, on_right_click, row, Memo, Toggle};
 
 pub fn bluetooth(c: &Ctx) -> Widget {
     let st = c.state.clone();
-    let t = Toggle::new("bluetooth-active-symbolic", "Bluetooth", move || {
+    let tg = Toggle::new("bluetooth-active-symbolic", t("Bluetooth"), move || {
         let on = st.borrow()["bt"]["on"].as_bool().unwrap_or(false);
         service(&["bt", if on { "off" } else { "on" }]);
     }, Some(c.flip.clone()));
-    let (card, items) = menu("bluetooth-active-symbolic", "Bluetooth");
+    let (card, items) = menu("bluetooth-active-symbolic", t("Bluetooth"));
     // the device being paired, what went wrong pairing, a scan running, kept across redraws
     let pairing: Rc<RefCell<String>> = Rc::default();
     let error: Rc<RefCell<String>> = Rc::default();
     let scanning = Rc::new(RefCell::new(false));
     let memo = Memo::default();
     let again = c.again.clone();
-    let t2 = t.clone();
-    Widget::toggle(&t, Some(&card), move |st| {
+    let t2 = tg.clone();
+    Widget::toggle(&tg, Some(&card), move |st| {
         let b = &st["bt"];
         let on = b["on"].as_bool().unwrap_or(false);
         t2.set(on, if on { "bluetooth-active-symbolic" } else { "bluetooth-disabled-symbolic" }, s(b, &["connected"]));
@@ -45,7 +46,8 @@ pub fn bluetooth(c: &Ctx) -> Widget {
         items.append(&gtk4::Separator::new(Orientation::Horizontal));
         let busy = b["discovering"].as_bool().unwrap_or(false) || *scanning.borrow();
         let (sc, again2) = (scanning.clone(), again.clone());
-        items.append(&row("system-search-symbolic", if busy { "Scanning…" } else { "Scan for Devices" }, "", busy, move || {
+        let scan = if busy { t("Scanning…") } else { t("Scan for Devices") };
+        items.append(&row("system-search-symbolic", scan, "", busy, move || {
             if *sc.borrow() {
                 return;
             }
@@ -59,7 +61,7 @@ pub fn bluetooth(c: &Ctx) -> Widget {
         }));
         for d in devs.iter().filter(|d| !d["paired"].as_bool().unwrap_or(false)) {
             let addr = s(d, &["address"]).to_string();
-            let note = if *pairing.borrow() == addr { "pairing…" } else { "pair" };
+            let note = if *pairing.borrow() == addr { t("pairing…") } else { t("pair") };
             let (pa, err, again2) = (pairing.clone(), error.clone(), again.clone());
             items.append(&row(&icon(d), s(d, &["name"]), note, false, move || {
                 if !pa.borrow().is_empty() {
@@ -123,7 +125,7 @@ pub fn batteries(_: &Ctx) -> Widget {
             }
             clear(&col);
             if devs.is_empty() {
-                col.append(&label("No device tells its charge", "dim"));
+                col.append(&label(t("No device tells its charge"), "dim"));
             }
             for d in devs {
                 let line = gtk4::Box::new(Orientation::Horizontal, 8);

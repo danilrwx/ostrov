@@ -11,6 +11,7 @@ use serde_json::Value;
 use crate::cc::{Ctx, Widget};
 use crate::ui::{chips, menu, row, Memo, Toggle};
 use crate::hub::{s, service, service_then};
+use crate::i18n::{fill, t};
 use crate::style::{clear, label};
 
 const SCALES: [f64; 5] = [1.0, 1.25, 1.5, 1.75, 2.0];
@@ -20,7 +21,7 @@ fn draw(d: &Value, toggle: &Toggle, items: &gtk4::Box, changed: bool) {
     toggle.root.set_visible(!mons.is_empty());
     let on = mons.iter().filter(|m| m["enabled"] == true).count();
     let profile = s(d, &["profile"]);
-    let sub = if profile.is_empty() { format!("{on} on") } else { profile.to_string() };
+    let sub = if profile.is_empty() { fill(t("{} on"), &[&on]) } else { profile.to_string() };
     toggle.set(on > 1, "video-display-symbolic", &sub);
     if !changed {
         return;
@@ -32,9 +33,9 @@ fn draw(d: &Value, toggle: &Toggle, items: &gtk4::Box, changed: bool) {
         let enabled = m["enabled"] == true;
         let mirror = s(m, &["mirrorOf"]);
         let note = if !enabled {
-            "off".to_string()
+            t("off").to_string()
         } else if !mirror.is_empty() {
-            format!("mirrors {mirror}")
+            fill(t("mirrors {}"), &[&mirror])
         } else {
             format!("{}×{} ×{}", m["width"], m["height"], m["scale"].as_f64().unwrap_or(1.0))
         };
@@ -80,7 +81,7 @@ fn draw(d: &Value, toggle: &Toggle, items: &gtk4::Box, changed: bool) {
         if name != main && !main.is_empty() {
             let (n, md, main) = (name.clone(), mode.clone(), main.clone());
             let on = (!mirror.is_empty()).then_some(4);
-            items.append(&chips(&["Left", "Right", "Above", "Below", "Mirror"], on, move |i| match i {
+            items.append(&chips(&[t("Left"), t("Right"), t("Above"), t("Below"), t("Mirror")], on, move |i| match i {
                 4 => service(&["displays", "mirror", &n, &main]),
                 _ => service(&["displays", "set", &n, &md, ["left", "right", "above", "below"][i], &scale.to_string()]),
             }));
@@ -97,13 +98,13 @@ fn draw(d: &Value, toggle: &Toggle, items: &gtk4::Box, changed: bool) {
         bx.append(&r);
         let del = gtk4::Button::from_icon_name("user-trash-symbolic");
         del.add_css_class("flat-round");
-        del.set_tooltip_text(Some("Delete"));
+        del.set_tooltip_text(Some(t("Delete")));
         del.connect_clicked(move |_| service(&["displays", "delete", &p2]));
         bx.append(&del);
         items.append(&bx);
     }
     let save = gtk4::Entry::new();
-    save.set_placeholder_text(Some("Save as…"));
+    save.set_placeholder_text(Some(t("Save as…")));
     save.set_margin_top(4);
     let note = label("", "error");
     note.set_visible(false);
@@ -127,14 +128,14 @@ fn draw(d: &Value, toggle: &Toggle, items: &gtk4::Box, changed: bool) {
 }
 
 pub fn displays(c: &Ctx) -> Widget {
-    let t = Toggle::new("video-display-symbolic", "Displays", {
+    let tg = Toggle::new("video-display-symbolic", t("Displays"), {
         let flip = c.flip.clone();
         move || flip()
     }, Some(c.flip.clone()));
-    let (card, items) = menu("video-display-symbolic", "Displays");
+    let (card, items) = menu("video-display-symbolic", t("Displays"));
     let memo = Memo::default();
-    let t2 = t.clone();
-    Widget::toggle(&t, Some(&card), move |st| {
+    let t2 = tg.clone();
+    Widget::toggle(&tg, Some(&card), move |st| {
         let d = &st["displays"];
         draw(d, &t2, &items, memo.changed("displays", d.to_string()));
     })

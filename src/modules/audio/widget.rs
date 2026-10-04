@@ -6,6 +6,7 @@ use serde_json::Value;
 
 use crate::cc::{Ctx, Face, Widget};
 use crate::hub::{run, s, service};
+use crate::i18n::t;
 use crate::style::{clear, label};
 use crate::ui::{app_icon, arrow, level_icon, menu, row, Memo, Slider, Toggle};
 
@@ -15,7 +16,7 @@ pub fn volume(c: &Ctx) -> Widget {
     let vol = Slider::new("audio-volume-high-symbolic", |v| run(&["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", &format!("{v:.2}")]));
     vol.icon.connect_clicked(|_| run(&["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"]));
     vol.root.append(&arrow(c.flip.clone()));
-    let (card, items) = menu("audio-speakers-symbolic", "Sound Output");
+    let (card, items) = menu("audio-speakers-symbolic", t("Sound Output"));
     let outs = gtk4::Box::new(Orientation::Vertical, 0);
     let apps = gtk4::Box::new(Orientation::Vertical, 4);
     items.append(&outs);
@@ -82,7 +83,7 @@ pub fn mic(c: &Ctx) -> Widget {
     let mic = Slider::new("microphone-sensitivity-high-symbolic", |v| run(&["wpctl", "set-volume", "@DEFAULT_AUDIO_SOURCE@", &format!("{v:.2}")]));
     mic.icon.connect_clicked(|_| run(&["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"]));
     mic.root.append(&arrow(c.flip.clone()));
-    let (card, items) = menu("audio-input-microphone-symbolic", "Sound Input");
+    let (card, items) = menu("audio-input-microphone-symbolic", t("Sound Input"));
     let memo = Memo::default();
     let root = mic.root.clone();
     let face = Face::new(&mic.face);
@@ -97,11 +98,11 @@ pub fn mic(c: &Ctx) -> Widget {
 
 /// The headset's mode, handsfree (with its mic) or headphones; there only while a headset is.
 pub fn headset(_: &Ctx) -> Widget {
-    let t = Toggle::new("audio-headphones-symbolic", "Headset", || service(&["headset"]), None);
-    let t2 = t.clone();
-    Widget::toggle(&t, None, move |st| {
+    let tg = Toggle::new("audio-headphones-symbolic", t("Headset"), || service(&["headset"]), None);
+    let t2 = tg.clone();
+    Widget::toggle(&tg, None, move |st| {
         let hs = s(&st["audio"], &["headset"]);
         t2.root.set_visible(!hs.is_empty());
-        t2.set(hs == "handsfree", "", if hs == "handsfree" { "Handsfree, with the mic" } else { "Headphones" });
+        t2.set(hs == "handsfree", "", if hs == "handsfree" { t("Handsfree, with the mic") } else { t("Headphones") });
     })
 }
