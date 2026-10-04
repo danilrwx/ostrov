@@ -1,6 +1,7 @@
 //! Notifications, ostrov being the notification server (org.freedesktop.Notifications over zbus, in its own Tokio
-//! thread). Toasts at the top right under the bar: the app, the summary, the body, the actions as buttons; a click runs
-//! the default action, a right click dismisses; gone after their timeout (5 s unless they say), a critical one stays.
+//! thread). Toasts at the top right under the bar: the app, the summary, the body, the actions as buttons (a chat's
+//! answer typed right in it, its inline-reply); a click runs the default action, a right click dismisses; gone
+//! after their timeout (5 s unless they say, held while an answer is typed), a critical one stays.
 //! What a script of the user's Fn keys sends (app "fnkeys": a level in its "value" hint, or a word, its icon as the
 //! image) is the OSD instead, at the bottom centre; ostrov's own keys (keys.rs) show it directly (osd), its own
 //! warnings (the battery's) are posted directly too (post). The rest stays in the history (the calendar's) until
@@ -13,7 +14,7 @@ use std::time::Duration;
 
 use gtk4::prelude::*;
 use gtk4::{glib, Orientation};
-use gtk4_layer_shell::{Edge, Layer, LayerShell};
+use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use zbus::object_server::SignalEmitter;
 use zbus::zvariant::OwnedValue;
 
@@ -40,6 +41,8 @@ enum In {
 enum Out {
     Invoke(u32, String),
     Closed(u32, u32),
+    /// an answer typed into a notification offering one (its "inline-reply" action)
+    Reply(u32, String),
 }
 
 struct Server {
@@ -65,7 +68,8 @@ fn hint_str(h: &HashMap<String, OwnedValue>, k: &str) -> Option<String> {
 #[zbus::interface(name = "org.freedesktop.Notifications")]
 impl Server {
     fn get_capabilities(&self) -> Vec<String> {
-        vec!["body".into(), "actions".into(), "persistence".into()]
+        // inline-reply: a chat's notification answered in its toast (KDE's and GNOME's extension, Telegram's)
+        vec!["body".into(), "actions".into(), "persistence".into(), "inline-reply".into()]
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -110,6 +114,9 @@ impl Server {
 
     #[zbus(signal)]
     async fn action_invoked(e: &SignalEmitter<'_>, id: u32, action_key: String) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn notification_replied(e: &SignalEmitter<'_>, id: u32, text: String) -> zbus::Result<()>;
 }
 
 /// The server in its own Tokio runtime; nothing if the name is taken (another notification daemon runs).
@@ -139,6 +146,7 @@ fn serve(tx: async_channel::Sender<In>, mut rx: tokio::sync::mpsc::UnboundedRece
             let _ = match out {
                 Out::Invoke(id, key) => Server::action_invoked(e, id, key).await,
                 Out::Closed(id, reason) => Server::notification_closed(e, id, reason).await,
+                Out::Reply(id, text) => Server::notification_replied(e, id, text).await,
             };
         }
     });
@@ -152,6 +160,8 @@ pub struct Notes {
     toasts: gtk4::Box,
     toast_win: gtk4::ApplicationWindow,
     shown: RefCell<Vec<(u32, gtk4::Widget)>>,
+    /// the toasts being answered, kept up past their time till the answer goes
+    replying: RefCell<std::collections::HashSet<u32>>,
     osd: Osd,
 }
 
@@ -185,6 +195,7 @@ impl Notes {
     }
     /// One notification gone: its toast, its place in the history; the app told (reason 2: dismissed).
     pub fn dismiss(&self, id: u32) {
+        self.replying.borrow_mut().remove(&id);
         self.history.borrow_mut().retain(|n| n.id != id);
         self.unshow(id);
         let _ = self.out.send(Out::Closed(id, 2));
@@ -257,10 +268,21 @@ impl Notes {
             if !note.critical {
                 let ms = if note.timeout > 0 { note.timeout as u64 } else { 5000 };
                 let me = self.clone();
-                glib::timeout_add_local_once(Duration::from_millis(ms), move || me.unshow(id));
+                glib::timeout_add_local_once(Duration::from_millis(ms), move || {
+                    if !me.replying.borrow().contains(&id) {
+                        me.unshow(id);
+                    }
+                });
             }
         }
         self.changed();
+    }
+
+    /// An answer to a notification that offered one, the notification gone then.
+    fn reply(&self, id: u32, text: &str) {
+        self.replying.borrow_mut().remove(&id);
+        let _ = self.out.send(Out::Reply(id, text.to_string()));
+        self.dismiss(id);
     }
 
     fn invoke(&self, id: u32, key: &str) {
@@ -300,7 +322,10 @@ impl Notes {
             b.set_ellipsize(gtk4::pango::EllipsizeMode::End);
             card.append(&b);
         }
-        let others: Vec<&(String, String)> = n.actions.iter().filter(|(k, _)| k != "default").collect();
+        let others: Vec<&(String, String)> =
+            n.actions.iter().filter(|(k, _)| k != "default" && k != "inline-reply").collect();
+        // an answer typed right here, for a chat's notification that offers one
+        let reply = n.actions.iter().find(|(k, _)| k == "inline-reply").map(|(_, t)| t.clone());
         if !others.is_empty() {
             let row = gtk4::FlowBox::new();
             row.set_selection_mode(gtk4::SelectionMode::None);
@@ -313,6 +338,9 @@ impl Notes {
                 row.insert(&b, -1);
             }
             card.append(&row);
+        }
+        if let Some(prompt) = reply {
+            card.append(&self.reply_box(n.id, &prompt));
         }
         let click = gtk4::GestureClick::new();
         click.set_button(0);
@@ -327,6 +355,54 @@ impl Notes {
         card.add_controller(click);
         card.set_cursor_from_name(Some("pointer"));
         card
+    }
+}
+
+impl Notes {
+    /// The answer's chip, unfolding an entry: Enter (or Send) sends what is typed; the toast held up meanwhile.
+    fn reply_box(self: &Rc<Self>, id: u32, prompt: &str) -> gtk4::Box {
+        let bx = gtk4::Box::new(Orientation::Vertical, 4);
+        bx.set_margin_top(6);
+        let open = gtk4::Button::with_label(if prompt.is_empty() { "Reply" } else { prompt });
+        open.add_css_class("chip");
+        open.set_halign(gtk4::Align::Start);
+        let line = gtk4::Box::new(Orientation::Horizontal, 6);
+        line.set_visible(false);
+        let entry = gtk4::Entry::new();
+        entry.set_hexpand(true);
+        entry.set_placeholder_text(Some("Reply…"));
+        let send = gtk4::Button::with_label("Send");
+        send.add_css_class("connect");
+        line.append(&entry);
+        line.append(&send);
+        bx.append(&open);
+        bx.append(&line);
+        let (me, l, e, o) = (self.clone(), line.clone(), entry.clone(), open.clone());
+        open.connect_clicked(move |_| {
+            me.replying.borrow_mut().insert(id);
+            o.set_visible(false);
+            l.set_visible(true);
+            e.grab_focus();
+        });
+        let go = {
+            let (me, e) = (self.clone(), entry.clone());
+            Rc::new(move || {
+                let text = e.text().trim().to_string();
+                if !text.is_empty() {
+                    me.reply(id, &text);
+                }
+            })
+        };
+        let g = go.clone();
+        entry.connect_activate(move |_| g());
+        send.connect_clicked(move |_| go());
+        // its clicks its own: not the card's (its default action, its dismissal)
+        let mine = gtk4::GestureClick::new();
+        mine.connect_pressed(|g, _, _, _| {
+            g.set_state(gtk4::EventSequenceState::Claimed);
+        });
+        bx.add_controller(mine);
+        bx
     }
 }
 
@@ -352,6 +428,8 @@ pub fn start(app: &gtk4::Application) -> Rc<Notes> {
     toast_win.set_margin(Edge::Top, 4);
     toast_win.set_margin(Edge::Right, 6);
     toast_win.set_default_size(360, -1);
+    // the keyboard on a click alone: an answer typed into a toast
+    toast_win.set_keyboard_mode(KeyboardMode::OnDemand);
     let toasts = gtk4::Box::new(Orientation::Vertical, 6);
     toast_win.set_child(Some(&toasts));
 
@@ -389,6 +467,7 @@ pub fn start(app: &gtk4::Application) -> Rc<Notes> {
         toasts,
         toast_win,
         shown: RefCell::default(),
+        replying: RefCell::default(),
         osd: Osd { win: osd, icon: oicon, text: otext, level: olevel, hide: Rc::default() },
     });
 
