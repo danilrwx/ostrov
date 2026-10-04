@@ -11,6 +11,11 @@ keywords = ["hyprland", "wayland", "desktop", "shell", "gtk4"]
 categories = ["gui"]
 exclude = ["/.github", "/packaging/arch", "/flake.nix"]
 
+# ostrov itself at the root, built alone by `cargo build`; the Rust SDK for plugins and the official plugins beside
+# it, built with it by `cargo build --workspace` (plugins/README.md), one target directory for all.
+[workspace]
+members = ["sdk", "plugins/*"]
+
 [dependencies]
 async-channel = "2.5.0"
 futures-util = "0.3.34"
@@ -35,7 +40,9 @@ wayland-protocols-hyprland = { version = "1.2", features = ["client"] }
 wayland-protocols-wlr = { version = "0.3", features = ["client"] }
 zbus = { version = "5", default-features = false, features = ["tokio"] }
 
-# `cargo deb` (cargo-deb): a .deb with the binary, the shells' completions, the lock screen's PAM profile and the
+# `cargo build --release --workspace && cargo deb --no-build` (cargo-deb): a .deb with the binary, the official
+# plugins (a line each at the end of assets for its binary beside ostrov's, its manifest and its texts in
+# /usr/share/ostrov/plugins/ID/; plugins/README.md), the shells' completions, the lock screen's PAM profile and the
 # docs; the libraries' packages ($auto) found from the binary, the programs it runs named here.
 [package.metadata.deb]
 section = "x11"
@@ -63,4 +70,8 @@ assets = [
     ["config/example.toml", "usr/share/doc/ostrov/", "644"],
     ["examples/widgets/*", "usr/share/doc/ostrov/examples/widgets/", "644"],
     ["wit/ostrov-plugin.wit", "usr/share/doc/ostrov/", "644"],
+    # the official plugins, each so (hello, the SDK's example, is not one):
+    # ["target/release/ostrov-plugin-ID", "usr/bin/", "755"],
+    # ["plugins/ID/manifest.toml", "usr/share/ostrov/plugins/ID/", "644"],
+    # ["plugins/ID/i18n/*", "usr/share/ostrov/plugins/ID/i18n/", "644"],
 ]

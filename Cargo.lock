@@ -1059,6 +1059,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ostrov-plugin"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "toml 0.9.12+spec-1.1.0",
+]
+
+[[package]]
+name = "ostrov-plugin-hello"
+version = "0.1.0"
+dependencies = [
+ "ostrov-plugin",
+]
+
+[[package]]
 name = "pango"
 version = "0.22.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"

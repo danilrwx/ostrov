@@ -52,6 +52,7 @@
 "plugin {} installed in {} and started" = "плагин {} установлен в {} и запущен"
 "; its widgets join the gallery after `ostrov restart`" = "; его виджеты появятся в галерее после `ostrov restart`"
 "plugin {} removed" = "плагин {} удалён"
+"plugin {} is one of ostrov's own: [plugin.{}] enabled = false turns it off" = "плагин {} — один из собственных плагинов ostrov: [plugin.{}] enabled = false выключает его"
 "; its widgets and settings leave after `ostrov restart`" = "; его виджеты и настройки исчезнут после `ostrov restart`"
 
 # widgets

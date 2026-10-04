@@ -173,10 +173,11 @@ an optional `theme.css`, installed into `~/.local/share/ostrov/themes/<id>/` fro
 and `examples/themes/catppuccin-mocha`.
 
 **Plugins.** A program in any language, in `~/.local/share/ostrov/plugins/<id>/`, puts widgets, commands and
-launcher modes into ostrov over JSON lines (the protocol is `wit/ostrov-plugin.wit`; a Python SDK is in
-`sdk/python`). See [docs/plugins.md](docs/plugins.md), `examples/plugins/hello-python`, and the launcher modes
-`examples/plugins/claude` (`?question`) and `examples/plugins/google` (`g words`). The same document describes
-ostrov's D-Bus interface, `dev.ostrov.Shell`.
+launcher modes into ostrov over JSON lines (the protocol is `wit/ostrov-plugin.wit`; SDKs for Python in
+`sdk/python` and for Rust in `sdk/`, the crate `ostrov-plugin`). See [docs/plugins.md](docs/plugins.md),
+`examples/plugins/hello-python`, `plugins/hello`, and the launcher modes `examples/plugins/claude` (`?question`)
+and `examples/plugins/google` (`g words`). ostrov's official plugins come with it, off until `[plugin.ID] enabled =
+true`. The same document describes ostrov's D-Bus interface, `dev.ostrov.Shell`.
 
 ## Languages
 

@@ -1,0 +1,45 @@
+# ostrov's example plugin in Rust, hello-python's twin: a toggle counting its clicks, its menu adding and
+# resetting and showing the window focused, its settings a greeting and a token kept in the keyring
+id = "hello"
+name = "Hello"
+version = "0.1.0"
+api = 1
+exec = "ostrov-plugin-hello"   # its binary: on PATH, or beside ostrov's own
+icon = "face-smile-symbolic"
+description = "Counts its clicks; the Rust SDK's example."
+permissions = ["secrets", "dialogs", "events"]
+events = ["window"]
+
+[[widgets]]
+id = "counter"
+name = "Hello Counter"
+icon = "face-smile-symbolic"
+sizes = [[4, 1], [2, 1], [8, 1]]
+badge = true
+bar = "active"
+
+[[commands]]
+name = "count"
+help = "the count now"
+
+[[commands]]
+name = "set"
+usage = "set N"
+help = "the count set to N"
+
+[[commands]]
+name = "toggle"
+help = "the toggle flipped"
+
+[[commands]]
+name = "reset"
+help = "the count back to 0"
+
+[[commands]]
+name = "rename"
+help = "a dialog asking the toggle's new title"
+
+[[commands]]
+name = "note"
+usage = "note < TEXT"
+help = "what is piped in shown in its menu"

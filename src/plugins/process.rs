@@ -5,10 +5,13 @@
 //! "call" number its "return" carries back (run's request an "id" its result carries back), several at once. The
 //! imports that need nothing of GTK's (log, kick, secret, http-get, set-timer) are answered here; run, ask,
 //! set-settings-schema and the trees and state the plugin pushes go up to GTK's thread. What it writes on stderr
-//! goes to ostrov's, its id before it.
+//! goes to ostrov's, its id before it. Its PATH has ostrov's own directory last, so an official plugin's binary,
+//! installed beside ostrov, is found by its name (`exec = "ostrov-plugin-ID"`) wherever ostrov is, the user's
+//! own programs still first.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::ffi::OsString;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -36,6 +39,13 @@ struct Inner {
     up: async_channel::Sender<Up>,
     /// the plugins' Tokio runtime, once the worker runs on it: the calls' waits run there
     rt: Mutex<Option<tokio::runtime::Handle>>,
+}
+
+/// PATH with the directory of ostrov's own executable after the rest.
+fn path() -> OsString {
+    let own = std::env::current_exe().ok().and_then(|e| e.parent().map(Path::to_path_buf));
+    let all = std::env::var_os("PATH").map(|p| std::env::split_paths(&p).collect::<Vec<_>>()).unwrap_or_default();
+    std::env::join_paths(all.into_iter().chain(own)).unwrap_or_default()
 }
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -250,6 +260,7 @@ impl Backend for Process {
                 let child = tokio::process::Command::new("sh")
                     .args(["-c", &me.exec])
                     .current_dir(&me.dir)
+                    .env("PATH", path())
                     .stdin(Stdio::piped())
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
@@ -284,7 +295,7 @@ impl Backend for Process {
                     });
                 }
                 *lock(&me.stdin) = Some(tx);
-                me.send(json!({"type": "hello", "api": API}));
+                me.send(json!({"type": "hello", "api": API, "language": crate::i18n::lang()}));
                 let config = lock(&me.config).clone();
                 me.send(json!({"type": "on_config", "json": config}));
                 // drawn anew once it is up, as after any kick

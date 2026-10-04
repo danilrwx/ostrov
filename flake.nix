@@ -15,6 +15,9 @@
           version = "0.1.0";
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
+          # ostrov and its official plugins (plugins/README.md), the binaries side by side in $out/bin
+          cargoBuildFlags = [ "--workspace" ];
+          cargoTestFlags = [ "--workspace" ];
 
           nativeBuildInputs = with pkgs; [ pkg-config wrapGAppsHook4 ];
           # the GStreamer plugins here put in the wrapper's plugin path by wrapGAppsHook4, for the recorder
@@ -31,6 +34,15 @@
             install -Dm644 completions/_ostrov $out/share/zsh/site-functions/_ostrov
             install -Dm644 completions/ostrov.bash $out/share/bash-completion/completions/ostrov
             install -Dm644 completions/ostrov.fish $out/share/fish/vendor_completions.d/ostrov.fish
+            # the official plugins' manifests and texts, read from share/ beside ostrov's bin/; hello, the SDK's
+            # example, is not one
+            rm -f $out/bin/ostrov-plugin-hello
+            for d in plugins/*/; do
+              id=$(basename "$d")
+              if [ "$id" = hello ] || [ ! -f "$d/manifest.toml" ]; then continue; fi
+              install -Dm644 "$d/manifest.toml" -t "$out/share/ostrov/plugins/$id"
+              if [ -d "$d/i18n" ]; then install -Dm644 "$d"/i18n/* -t "$out/share/ostrov/plugins/$id/i18n"; fi
+            done
           '';
 
           meta = with pkgs.lib; {

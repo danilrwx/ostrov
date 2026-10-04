@@ -45,13 +45,13 @@ build() {
   cd ostrov
   export RUSTUP_TOOLCHAIN=stable
   export CARGO_TARGET_DIR=target
-  cargo build --frozen --release
+  cargo build --frozen --release --workspace
 }
 
 check() {
   cd ostrov
   export RUSTUP_TOOLCHAIN=stable
-  cargo test --frozen --release
+  cargo test --frozen --release --workspace
 }
 
 package() {
@@ -65,5 +65,14 @@ package() {
   install -Dm644 -t "$pkgdir/usr/share/doc/ostrov" README.md CHANGELOG.md config/example.toml docs/* \
     wit/ostrov-plugin.wit
   install -Dm644 -t "$pkgdir/usr/share/doc/ostrov/examples/widgets" examples/widgets/*
+  # the official plugins (plugins/README.md): a binary beside ostrov's, the manifest and texts in
+  # /usr/share/ostrov/plugins/ID; hello, the SDK's example, is not one
+  for d in plugins/*/; do
+    id=$(basename "$d")
+    if [ "$id" = hello ] || [ ! -f "$d/manifest.toml" ]; then continue; fi
+    install -Dm755 "target/release/ostrov-plugin-$id" -t "$pkgdir/usr/bin"
+    install -Dm644 "$d/manifest.toml" -t "$pkgdir/usr/share/ostrov/plugins/$id"
+    if [ -d "$d/i18n" ]; then install -Dm644 "$d"/i18n/* -t "$pkgdir/usr/share/ostrov/plugins/$id/i18n"; fi
+  done
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

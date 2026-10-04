@@ -5,6 +5,10 @@
 //! set-settings-schema), whatever carries the calls. Its launcher modes ([[launcher]], a prefix typed) are
 //! answered by its query and pick; its keys ([[keys]]) bound by hyprland.rs where free; its calendar a source of
 //! the calendar's. Installed and removed while ostrov runs by install.rs.
+//! Official plugins, ostrov's own built with it (plugins/ in its repository), are read from its packages'
+//! share/ostrov/plugins/<id>/ (beside its executable's share/, then XDG_DATA_DIRS's), their binaries beside
+//! ostrov's; off until `[plugin.<id>] enabled = true`, and a plugin of the user's by the same id is the one read.
+//! Any plugin turns on and off as `enabled` changes, without a restart (its widgets come and go at the next).
 //! Its transport is a Backend (backend.rs) that Draws besides: a process talking JSON lines now (process.rs), a
 //! WebAssembly component the same way another time. Its widgets are trees of ui.rs's kit (node.rs), pulled with
 //! render once it kicks, or pushed; they join the control centre's registry as plugin.<id>.<widget>. Its
@@ -267,6 +271,8 @@ pub struct Plugin {
     asking: Cell<bool>,
     /// its worker on the plugins' runtime, stopped (its process killed) when it is removed
     task: Option<tokio::task::AbortHandle>,
+    /// one of ostrov's own, from a system directory
+    official: bool,
 }
 
 /// A widget drawn from node trees (a plugin's, a KDL file's) made for the grid: the box its tree is drawn into,
@@ -394,8 +400,38 @@ fn free(prefix: &str, taken: &[String]) -> bool {
     taken.iter().all(|t| !t.starts_with(prefix) && !prefix.starts_with(t.as_str()))
 }
 
+/// The user's plugins' directory, where `ostrov plugin install` puts them.
 fn dir() -> PathBuf {
     crate::hub::home().join(".local/share/ostrov/plugins")
+}
+
+/// The official plugins' directories: share/ beside ostrov's executable's directory (/usr/bin/ostrov's
+/// /usr/share, a Nix store path's), then XDG_DATA_DIRS's (/usr/local/share:/usr/share if unset).
+fn system_dirs() -> Vec<PathBuf> {
+    let own = std::env::current_exe().ok().and_then(|e| Some(e.parent()?.parent()?.join("share")));
+    let xdg = std::env::var("XDG_DATA_DIRS").ok().filter(|v| !v.is_empty());
+    let xdg = xdg.unwrap_or_else(|| "/usr/local/share:/usr/share".into());
+    own.into_iter().chain(std::env::split_paths(&xdg)).map(|d| d.join("ostrov/plugins")).collect()
+}
+
+/// Every plugin found, sorted by id, and whether it is official: the user's, then the official ones whose ids
+/// none before took.
+fn found() -> Vec<(PathBuf, Manifest, bool)> {
+    let mut all: Vec<(PathBuf, Manifest, bool)> = discover(&dir()).into_iter().map(|(d, m)| (d, m, false)).collect();
+    for d in system_dirs() {
+        for (d, m) in discover(&d) {
+            if !all.iter().any(|(_, o, _)| o.id == m.id) {
+                all.push((d, m, true));
+            }
+        }
+    }
+    all.sort_by(|a, b| a.1.id.cmp(&b.1.id));
+    all
+}
+
+/// Whether a plugin runs: `[plugin.<id>] enabled`, else yes for one the user installed, no for an official one.
+fn enabled(cfg: &crate::config::Config, id: &str, official: bool) -> bool {
+    cfg.plugin.get(id).and_then(|t| t.get("enabled")).and_then(|v| v.as_bool()).unwrap_or(!official)
 }
 
 /// The config's [plugin.<id>], {} if none.
@@ -525,6 +561,28 @@ impl Plugin {
     }
 }
 
+/// A manifest's texts (its name, description, widgets' and launcher modes' names, commands' help) in the user's
+/// language, by the plugin's own catalogue, i18n/<lang>.toml in its directory ("English" = "theirs", as ostrov's
+/// own and as the plugin's texts are looked up by the SDK's t()).
+fn translate(m: &mut Manifest, dir: &Path) {
+    let lang = crate::i18n::lang();
+    let Ok(text) = std::fs::read_to_string(dir.join(format!("i18n/{lang}.toml"))) else { return };
+    let words: HashMap<String, String> = match toml::from_str(&text) {
+        Ok(w) => w,
+        Err(e) => return eprintln!("ostrov: plugin {}: i18n/{lang}.toml: {e}", m.id),
+    };
+    let t = |s: &mut String| {
+        if let Some(w) = words.get(s.as_str()) {
+            *s = w.clone();
+        }
+    };
+    t(&mut m.name);
+    t(&mut m.description);
+    m.widgets.iter_mut().for_each(|w| t(&mut w.name));
+    m.launcher.iter_mut().for_each(|l| t(&mut l.name));
+    m.commands.iter_mut().for_each(|c| t(&mut c.help));
+}
+
 /// The plugins found in dir, sorted by id; one that does not read said and passed over.
 fn discover(dir: &Path) -> Vec<(PathBuf, Manifest)> {
     let mut found: Vec<(PathBuf, Manifest)> = std::fs::read_dir(dir)
@@ -536,7 +594,10 @@ fn discover(dir: &Path) -> Vec<(PathBuf, Manifest)> {
             let text = std::fs::read_to_string(path.join("manifest.toml")).ok()?;
             let name = e.file_name().to_string_lossy().into_owned();
             let m = parse_manifest(&text, &name).map_err(|err| eprintln!("ostrov: plugin {}: {err}", path.display()));
-            m.ok().map(|m| (path, m))
+            m.ok().map(|mut m| {
+                translate(&mut m, &path);
+                (path, m)
+            })
         })
         .collect();
     found.sort_by(|a, b| a.1.id.cmp(&b.1.id));
@@ -555,7 +616,7 @@ fn rt() -> Option<&'static tokio::runtime::Runtime> {
 
 /// A plugin started: its worker on the plugins' runtime, its kicks and messages listened to, its launcher modes
 /// claimed where their prefixes are free, its calendar a source of the calendar's.
-fn load(dir: PathBuf, m: Manifest, cfg: &crate::config::Config) -> Rc<Plugin> {
+fn load(dir: PathBuf, m: Manifest, official: bool, cfg: &crate::config::Config) -> Rc<Plugin> {
     let (up, ups) = async_channel::unbounded();
     let (kick, kicks) = async_channel::unbounded();
     let backend = Arc::new(process::Process::new(&m, dir.clone(), config(cfg, &m.id), up));
@@ -572,6 +633,7 @@ fn load(dir: PathBuf, m: Manifest, cfg: &crate::config::Config) -> Rc<Plugin> {
         settings: RefCell::default(),
         asking: Cell::new(false),
         task,
+        official,
     });
     p.clone().listen(kicks, ups);
     MODES.with(|ms| {
@@ -595,6 +657,49 @@ fn load(dir: PathBuf, m: Manifest, cfg: &crate::config::Config) -> Rc<Plugin> {
     p
 }
 
+/// A plugin started while ostrov runs, among the others by id, its keys bound (its widgets join the gallery at
+/// the next restart, the registry being made once).
+fn add(dir: PathBuf, m: Manifest, official: bool, cfg: &crate::config::Config) {
+    let p = load(dir, m, official, cfg);
+    PLUGINS.with(|ps| {
+        let mut ps = ps.borrow_mut();
+        ps.push(p);
+        ps.sort_by(|a, b| a.m.id.cmp(&b.m.id));
+    });
+    bind_keys(None);
+}
+
+/// A running plugin stopped: its process ended, its launcher modes, keys and calendar gone. Whether it had
+/// widgets or settings, which leave at the next restart; None if it was not running.
+fn stop(id: &str) -> Option<bool> {
+    let p = PLUGINS.with(|ps| {
+        let mut ps = ps.borrow_mut();
+        let i = ps.iter().position(|p| p.m.id == id)?;
+        Some(ps.remove(i))
+    })?;
+    if let Some(t) = &p.task {
+        t.abort();
+    }
+    MODES.with(|ms| ms.borrow_mut().retain(|m| m.id != id));
+    crate::modules::calendar::service::source(id, None);
+    bind_keys(Some(&p.m));
+    Some(!p.m.widgets.is_empty() || p.settings.borrow().is_some())
+}
+
+/// The plugins turned on or off by their `enabled` since they were started, started or stopped.
+fn follow_enabled(cfg: &crate::config::Config) {
+    for (dir, m, official) in found() {
+        let running = PLUGINS.with(|ps| ps.borrow().iter().any(|p| p.m.id == m.id));
+        match (enabled(cfg, &m.id, official), running) {
+            (true, false) => add(dir, m, official, cfg),
+            (false, true) => {
+                stop(&m.id);
+            }
+            _ => {}
+        }
+    }
+}
+
 /// Every plugin's keys handed to hyprland.rs, bound where free; those of a plugin gone unbound.
 fn bind_keys(gone: Option<&Manifest>) {
     let all = PLUGINS.with(|ps| ps.borrow().iter().flat_map(|p| p.m.hypr_keys()).collect());
@@ -606,7 +711,8 @@ fn bind_keys(gone: Option<&Manifest>) {
 /// built, which takes their widgets (metas).
 pub fn start(hub: &Rc<Hub>) {
     let cfg = crate::config::load();
-    let plugins: Vec<Rc<Plugin>> = discover(&dir()).into_iter().map(|(dir, m)| load(dir, m, &cfg)).collect();
+    let on = found().into_iter().filter(|(_, m, official)| enabled(&cfg, &m.id, *official));
+    let plugins: Vec<Rc<Plugin>> = on.map(|(dir, m, official)| load(dir, m, official, &cfg)).collect();
     PLUGINS.with(|ps| *ps.borrow_mut() = plugins);
     bind_keys(None);
     hub.on(|st| {
@@ -623,6 +729,7 @@ pub fn start(hub: &Rc<Hub>) {
     if let Ok(mon) = file.monitor_file(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE) {
         mon.connect_changed(|_, _, _, _| {
             let cfg = crate::config::load();
+            follow_enabled(&cfg);
             PLUGINS.with(|ps| {
                 for p in ps.borrow().iter() {
                     let now = config(&cfg, &p.m.id);
@@ -663,16 +770,18 @@ pub fn metas() -> Vec<Meta> {
     })
 }
 
-/// `ostrov plugins`: each plugin as its manifest has it, its state, its settings' schema.
+/// `ostrov plugins`: each plugin running as its manifest has it, its state, its settings' schema; then those
+/// found but off, `"enabled": false`.
 pub fn list() -> String {
-    let all: Vec<Value> = PLUGINS.with(|ps| {
+    let mut all: Vec<Value> = PLUGINS.with(|ps| {
         ps.borrow()
             .iter()
             .map(|p| {
                 let m = &p.m;
                 json!({
                     "id": m.id, "name": m.name, "version": m.version, "description": m.description,
-                    "dir": p.dir, "permissions": m.permissions, "state": *p.state.borrow(),
+                    "dir": p.dir, "official": p.official, "enabled": true,
+                    "permissions": m.permissions, "state": *p.state.borrow(),
                     "widgets": m.widgets.iter().map(|w| format!("plugin.{}.{}", m.id, w.id)).collect::<Vec<_>>(),
                     "settings": *p.settings.borrow(),
                     "launcher": m.launcher.iter().map(|l| &l.prefix).collect::<Vec<_>>(),
@@ -682,6 +791,15 @@ pub fn list() -> String {
             })
             .collect()
     });
+    for (dir, m, official) in found() {
+        if !PLUGINS.with(|ps| ps.borrow().iter().any(|p| p.m.id == m.id)) {
+            all.push(json!({
+                "id": m.id, "name": m.name, "version": m.version, "description": m.description,
+                "dir": dir, "official": official, "enabled": false, "permissions": m.permissions,
+            }));
+        }
+    }
+    all.sort_by(|a, b| a["id"].as_str().cmp(&b["id"].as_str()));
     serde_json::to_string_pretty(&all).unwrap_or_default()
 }
 

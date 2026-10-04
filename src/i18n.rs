@@ -70,7 +70,8 @@ pub fn t<'a>(en: &'a str) -> &'a str {
     WORDS.get_or_init(|| catalogue(lang())).get(en).copied().unwrap_or(en)
 }
 
-fn lang() -> &'static str {
+/// The language taken at the start, two letters ("" for none): ostrov's, and its plugins' (hello's).
+pub fn lang() -> &'static str {
     LANG.get_or_init(language)
 }
 

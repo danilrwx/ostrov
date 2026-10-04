@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use gtk4::gio;
 use serde_json::json;
 
-use super::{bind_keys, dir, load, parse_manifest, word, Manifest, MODES, PLUGINS};
+use super::{add, dir, parse_manifest, stop, word, Manifest, PLUGINS};
 use crate::i18n::{fill, t};
 
 /// Whether an install's source is a git URL rather than a path: a URL's scheme, or ssh's git@host:path.
@@ -157,13 +157,7 @@ async fn from(src: PathBuf) -> Result<String, String> {
         return Ok(fill(t("plugin {} replaced in {}: `ostrov restart` to run it"), &[&m.id, &dest.display()]));
     }
     let (id, widgets) = (m.id.clone(), !m.widgets.is_empty());
-    let p = load(dest.clone(), m, &crate::config::load());
-    PLUGINS.with(|ps| {
-        let mut ps = ps.borrow_mut();
-        ps.push(p);
-        ps.sort_by(|a, b| a.m.id.cmp(&b.m.id));
-    });
-    bind_keys(None);
+    add(dest.clone(), m, false, &crate::config::load());
     let later = if widgets { t("; its widgets join the gallery after `ostrov restart`") } else { "" };
     Ok(fill(t("plugin {} installed in {} and started"), &[&id, &dest.display()]) + later)
 }
@@ -174,25 +168,16 @@ pub fn remove(id: &str) -> Result<String, String> {
         return Err(format!("no plugin {id:?}"));
     }
     let at = dir().join(id);
-    let p = PLUGINS.with(|ps| {
-        let mut ps = ps.borrow_mut();
-        let i = ps.iter().position(|p| p.m.id == id)?;
-        Some(ps.remove(i))
-    });
-    if p.is_none() && !at.exists() {
+    if PLUGINS.with(|ps| ps.borrow().iter().any(|p| p.m.id == id && p.official)) {
+        return Err(fill(t("plugin {} is one of ostrov's own: [plugin.{}] enabled = false turns it off"), &[&id, &id]));
+    }
+    let running = PLUGINS.with(|ps| ps.borrow().iter().any(|p| p.m.id == id));
+    if !running && !at.exists() {
         return Err(format!("no plugin {id}"));
     }
     let mut later = "";
-    if let Some(p) = &p {
-        if let Some(t) = &p.task {
-            t.abort();
-        }
-        MODES.with(|ms| ms.borrow_mut().retain(|m| m.id != id));
-        crate::modules::calendar::service::source(id, None);
-        bind_keys(Some(&p.m));
-        if !p.m.widgets.is_empty() || p.settings.borrow().is_some() {
-            later = t("; its widgets and settings leave after `ostrov restart`");
-        }
+    if stop(id) == Some(true) {
+        later = t("; its widgets and settings leave after `ostrov restart`");
     }
     if at.exists() {
         std::fs::remove_dir_all(&at).map_err(|e| format!("{}: {e}", at.display()))?;

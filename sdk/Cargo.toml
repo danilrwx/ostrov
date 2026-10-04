@@ -1,0 +1,15 @@
+[package]
+name = "ostrov-plugin"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+description = "ostrov's plugin protocol (wit/ostrov-plugin.wit) for plugins written in Rust: JSON lines over stdin and stdout"
+license = "MIT"
+repository = "https://github.com/ostrov-shell/ostrov"
+keywords = ["ostrov", "hyprland", "plugin"]
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+# the plugin's own texts, i18n/LANG.toml as ostrov's own catalogues are written
+toml = "0.9"

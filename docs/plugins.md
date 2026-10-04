@@ -27,8 +27,12 @@ and calendar away and deletes its directory (its widgets and settings leave at t
 directory by hand works too (`cp -rL`), read at the next start.
 
 Then **Edit** in the control centre, and pick "Hello Counter" from the gallery. `ostrov plugins` lists what was
-found: the manifests, each plugin's state, its settings' schema. A manifest that does not read is said on ostrov's
-stderr and skipped. `install` and `remove` are no plugin's id.
+found: the manifests, each plugin's state, its settings' schema, whether it is official and enabled. A manifest
+that does not read is said on ostrov's stderr and skipped. `install` and `remove` are no plugin's id.
+
+Any plugin is turned off with `enabled = false` in its `[plugin.<id>]` section (see Config), and on again with
+`true` or the line gone: it stops or starts as the config is saved, its widgets leaving or joining the gallery at
+the next `ostrov restart`. [Official plugins](#official-plugins) are off until `enabled = true`.
 
 ## Manifest
 
@@ -37,7 +41,7 @@ id = "hello-python"            # the directory's name, of [a-z0-9-]
 name = "Hello"
 version = "0.1.0"
 api = 1                        # the protocol's version; another one is not run
-exec = "python3 main.py"       # run through sh -c, in the plugin's directory
+exec = "python3 main.py"       # run through sh -c, in the plugin's directory, ostrov's own directory last in PATH
 icon = "face-smile-symbolic"   # an icon name of the theme
 description = "Counts its clicks."
 permissions = ["secrets"]      # see Permissions
@@ -63,7 +67,9 @@ combo = "SUPER, F12"           # as Hyprland's binds write it: "MODS, KEY" (see 
 command = "toggle"             # its own command's words: `ostrov plugin <id> toggle`
 ```
 
-Unknown keys are ignored.
+Unknown keys are ignored. Its texts (`name`, `description`, the widgets' and launcher modes' `name`, the
+commands' `help`) are shown in the user's language when the plugin has a catalogue for it (see
+[Texts](#texts)).
 
 ## Config
 
@@ -73,6 +79,7 @@ The plugin's settings are the `[plugin.<id>]` section of `~/.config/ostrov/confi
 ```toml
 [plugin.hello-python]
 greeting = "Privet"
+enabled = true                 # ostrov's own: whether it runs (see Install), handed to it with the rest
 ```
 
 A plugin describes its settings' form with `set-settings-schema`: the Settings page's own schema (`src/settings`),
@@ -116,7 +123,7 @@ Two systematic differences from the WIT:
 
 | WIT (`interface plugin`)                 | JSON line ostrov writes                                                     | the plugin answers                     |
 |------------------------------------------|-----------------------------------------------------------------------------|----------------------------------------|
-| *(instantiation)*                        | `{"type":"hello","api":1}`, first, once per start                           | –                                      |
+| *(instantiation)*                        | `{"type":"hello","api":1,"language":"ru"}`, first, once per start (see Texts) | –                                    |
 | `on-config(json)`                        | `{"type":"on_config","json":{...}}`, right after hello, and on every change | –                                      |
 | `state() -> string`                      | `{"type":"state","call":N}`                                                 | `return` with `value`: any JSON        |
 | `run(args, input) -> result<string,string>` | `{"type":"run_request","id":N,"args":["set","5"],"input":null}`         | `{"type":"run_result","id":N,"ok":"5"}`/`{...,"err":"..."}` |
@@ -340,6 +347,23 @@ Launcher modes (`[[launcher]]`, `query`, `pick`) came so, within `api = 1`, and 
 `on_shell_event`), keys (`[[keys]]`) and calendars (`calendar`, `calendar_events`): a plugin written before them
 is never sent them, and an older ostrov ignores them in a manifest.
 
+## Texts
+
+A plugin shows its texts in the user's language the way ostrov does: written in English, looked up as they are
+shown in a catalogue of the language's, `i18n/<lang>.toml` in the plugin's directory (its working directory), of
+`"English" = "theirs"` lines as ostrov's own `i18n/` are:
+
+```toml
+# Russian: "English" = "Русский"
+"{} clicks" = "{} нажатий"
+"Hello Counter" = "Счётчик Привет"
+```
+
+`hello`'s `language` is the language ostrov shows itself in, two letters (`[appearance] language`, else the
+locale's): the Rust SDK's `t()` and `fill()` look the plugin's texts up in it. ostrov reads the same catalogue for
+the manifest's texts as it reads the manifest. A text with values in it says `{}` for each, so a language may move
+them; a text the catalogue lacks shows in English.
+
 ## Permissions
 
 Declared in the manifest, shown by `ostrov plugins`, and kept to where ostrov can:
@@ -367,6 +391,70 @@ permissions would be which imports the component is linked with.
 `examples/plugins/hello-python/main.py` (with an event, `on_shell_event`, and a key); a launcher mode in
 `examples/plugins/claude/main.py` and `examples/plugins/google/main.py`; a calendar, `calendar_events`, in
 `examples/plugins/calendar-demo/main.py`.
+
+## Writing a plugin in Rust
+
+The crate `ostrov-plugin` (`sdk/`, the workspace's) is the protocol in Rust, serde's and nothing async: implement
+its `Plugin` trait, every method of which answers as nothing unless written, and hand it to `run`:
+
+```rust
+use ostrov_plugin::{json, Host, Plugin, Value};
+
+struct Hello { on: bool }
+
+impl Plugin for Hello {
+    fn render(&mut self, _: &Host, _widget: &str) -> Option<Value> {
+        Some(json!({"type": "toggle", "id": "t", "title": ostrov_plugin::t("Hello"), "on": self.on}))
+    }
+    fn on_event(&mut self, host: &Host, _widget: &str, _node: &str, _event: &str, value: &str) {
+        self.on = value == "true";
+        host.kick();
+    }
+}
+
+fn main() { ostrov_plugin::run(Hello { on: false }) }
+```
+
+- The exports, `Plugin`'s methods, each handed the `Host`: `state`, `run(args: &[&str], input)` (match its words:
+  `["set", n] => ...`), `render` (a node tree as `serde_json::Value`, `None` to keep what is drawn), `on_event`,
+  `on_timer`, `on_config`, `on_state`, `query` (`Vec<Hit>`), `pick`, `on_shell_event`, `calendar_events`
+  (`Result<Vec<CalendarEvent>, String>`). They run on the plugin's thread one at a time, in the order they come.
+- The imports, `Host`'s: `log`, `run(&["menu", "wifi"])`, `toast(title, body)` (ostrov's `toast`, permission
+  "run"), `ask(&Dialog)`, `secret(key)`, `http_get(url)`, `set_timer(ms, id)`, `kick`, `set_settings_schema`,
+  `push_render`, `push_state`; its config, `config()` and `setting::<T>(key)`.
+- A thread of the plugin's reads stdin, so the imports that answer (`ask`, `secret`, `http_get`, `run`) may be
+  called from any thread: a `Host` is `Clone + Send`. Called from a method they hold ostrov's other calls back
+  while they wait, so what waits long (a dialog, the network, the keyring being unlocked) is better done on a
+  thread of its own, which sends what it found over a channel and wakes the plugin with `host.set_timer(0, ID)`:
+  its `on_timer(ID)` takes it in on the plugin's thread. See `plugins/hello`.
+- Every message is a type too, `FromOstrov` and `ToOstrov` (serde, `"type"`-tagged), with `Dialog`
+  (`DialogKind`), `Hit` and `CalendarEvent`; `serve(plugin, input, output)` serves any lines, for tests.
+- `t("English")`, `fill(text, &[&value])` and `language()`: its texts in the user's language (see Texts).
+
+`plugins/hello` is the example: `hello-python`'s twin in Rust.
+
+## Official plugins
+
+ostrov's own plugins live in its repository's `plugins/<id>/`, each a crate of the workspace
+(`ostrov-plugin-<id>`, built with `cargo build --release --workspace`) beside its `manifest.toml` and
+`i18n/`; `plugins/README.md` says how to add one. The packages install a binary beside ostrov's
+(`/usr/bin/ostrov-plugin-<id>`), the manifest saying `exec = "ostrov-plugin-<id>"`, and the manifest and texts in
+`/usr/share/ostrov/plugins/<id>/`. ostrov reads official plugins from `share/ostrov/plugins/` beside its
+executable's directory (`/usr/bin`'s `/usr/share`, a Nix store path's), then from each of `XDG_DATA_DIRS`
+(`/usr/local/share:/usr/share` if unset), the first by an id kept; a plugin of the user's in
+`~/.local/share/ostrov/plugins/` by the same id is read instead. Its binary is found as any exec is, ostrov's own
+directory last in its PATH.
+
+An official plugin is off until the user turns it on:
+
+```toml
+[plugin.<id>]
+enabled = true
+```
+
+It starts as the config is saved (its widgets join the gallery after `ostrov restart`), and `enabled = false`
+stops it again. `ostrov plugins` lists the official plugins found, `"official": true`, those off with
+`"enabled": false`. `ostrov plugin remove` leaves an official plugin be, saying how to turn it off.
 
 ## D-Bus
 
