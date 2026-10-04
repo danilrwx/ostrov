@@ -11,6 +11,7 @@ use gtk4::prelude::*;
 use gtk4::{Align, Orientation};
 use serde_json::{json, Value};
 
+use crate::i18n::t;
 use crate::style::{clear, label};
 
 /// The blocks there are besides panels.
@@ -23,7 +24,9 @@ const BLOCKS: &[(&str, &str, &str)] = &[
     ("record", "Recording", "media-record-symbolic"),
 ];
 
-const PARTS: [(&str, &str); 3] = [("left", "Left"), ("center", "Middle"), ("right", "Right")];
+/// The parts: their keys in [bar], their titles, the button moving a chip to one.
+const PARTS: [(&str, &str, &str); 3] =
+    [("left", "Left", "To Left"), ("center", "Middle", "To Middle"), ("right", "Right", "To Right")];
 
 /// What the editor holds while it edits: the three parts' names, the chip picked (part, index).
 struct State {
@@ -46,12 +49,12 @@ fn named(id: &str) -> (String, String) {
         let spec = super::Spec::of(p);
         return (spec.name, spec.icon);
     }
-    BLOCKS.iter().find(|b| b.0 == id).map_or((id.into(), "image-missing-symbolic".into()), |b| (b.1.into(), b.2.into()))
+    BLOCKS.iter().find(|b| b.0 == id).map_or((id.into(), "image-missing-symbolic".into()), |b| (t(b.1).into(), b.2.into()))
 }
 
 pub fn page(back: impl Fn() + 'static) -> gtk4::Box {
     let root = gtk4::Box::new(Orientation::Vertical, 8);
-    let (head, _) = crate::ui::header("Bar", back);
+    let (head, _) = crate::ui::header(t("Bar"), back);
     root.append(&head);
     let body = gtk4::Box::new(Orientation::Vertical, 8);
     root.append(&body);
@@ -87,8 +90,8 @@ pub fn page(back: impl Fn() + 'static) -> gtk4::Box {
 
 fn draw(body: &gtk4::Box, st: &Rc<RefCell<State>>, again: Rc<dyn Fn()>) {
     let s = st.borrow();
-    for (i, (_, title)) in PARTS.iter().enumerate() {
-        body.append(&label(title, "dim"));
+    for (i, (_, title, _)) in PARTS.iter().enumerate() {
+        body.append(&label(t(*title), "dim"));
         let row = crate::ui::chip_flow();
         row.add_css_class("bar-part");
         for (j, id) in s.parts[i].iter().enumerate() {
@@ -109,7 +112,7 @@ fn draw(body: &gtk4::Box, st: &Rc<RefCell<State>>, again: Rc<dyn Fn()>) {
             crate::ui::flow_in(&row, &chip);
         }
         if s.parts[i].is_empty() {
-            crate::ui::flow_in(&row, &label("empty", "dim"));
+            crate::ui::flow_in(&row, &label(t("empty"), "dim"));
         }
         body.append(&row);
     }
@@ -117,10 +120,10 @@ fn draw(body: &gtk4::Box, st: &Rc<RefCell<State>>, again: Rc<dyn Fn()>) {
     // what the picked chip can do
     if let Some((i, j)) = s.picked {
         let acts = gtk4::Box::new(Orientation::Horizontal, 4);
-        let act = |icon: &str, tip: &str, f: Box<dyn Fn(&mut State)>| {
+        let act = |icon: &str, tip: &'static str, f: Box<dyn Fn(&mut State)>| {
             let b = gtk4::Button::from_icon_name(icon);
             b.add_css_class("flat-round");
-            b.set_tooltip_text(Some(tip));
+            b.set_tooltip_text(Some(t(tip)));
             let (st, again) = (st.clone(), again.clone());
             b.connect_clicked(move |_| {
                 f(&mut st.borrow_mut());
@@ -140,8 +143,8 @@ fn draw(body: &gtk4::Box, st: &Rc<RefCell<State>>, again: Rc<dyn Fn()>) {
                 s.picked = Some((i, j + 1));
             }
         }));
-        for (k, (_, title)) in PARTS.iter().enumerate().filter(|(k, _)| *k != i) {
-            let b = gtk4::Button::with_label(&format!("To {title}"));
+        for (k, (_, _, to)) in PARTS.iter().enumerate().filter(|(k, _)| *k != i) {
+            let b = gtk4::Button::with_label(t(*to));
             b.add_css_class("chip");
             let (st, again) = (st.clone(), again.clone());
             b.connect_clicked(move |_| {
@@ -173,12 +176,12 @@ fn draw(body: &gtk4::Box, st: &Rc<RefCell<State>>, again: Rc<dyn Fn()>) {
     let into = s.picked.map_or(2, |(i, _)| i);
     drop(s);
     if !missing.is_empty() {
-        body.append(&label("Add to the Bar", "title"));
+        body.append(&label(t("Add to the Bar"), "title"));
     }
     for id in missing {
         let (name, icon) = named(&id);
         let (st, again) = (st.clone(), again.clone());
-        body.append(&crate::ui::row(&icon, &name, PARTS[into].1, false, move || {
+        body.append(&crate::ui::row(&icon, &name, t(PARTS[into].1), false, move || {
             st.borrow_mut().parts[into].push(id.clone());
             again();
         }));
@@ -186,7 +189,7 @@ fn draw(body: &gtk4::Box, st: &Rc<RefCell<State>>, again: Rc<dyn Fn()>) {
 
     // a new panel: its name, its id made of it
     let new = gtk4::Entry::new();
-    new.set_placeholder_text(Some("New panel's name…"));
+    new.set_placeholder_text(Some(t("New panel's name…")));
     let note = label("", "error");
     note.set_visible(false);
     let (st2, again2, n2) = (st.clone(), again.clone(), note.clone());
@@ -211,13 +214,13 @@ fn draw(body: &gtk4::Box, st: &Rc<RefCell<State>>, again: Rc<dyn Fn()>) {
     body.append(&new);
     body.append(&note);
 
-    let apply = gtk4::Button::with_label("Apply");
+    let apply = gtk4::Button::with_label(t("Apply"));
     apply.add_css_class("connect");
     apply.set_halign(Align::End);
     let st = st.clone();
     apply.connect_clicked(move |_| {
         let s = st.borrow();
-        for (i, (key, _)) in PARTS.iter().enumerate() {
+        for (i, (key, _, _)) in PARTS.iter().enumerate() {
             let v = Value::Array(s.parts[i].iter().map(|p| json!(p)).collect());
             if let Err(e) = crate::settings::write("bar", key, Some(&v), false) {
                 eprintln!("ostrov: bar: {e}");

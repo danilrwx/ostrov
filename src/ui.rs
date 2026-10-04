@@ -12,6 +12,7 @@ use gtk4::prelude::*;
 use gtk4::{glib, Align, Orientation};
 use serde_json::Value;
 
+use crate::i18n::{fill, t};
 use crate::hub::s;
 use crate::style::label;
 
@@ -97,7 +98,7 @@ pub fn header(title: &str, back: impl Fn() + 'static) -> (gtk4::Box, gtk4::Label
     let bx = gtk4::Box::new(Orientation::Horizontal, 6);
     let b = gtk4::Button::from_icon_name("go-previous-symbolic");
     b.add_css_class("flat-round");
-    b.set_tooltip_text(Some("Back"));
+    b.set_tooltip_text(Some(t("Back")));
     b.connect_clicked(move |_| back());
     let t = label(title, "page-title");
     t.set_ellipsize(gtk4::pango::EllipsizeMode::End);
@@ -378,20 +379,20 @@ pub fn level_icon(kind: &str, v: f64, muted: bool) -> String {
 
 fn duration(secs: i64) -> String {
     let (h, m) = (secs / 3600, (secs % 3600 + 30) / 60);
-    if h > 0 { format!("{h} h {m:02} min") } else { format!("{m} min") }
+    if h > 0 { fill(t("{} h {} min"), &[&h, &format!("{m:02}")]) } else { fill(t("{} min"), &[&m]) }
 }
 
 pub fn battery_time(b: &Value) -> String {
     match s(b, &["state"]) {
         "charging" => match b["toFull"].as_i64().unwrap_or(0) {
-            0 => "charging".into(),
-            t => format!("full in {}", duration(t)),
+            0 => t("charging").into(),
+            secs => fill(t("full in {}"), &[&duration(secs)]),
         },
-        "fully-charged" => "full".into(),
-        "pending-charge" => "not charging".into(),
+        "fully-charged" => t("full").into(),
+        "pending-charge" => t("not charging").into(),
         _ => match b["toEmpty"].as_i64().unwrap_or(0) {
             0 => String::new(),
-            t => format!("{} left", duration(t)),
+            secs => fill(t("{} left"), &[&duration(secs)]),
         },
     }
 }

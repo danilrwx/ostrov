@@ -28,6 +28,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::hub::Hub;
+use crate::i18n::t;
 use crate::popup::{Popup, Side};
 use crate::style::{clear, label};
 
@@ -134,7 +135,7 @@ pub fn registry() -> Rc<Vec<Meta>> {
                 .flat_map(|m| m.widgets)
                 .map(|d| Meta {
                     id: d.id,
-                    name: d.name,
+                    name: t(d.name),
                     icon: d.icon,
                     sizes: d.sizes,
                     make: Rc::new(d.make),
@@ -199,7 +200,7 @@ impl Spec {
         };
         let cfg = crate::config::load().panels.remove(id);
         match id {
-            "control" => spec("Control Centre", "emblem-system-symbolic", 390, true, vec![
+            "control" => spec(t("Control Centre"), "emblem-system-symbolic", 390, true, vec![
                 it("battery", 0, 0, 5, 1),
                 it("screenshot", 5, 0, 1, 1),
                 it("lock", 6, 0, 1, 1),
@@ -217,7 +218,7 @@ impl Spec {
             ]),
             // the calendar as it was: the weather and the player over the notifications at the left; the
             // date, the month, the coming events at the right
-            "calendar" => spec("Calendar", "x-office-calendar-symbolic", 680, false, vec![
+            "calendar" => spec(t("Calendar"), "x-office-calendar-symbolic", 680, false, vec![
                 it("weather", 0, 0, 4, 2),
                 it("clock", 4, 0, 4, 1),
                 it("month", 4, 1, 4, 5),
@@ -691,7 +692,7 @@ impl Panel {
         }
         self.editing.set(on);
         self.set_open("");
-        self.edit_button.set_label(if on { "Done" } else { "Edit" });
+        self.edit_button.set_label(t(if on { "Done" } else { "Edit" }));
         for t in self.tiles.borrow().values() {
             t.widget.root.set_can_target(!on);
             let mut c = t.wrap.first_child();
@@ -757,9 +758,9 @@ impl Panel {
         head.append(&label(m.name, "title"));
         self.inspector.append(&head);
 
-        let line = |title: &str, w: &gtk4::Widget| {
+        let line = |title: &'static str, w: &gtk4::Widget| {
             let bx = gtk4::Box::new(Orientation::Horizontal, 8);
-            let l = label(title, "dim");
+            let l = label(t(title), "dim");
             l.set_width_chars(10);
             bx.append(&l);
             bx.append(w);
@@ -788,7 +789,7 @@ impl Panel {
         // when its badge is in the bar, and the bar alone
         if self.tiles.borrow().get(&key).is_some_and(|t| t.widget.face.is_some()) {
             let now = self.show(&key, m.bar);
-            let names: Vec<&str> = Show::ALL.iter().map(|s| s.1).collect();
+            let names: Vec<&str> = Show::ALL.iter().map(|s| t(s.1)).collect();
             let at = Show::ALL.iter().position(|s| s.0 == now);
             let (me, k) = (Rc::downgrade(self), key.clone());
             let chips = crate::ui::chips(&names, at, move |i| {
@@ -802,8 +803,8 @@ impl Panel {
             line("In the bar", chips.upcast_ref());
         }
         let acts = gtk4::Box::new(Orientation::Horizontal, 6);
-        let act = |text: &str, f: Box<dyn Fn(&Rc<Panel>)>| {
-            let b = gtk4::Button::with_label(text);
+        let act = |text: &'static str, f: Box<dyn Fn(&Rc<Panel>)>| {
+            let b = gtk4::Button::with_label(t(text));
             b.add_css_class("chip");
             let me = Rc::downgrade(self);
             b.connect_clicked(move |_| {
@@ -827,7 +828,7 @@ impl Panel {
         let plugin = key.strip_prefix("plugin.").and_then(|r| r.split('.').next()).map(|p| format!("plugin.{p}"));
         if let Some(e) = crate::settings::entry(&format!("widget.{key}")).or_else(|| plugin.and_then(|p| crate::settings::entry(&p))) {
             self.inspector.append(&gtk4::Separator::new(Orientation::Horizontal));
-            self.inspector.append(&label("Settings", "dim"));
+            self.inspector.append(&label(t("Settings"), "dim"));
             self.inspector.append(&crate::settings::form::form(&e.schema));
         }
     }
@@ -881,7 +882,7 @@ impl Panel {
         let hidden = self.hidden.borrow().clone();
         self.shelf.set_visible(self.editing.get() && !hidden.is_empty());
         self.shelf.append(&gtk4::Separator::new(Orientation::Horizontal));
-        self.shelf.append(&label("In the bar only", "dim"));
+        self.shelf.append(&label(t("In the bar only"), "dim"));
         let chips = crate::ui::chip_flow();
         for it in hidden {
             let Some(m) = self.reg.iter().find(|m| m.id == it.key) else { continue };
@@ -909,7 +910,7 @@ impl Panel {
         clear(&self.gallery);
         let hidden: Vec<String> = self.hidden.borrow().iter().map(|i| i.key.clone()).collect();
         self.fill_shelf();
-        self.gallery.append(&label("Add Widgets", "title"));
+        self.gallery.append(&label(t("Add Widgets"), "title"));
         let mut on: Vec<String> = self.items.borrow().iter().map(|i| i.key.clone()).collect();
         on.extend(hidden);
         let mut any = false;
@@ -925,7 +926,7 @@ impl Panel {
             }));
         }
         if !any {
-            self.gallery.append(&label("Every widget is on the panel", "dim"));
+            self.gallery.append(&label(t("Every widget is on the panel"), "dim"));
         }
     }
 
@@ -1099,12 +1100,12 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     for &(icon, tip, to) in to_pages {
         let b = gtk4::Button::from_icon_name(icon);
         b.add_css_class("flat-round");
-        b.set_tooltip_text(Some(tip));
+        b.set_tooltip_text(Some(t(tip)));
         let pg = pages.clone();
         b.connect_clicked(move |_| pg.set_visible_child_name(to));
         foot.append(&b);
     }
-    let edit_button = gtk4::Button::with_label("Edit");
+    let edit_button = gtk4::Button::with_label(t("Edit"));
     edit_button.add_css_class("chip");
     edit_button.set_hexpand(true);
     edit_button.set_halign(Align::End);

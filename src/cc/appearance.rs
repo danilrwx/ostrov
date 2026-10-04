@@ -7,6 +7,7 @@ use gtk4::prelude::*;
 use gtk4::{glib, Orientation};
 use serde_json::Value;
 
+use crate::i18n::t;
 use crate::look::ACCENTS;
 use crate::style::{clear, label};
 use crate::ui::{header, setting};
@@ -14,7 +15,7 @@ use crate::ui::{header, setting};
 /// The page; back leaves it.
 pub fn page(back: impl Fn() + 'static) -> gtk4::Box {
     let root = gtk4::Box::new(Orientation::Vertical, 6);
-    root.append(&header("Appearance", back).0);
+    root.append(&header(t("Appearance"), back).0);
     let body = gtk4::Box::new(Orientation::Vertical, 0);
     let scroll = gtk4::ScrolledWindow::new();
     scroll.set_hscrollbar_policy(gtk4::PolicyType::Never);
@@ -84,16 +85,16 @@ fn fill(body: &gtk4::Box) {
         b.connect_clicked(move |_| set(&body, "theme", Some(t.id.clone().into())));
         themes.insert(&b, -1);
     }
-    body.append(&setting("Theme", "", &themes, true));
+    body.append(&setting(t("Theme"), "", &themes, true));
 
     let accents = gtk4::FlowBox::new();
     accents.set_selection_mode(gtk4::SelectionMode::None);
     accents.set_column_spacing(4);
     accents.set_row_spacing(6);
     accents.set_max_children_per_line(12);
-    let own = gtk4::Button::with_label("Theme's");
+    let own = gtk4::Button::with_label(t("Theme's"));
     own.add_css_class("chip");
-    own.set_tooltip_text(Some("The theme's own accent"));
+    own.set_tooltip_text(Some(t("The theme's own accent")));
     if a.accent.is_empty() {
         own.add_css_class("picked");
     }
@@ -116,7 +117,7 @@ fn fill(body: &gtk4::Box) {
     let custom = gtk4::ColorDialogButton::new(Some(gtk4::ColorDialog::new()));
     custom.add_css_class("swatch-custom");
     custom.set_halign(gtk4::Align::Start);
-    custom.set_tooltip_text(Some("Another colour"));
+    custom.set_tooltip_text(Some(t("Another colour")));
     // the accent shown here, picked, when no swatch is it; clear otherwise
     let other = !a.accent.is_empty() && !ACCENTS.iter().any(|c| a.accent.eq_ignore_ascii_case(c));
     let rgba = gtk4::gdk::RGBA::parse(a.accent.as_str()).ok().filter(|_| other);
@@ -127,7 +128,7 @@ fn fill(body: &gtk4::Box) {
     let body2 = body.clone();
     custom.connect_rgba_notify(move |b| set(&body2, "accent", Some(crate::settings::form::hex(&b.rgba()).into())));
     accents.insert(&custom, -1);
-    body.append(&setting("Accent", "", &accents, true));
+    body.append(&setting(t("Accent"), "", &accents, true));
 
     let mut rest = crate::settings::appearance().remove(0);
     rest.fields.retain(|f| f.key != "theme" && f.key != "accent");

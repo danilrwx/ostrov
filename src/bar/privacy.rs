@@ -32,10 +32,10 @@ pub fn build(cx: &Rc<Ctx>) -> Block {
         p.set_visible(!mics.is_empty() || !cams.is_empty());
         let mut tip = Vec::new();
         if !mics.is_empty() {
-            tip.push(format!("Microphone: {}", mics.join(", ")));
+            tip.push(crate::i18n::fill(crate::i18n::t("Microphone: {}"), &[&mics.join(", ")]));
         }
         if !cams.is_empty() {
-            tip.push(format!("Camera: {}", cams.join(", ")));
+            tip.push(crate::i18n::fill(crate::i18n::t("Camera: {}"), &[&cams.join(", ")]));
         }
         p.set_tooltip_text(Some(&tip.join("\n")));
     });
