@@ -23,7 +23,7 @@ struct Entry {
 
 /// The tray in its own Tokio runtime: every change sends the whole list over; activations come back.
 fn serve(tx: async_channel::Sender<Vec<Entry>>, mut rx: tokio::sync::mpsc::UnboundedReceiver<ActivateRequest>) {
-    let Ok(rt) = tokio::runtime::Builder::new_multi_thread().enable_all().build() else { return };
+    let Ok(rt) = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build() else { return };
     rt.block_on(async move {
         let Ok(client) = Client::new().await else { return };
         let client = std::sync::Arc::new(client);

@@ -120,7 +120,7 @@ pub async fn every<F: Future<Output = ()>>(interval: Duration, f: impl Fn() -> F
 /// commands from cmds run as they come, each one's outcome back down its own channel.
 pub fn start(state_tx: async_channel::Sender<Value>, cmds: async_channel::Receiver<(Vec<String>, Option<String>, async_channel::Sender<Res>)>) {
     std::thread::spawn(move || {
-        let Ok(rt) = tokio::runtime::Builder::new_multi_thread().enable_all().build() else { return };
+        let Ok(rt) = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build() else { return };
         rt.block_on(async move {
             let (Ok(system), Ok(session)) = (zbus::Connection::system().await, zbus::Connection::session().await) else {
                 eprintln!("ostrov: services: no D-Bus");

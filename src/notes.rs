@@ -114,7 +114,7 @@ impl Server {
 
 /// The server in its own Tokio runtime; nothing if the name is taken (another notification daemon runs).
 fn serve(tx: async_channel::Sender<In>, mut rx: tokio::sync::mpsc::UnboundedReceiver<Out>) {
-    let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap();
+    let rt = tokio::runtime::Builder::new_multi_thread().worker_threads(1).enable_all().build().unwrap();
     rt.block_on(async move {
         let server = Server { tx };
         let conn = match zbus::connection::Builder::session()
