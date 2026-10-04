@@ -437,6 +437,15 @@ impl Panel {
         self.items.borrow().iter().chain(self.hidden.borrow().iter()).any(|i| i.key == key)
     }
 
+    /// Open at a page, or closed if it is open at it already (a key that opens it closes it again): "settings"
+    /// (at an entry's form, if given), "appearance".
+    pub fn toggle_page(&self, page: &str, entry: Option<&str>) {
+        if self.popup.is_open() && self.pages.visible_child_name().as_deref() == Some(page) && entry.is_none() {
+            return self.popup.close();
+        }
+        self.open_page(page, entry);
+    }
+
     /// Open at a page: "settings" (at an entry's form, if given), "appearance", "grid".
     pub fn open_page(&self, page: &str, entry: Option<&str>) {
         if !self.popup.is_open() {

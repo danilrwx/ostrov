@@ -146,8 +146,8 @@ fn activate(app: &gtk4::Application) {
                 }
                 // the control centre at its Settings (an entry's form: bar, calendar, widget.wallpaper...) or
                 // Appearance page
-                ["settings", ref entry @ ..] => panel("control")?.open_page("settings", entry.first().copied()),
-                ["appearance"] => panel("control")?.open_page("appearance", None),
+                ["settings", ref entry @ ..] => panel("control")?.toggle_page("settings", entry.first().copied()),
+                ["appearance"] => panel("control")?.toggle_page("appearance", None),
                 ["run"] => launcher.toggle(false),
                 ["clip"] => launcher.toggle(true),
                 ["lock"] => lock.lock(),
