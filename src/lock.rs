@@ -17,9 +17,17 @@ pub struct Lock {
 impl Lock {
     pub fn lock(&self) {
         if !self.inst.is_locked() {
+            let _ = std::fs::write(marker(), "");
             self.inst.lock();
         }
     }
+}
+
+/// Kept while the screen is locked, gone once it is unlocked: an ostrov that died locked leaves it, and the one
+/// started after it (bin/wl-autostart starts it again) locks again at once. Hyprland keeps the session locked
+/// meanwhile and lets the new one take the lock over (misc:allow_session_lock_restore).
+fn marker() -> std::path::PathBuf {
+    std::path::PathBuf::from(std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".into())).join("ostrov-locked")
 }
 
 pub fn build(app: &gtk4::Application) -> Rc<Lock> {
@@ -32,7 +40,11 @@ pub fn build(app: &gtk4::Application) -> Rc<Lock> {
         inst.assign_window_to_monitor(&win, monitor);
         win.present();
     });
-    Rc::new(Lock { inst })
+    let lock = Rc::new(Lock { inst });
+    if marker().exists() {
+        lock.lock();
+    }
+    lock
 }
 
 /// A monitor's lock surface: the time, the date, the password.
@@ -77,6 +89,7 @@ fn face(inst: &Instance) -> gtk4::Box {
             if ok {
                 error.set_text("");
                 inst.unlock();
+                let _ = std::fs::remove_file(marker());
             } else {
                 error.set_text("Wrong password");
                 e.grab_focus();
