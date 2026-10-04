@@ -183,6 +183,25 @@ launcher modes into ostrov over JSON lines (the protocol is `wit/ostrov-plugin.w
 `examples/plugins/claude` (`?question`) and `examples/plugins/google` (`g words`). The same document describes
 ostrov's D-Bus interface, `dev.ostrov.Shell`.
 
+## Languages
+
+ostrov speaks English and Russian. `[appearance] language = "ru"` picks one; unset, the locale's (`LC_ALL`,
+`LC_MESSAGES`, `LANG`), English for a language it has no words in. It is read at start: `ostrov restart` after
+changing it.
+
+A language is a directory of catalogues, `i18n/LANG/*.toml`, each line a text as ostrov writes it in English and
+the same in that language, `{}` kept for each value:
+
+```toml
+"{} min left" = "Осталось {} мин"
+```
+
+Counts take a form by their number (`plural` in `src/i18n.rs`): a text's three forms are three keys, the second
+the plural with `|few` after it, never shown in English (`"{} things missing|few" = "{} проблемы"`). A new
+language is its directory and its entry in `CATALOGUES` in `src/i18n.rs`, built into the binary (and, if its
+counts are not English's or Russian's, its rule in `plural`); `cargo test` checks that every catalogue reads and
+keeps its `{}`. The texts of plugins and KDL widgets are theirs, shown as they give them.
+
 ## Commands
 
 `ostrov help` prints them all, the plugins' included. Placeholders are uppercase, `[x]` is optional, `a|b` an

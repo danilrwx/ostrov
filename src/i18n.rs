@@ -20,6 +20,7 @@ const CATALOGUES: &[(&str, &[&str])] = &[(
 )];
 
 static WORDS: OnceLock<HashMap<String, &'static str>> = OnceLock::new();
+static LANG: OnceLock<String> = OnceLock::new();
 
 /// The language: the config's, the locale's, its two letters ("ru" of ru_RU.UTF-8).
 pub fn language() -> String {
@@ -46,7 +47,30 @@ fn catalogue(lang: &str) -> HashMap<String, &'static str> {
 
 /// The text in the user's language.
 pub fn t(en: &'static str) -> &'static str {
-    WORDS.get_or_init(|| catalogue(&language())).get(en).copied().unwrap_or(en)
+    WORDS.get_or_init(|| catalogue(lang())).get(en).copied().unwrap_or(en)
+}
+
+fn lang() -> &'static str {
+    LANG.get_or_init(language)
+}
+
+/// Of a count's three forms (English texts, each looked up as t() does), the one its number takes: Russian's one
+/// (1, 21), few (2-4, 22) or many (5-20, 11); English's forms[0] for 1, forms[2] else. forms[1], never shown in
+/// English, is the plural with "|few" after it, a key of its own: plural(n, ["{} event", "{} events|few",
+/// "{} events"]), its {} filled with fill() as any.
+pub fn plural(n: i64, forms: [&'static str; 3]) -> &'static str {
+    t(forms[form(lang(), n)])
+}
+
+fn form(lang: &str, n: i64) -> usize {
+    let n = n.unsigned_abs();
+    match lang {
+        "ru" if n % 10 == 1 && n % 100 != 11 => 0,
+        "ru" if (2..=4).contains(&(n % 10)) && !(12..=14).contains(&(n % 100)) => 1,
+        "ru" => 2,
+        _ if n == 1 => 0,
+        _ => 2,
+    }
 }
 
 /// The text's {} filled with the values, in order.
@@ -81,5 +105,12 @@ mod tests {
     fn values_filled_in_order() {
         assert_eq!(fill("{} h {} min left", &[&2, &"5"]), "2 h 5 min left");
         assert_eq!(fill("none", &[]), "none");
+    }
+
+    #[test]
+    fn plural_forms_by_language() {
+        let ru: Vec<usize> = [0, 1, 2, 4, 5, 11, 12, 14, 21, 22, 25, 101, 111, -3].map(|n| form("ru", n)).into();
+        assert_eq!(ru, [2, 0, 1, 1, 2, 2, 2, 2, 0, 1, 2, 0, 2, 1]);
+        assert_eq!([0, 1, 2, 21].map(|n| form("en", n)), [2, 0, 2, 2]);
     }
 }

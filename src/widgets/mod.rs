@@ -79,7 +79,7 @@ fn read(path: &Path) -> Option<Vec<Decl>> {
                 // the notifications may not be up yet as the first panel is built
                 glib::idle_add_local_once(move || {
                     if let Some(n) = crate::notes::get() {
-                        n.post("dialog-warning-symbolic", "A widget file does not read", &what, false);
+                        n.post("dialog-warning-symbolic", crate::i18n::t("A widget file does not read"), &what, false);
                     }
                 });
             }

@@ -12,6 +12,7 @@ use gtk4::gio;
 use serde_json::json;
 
 use super::{bind_keys, dir, load, parse_manifest, word, Manifest, MODES, PLUGINS};
+use crate::i18n::{fill, t};
 
 /// Whether an install's source is a git URL rather than a path: a URL's scheme, or ssh's git@host:path.
 pub fn is_url(src: &str) -> bool {
@@ -21,17 +22,17 @@ pub fn is_url(src: &str) -> bool {
 /// What a permission lets a plugin do, for the dialog asking whether to install it.
 fn grants(m: &Manifest, p: &str) -> String {
     match p {
-        "run" => "run any of ostrov's commands".into(),
-        "network" => "fetch from the network".into(),
-        "secrets" => "read its secrets from the keyring".into(),
-        "dialogs" => "ask you things in dialogs".into(),
-        "state" => "see the desktop's state (Wi-Fi, Bluetooth, media...)".into(),
-        "events" => format!("follow what happens on the desktop ({})", m.events.join(", ")),
+        "run" => t("run any of ostrov's commands").into(),
+        "network" => t("fetch from the network").into(),
+        "secrets" => t("read its secrets from the keyring").into(),
+        "dialogs" => t("ask you things in dialogs").into(),
+        "state" => t("see the desktop's state (Wi-Fi, Bluetooth, media...)").into(),
+        "events" => fill(t("follow what happens on the desktop ({})"), &[&m.events.join(", ")]),
         "keys" => {
             let keys: Vec<String> = m.keys.iter().map(|k| format!("{}: {}", k.combo, k.command)).collect();
-            format!("bind keys where free ({})", keys.join("; "))
+            fill(t("bind keys where free ({})"), &[&keys.join("; ")])
         }
-        "calendar" => "add its events to the calendar".into(),
+        "calendar" => t("add its events to the calendar").into(),
         other => other.to_string(),
     }
 }
@@ -43,14 +44,14 @@ fn about(m: &Manifest) -> String {
         s += &format!(": {}", m.description);
     }
     if m.permissions.is_empty() {
-        s += "\n\nIt asks for no permissions.";
+        s = s + "\n\n" + t("It asks for no permissions.");
     } else {
-        s += "\n\nIt may:";
+        s = s + "\n\n" + t("It may:");
         for p in &m.permissions {
             s += &format!("\n• {}", grants(m, p));
         }
     }
-    s + "\n\nA plugin is a program run as you: it can do whatever you can, whatever it asks for."
+    s + "\n\n" + t("A plugin is a program run as you: it can do whatever you can, whatever it asks for.")
 }
 
 /// A directory copied into another, its symlinks followed (not too deep: a link to a parent would go round), a
@@ -135,9 +136,9 @@ async fn from(src: PathBuf) -> Result<String, String> {
     let spec = json!({
         "kind": "confirm",
         "icon": if m.icon.is_empty() { "application-x-addon-symbolic" } else { m.icon.as_str() },
-        "title": format!("{} {}?", if running { "Replace the plugin" } else { "Install the plugin" }, m.name),
+        "title": fill(t(if running { "Replace the plugin {}?" } else { "Install the plugin {}?" }), &[&m.name]),
         "text": about(&m),
-        "ok": if running { "Replace" } else { "Install" },
+        "ok": t(if running { "Replace" } else { "Install" }),
     });
     crate::prompt::dialog(&spec, None, None).await?.ok_or("not installed")?;
     // copied beside its place and moved in, so a copy that fails leaves the old one whole
@@ -153,7 +154,7 @@ async fn from(src: PathBuf) -> Result<String, String> {
     })
     .await?;
     if running {
-        return Ok(format!("plugin {} replaced in {}: `ostrov restart` to run it", m.id, dest.display()));
+        return Ok(fill(t("plugin {} replaced in {}: `ostrov restart` to run it"), &[&m.id, &dest.display()]));
     }
     let (id, widgets) = (m.id.clone(), !m.widgets.is_empty());
     let p = load(dest.clone(), m, &crate::config::load());
@@ -163,8 +164,8 @@ async fn from(src: PathBuf) -> Result<String, String> {
         ps.sort_by(|a, b| a.m.id.cmp(&b.m.id));
     });
     bind_keys(None);
-    let later = if widgets { "; its widgets join the gallery after `ostrov restart`" } else { "" };
-    Ok(format!("plugin {id} installed in {} and started{later}", dest.display()))
+    let later = if widgets { t("; its widgets join the gallery after `ostrov restart`") } else { "" };
+    Ok(fill(t("plugin {} installed in {} and started"), &[&id, &dest.display()]) + later)
 }
 
 /// `ostrov plugin remove ID`: its process ended, its modes, keys and calendar gone, its directory deleted.
@@ -190,13 +191,13 @@ pub fn remove(id: &str) -> Result<String, String> {
         crate::modules::calendar::service::source(id, None);
         bind_keys(Some(&p.m));
         if !p.m.widgets.is_empty() || p.settings.borrow().is_some() {
-            later = "; its widgets and settings leave after `ostrov restart`";
+            later = t("; its widgets and settings leave after `ostrov restart`");
         }
     }
     if at.exists() {
         std::fs::remove_dir_all(&at).map_err(|e| format!("{}: {e}", at.display()))?;
     }
-    Ok(format!("plugin {id} removed{later}"))
+    Ok(fill(t("plugin {} removed"), &[&id]) + later)
 }
 
 #[cfg(test)]

@@ -7,6 +7,7 @@
 
 use serde_json::Value;
 
+use crate::i18n::{fill, plural, t};
 use crate::wm::hyprctl;
 
 type Line = (char, String);
@@ -27,23 +28,29 @@ async fn lines() -> Vec<Line> {
     compositor(&mut out);
     buses(&mut out).await;
     programs(&mut out);
+    let missing = out.iter().filter(|(m, _)| *m == '!').count() as i64;
+    if missing > 0 {
+        let text = plural(missing, ["{} thing missing", "{} things missing|few", "{} things missing"]);
+        out.push(('·', fill(text, &[&missing])));
+    }
     out
 }
 
 fn compositor(out: &mut Vec<Line>) {
     let v: Value = serde_json::from_str(&hyprctl("j/version")).unwrap_or_default();
     let Some(tag) = v["tag"].as_str() else {
-        out.push(('!', "Hyprland: not running (the window switcher, the overview, the window's title, displays and the night light need it)".into()));
+        out.push(('!', t("Hyprland: not running (the window switcher, the overview, the window's title, displays and \
+            the night light need it)").into()));
         return;
     };
     out.push(('✓', format!("Hyprland {tag}")));
     let blur: Value = serde_json::from_str(&hyprctl("j/getoption decoration:blur:enabled")).unwrap_or_default();
     if blur["int"].as_i64() == Some(0) {
-        out.push(('·', "blur is off in Hyprland (decoration:blur:enabled): the panels are see-through without it".into()));
+        out.push(('·', t("blur is off in Hyprland (decoration:blur:enabled): the panels are see-through without it").into()));
     }
     let cfg = crate::config::load().hyprland;
     if !cfg.binds {
-        out.push(('·', "keys: [hyprland] binds = false, ostrov binds none (ostrov hyprland prints them)".into()));
+        out.push(('·', t("keys: [hyprland] binds = false, ostrov binds none (ostrov hyprland prints them)").into()));
         return;
     }
     let binds: Vec<Value> = serde_json::from_str(&hyprctl("j/binds")).unwrap_or_default();
@@ -51,20 +58,20 @@ fn compositor(out: &mut Vec<Line>) {
         let (at, cmd) = (k.at, k.cmd);
         // a plugin's key is where its manifest says: freed, or left unbound
         let plugin = cmd.starts_with("plugin ");
-        let fix = if plugin { "the plugin's key left unbound" } else { "move it in [hyprland.keys]" };
+        let fix = t(if plugin { "the plugin's key left unbound" } else { "move it in [hyprland.keys]" });
         match k.by {
             Some(b) if b.contains("ostrov") && b.ends_with(&format!(" {cmd}")) => {
                 out.push(('✓', format!("{at}: {cmd}")))
             }
-            Some(b) => out.push(('!', format!("{at} is {b}, not ostrov {cmd}: {fix}"))),
-            None => out.push(('·', format!("{at}: ostrov {cmd} (bound at the next start)"))),
+            Some(b) => out.push(('!', fill(t("{} is {}, not ostrov {}: {}"), &[&at, &b, &cmd, &fix]))),
+            None => out.push(('·', fill(t("{}: ostrov {} (bound at the next start)"), &[&at, &cmd]))),
         }
     }
 }
 
 async fn buses(out: &mut Vec<Line>) {
     let (Ok(system), Ok(session)) = (zbus::Connection::system().await, zbus::Connection::session().await) else {
-        out.push(('!', "D-Bus: no system or session bus".into()));
+        out.push(('!', t("D-Bus: no system or session bus").into()));
         return;
     };
     let names = |c: zbus::Connection| async move {
@@ -80,7 +87,7 @@ async fn buses(out: &mut Vec<Line>) {
     } else if has(&sys, "org.freedesktop.NetworkManager") {
         out.push(('✓', "Wi-Fi: NetworkManager".into()));
     } else {
-        out.push(('!', "Wi-Fi: neither iwd nor NetworkManager, the Wi-Fi widget is empty".into()));
+        out.push(('!', t("Wi-Fi: neither iwd nor NetworkManager, the Wi-Fi widget is empty").into()));
     }
     for (name, what, cost) in [
         ("org.bluez", "Bluetooth: BlueZ", "the Bluetooth widget is empty"),
@@ -89,12 +96,13 @@ async fn buses(out: &mut Vec<Line>) {
         ("org.freedesktop.login1", "session: logind", "no brightness, no idle's lock before sleep"),
         ("org.freedesktop.PolicyKit1", "polkit", "no polkit agent"),
     ] {
-        out.push(if has(&sys, name) { ('✓', what.into()) } else { ('!', format!("{what} missing: {cost}")) });
+        let what = t(what);
+        out.push(if has(&sys, name) { ('✓', what.into()) } else { ('!', fill(t("{} missing: {}"), &[&what, &t(cost)])) });
     }
     out.push(if has(&ses, "org.freedesktop.secrets") {
-        ('✓', "keyring: the Secret Service".into())
+        ('✓', t("keyring: the Secret Service").into())
     } else {
-        ('·', "keyring: no Secret Service, secrets kept in ~/.local/share/ostrov/secrets.toml (0600)".into())
+        ('·', t("keyring: no Secret Service, secrets kept in ~/.local/share/ostrov/secrets.toml (0600)").into())
     });
 }
 
@@ -109,16 +117,17 @@ fn programs(out: &mut Vec<Line>) {
         ("gst-launch-1.0", "no screen recording"),
         ("loginctl", "the lock button does nothing"),
     ] {
-        out.push(if on_path(p) { ('✓', p.into()) } else { ('!', format!("{p} missing: {cost}")) });
+        out.push(if on_path(p) { ('✓', p.into()) } else { ('!', fill(t("{} missing: {}"), &[&p, &t(cost)])) });
     }
     let limit = crate::modules::battery::limit::state();
     if !limit.is_null() && limit["writable"] != true {
-        out.push(('·', "charge limit: the thresholds are root's; to set them: sudo cp packaging/udev/90-ostrov-battery.rules \
-            /etc/udev/rules.d/ && sudo udevadm trigger --subsystem-match=power_supply".into()));
+        out.push(('·', fill(t("charge limit: the thresholds are root's; to set them: {}"), &[&"sudo cp \
+            packaging/udev/90-ostrov-battery.rules /etc/udev/rules.d/ && sudo udevadm trigger \
+            --subsystem-match=power_supply"])));
     }
     out.push(if std::path::Path::new("/etc/pam.d/ostrov").exists() {
         ('✓', "PAM: /etc/pam.d/ostrov".into())
     } else {
-        ('·', "PAM: no /etc/pam.d/ostrov, the lock screen checks passwords as login does".into())
+        ('·', t("PAM: no /etc/pam.d/ostrov, the lock screen checks passwords as login does").into())
     });
 }
