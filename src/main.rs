@@ -17,6 +17,7 @@ mod events;
 mod forms;
 mod greet;
 mod hub;
+mod i18n;
 mod idle;
 mod keys;
 mod launcher;

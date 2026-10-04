@@ -34,6 +34,7 @@
 //!     opacity = 0.75      # the surface's
 //!     radius = 10         # a surface's corners, what is on it 4 less; unset, the theme's or 10
 //!     density = "normal"  # compact, normal, comfortable: the control centre's rows; unset, the theme's
+//!     language = "ru"     # its texts' language; unset, the locale's
 //!     tab = "auto"        # a hovered block's and a tab's ground: wallpaper, bar; auto, the wallpaper with blur
 //!     blur = true         # Hyprland's blur, its blur_size and blur_passes: set only when given here or by the theme
 //!
@@ -186,6 +187,8 @@ pub struct Appearance {
     pub blur_passes: Option<u32>,
     /// the text's family ("" GTK's own), its size in points, what the rest is sized from
     pub font: String,
+    /// the language its texts are in ("" the locale's): en, ru
+    pub language: String,
     pub font_size: f64,
     /// icons' size in pixels: on what opens, in the bar
     pub icon_size: u32,
@@ -209,6 +212,7 @@ impl Default for Appearance {
             radius: None,
             density: None,
             tab: "auto".into(),
+            language: String::new(),
             animations: true,
             blur: None,
             blur_size: None,
