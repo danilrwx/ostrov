@@ -89,13 +89,13 @@ button.chip, togglebutton.chip { background: @raised; border: 1px solid @rule; b
 .toggle { background: @raised; border: 1px solid @rule; border-radius: 6px; min-height: 48px; }
 .toggle.on { background: @accent; border-color: @accent; }
 .toggle.on label, .toggle.on image { color: @ink; }
-.toggle.on .toggle-sub { color: @rule; }
+.toggle.on .toggle-sub { color: alpha(@ink, 0.72); }
 .toggle-main { padding: 0 6px 0 14px; border-radius: 6px; }
 .toggle-main:hover { background: @raised; }
 .toggle-title { font-weight: bold; }
 .toggle-sub { color: @dim; font-size: 8.5pt; }
 button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radius: 0 6px 6px 0; }
-.toggle.on button.toggle-side { border-left-color: @accent-rule; }
+.toggle.on button.toggle-side { border-left-color: alpha(@ink, 0.22); }
 .toggle.on button.toggle-side.open, .tile.open .toggle.on button.toggle-side { background: @accent-pressed; }
 .toggle.small .toggle-main { padding: 0; }
 
