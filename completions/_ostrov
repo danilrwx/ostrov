@@ -1,0 +1,19 @@
+#compdef ostrov
+# ostrov's completion for zsh, answered by the running ostrov (`ostrov complete WORD...`: a line a candidate,
+# its description after a tab); nothing while none runs. In $fpath as _ostrov, or sourced after compinit.
+
+_ostrov() {
+  local -a items
+  local line about
+  for line in ${(f)"$(ostrov complete "${(@Q)words[2,CURRENT]}" 2>/dev/null)"}; do
+    about=${line#*$'\t'}
+    items+=("${${line%%$'\t'*}//:/\\:}${about:+:$about}")
+  done
+  _describe -t commands ostrov items
+}
+
+if [[ $zsh_eval_context[-1] == loadautofunc ]]; then
+  _ostrov "$@"
+else
+  compdef _ostrov ostrov
+fi

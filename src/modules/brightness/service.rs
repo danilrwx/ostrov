@@ -1,5 +1,4 @@
 //! The backlight through sysfs and logind (backlight.go).
-use super::USAGE;
 use crate::services::{Ctx, Res};
 
 /// The panel's backlight device under /sys/class/backlight, None without one.
@@ -28,8 +27,8 @@ pub fn brightness() -> i64 {
 /// brightness PERCENT, through logind's SetBrightness, which the session's user may call without root; never all
 /// the way down to 0, a black screen.
 pub async fn cmd(c: &Ctx, args: &[&str]) -> Res {
-    let [pct] = args else { return Err(USAGE.into()) };
-    let pct: i64 = pct.parse().map_err(|_| USAGE.to_string())?;
+    let [pct] = args else { return Err(super::MODULE.usage()) };
+    let pct: i64 = pct.parse().map_err(|_| super::MODULE.usage())?;
     let dir = backlight().ok_or("no backlight")?;
     let max = read(&dir, "max_brightness")?;
     let value = (max * pct / 100).min(max).max(1) as u32;

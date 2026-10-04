@@ -31,7 +31,7 @@ pub type Res = Result<(), String>;
 
 /// The modules' commands, a line each.
 pub fn usage() -> String {
-    ALL.iter().filter(|m| m.run.is_some()).map(|m| format!("  {}", m.usage)).collect::<Vec<_>>().join("\n")
+    ALL.iter().filter(|m| m.run.is_some()).map(|m| format!("  {} {}", m.id, m.forms.join(" | "))).collect::<Vec<_>>().join("\n")
 }
 
 /// The state now: each module's under its id.

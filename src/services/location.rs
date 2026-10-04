@@ -7,8 +7,6 @@ use serde_json::Value;
 
 use super::Res;
 
-pub const USAGE: &str = "location CITY|LAT LON";
-
 /// The place as it is named, and where it is.
 #[derive(Serialize, Deserialize, Default)]
 #[serde(default)]
@@ -47,7 +45,7 @@ pub async fn cmd(args: &[&str]) -> Res {
         _ => None,
     };
     let l = if args.is_empty() {
-        return Err(USAGE.into());
+        return Err(crate::modules::location::MODULE.usage());
     } else if let Some((lat, lon)) = coords {
         Location { place: format!("{lat:.2}, {lon:.2}"), lat, lon }
     } else {

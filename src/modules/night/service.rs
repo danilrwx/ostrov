@@ -11,7 +11,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use super::USAGE;
 use crate::services::{location, Res};
 
 const NS: i64 = 1_000_000_000;
@@ -254,7 +253,7 @@ pub async fn cmd(args: &[&str]) -> Res {
         ["apply"] => return apply(&c),
         ["preview", k] => {
             // the screen at K now, whatever the mode, nothing saved: the warmth slider while it is dragged
-            let k: i64 = k.parse().map_err(|_| USAGE.to_string())?;
+            let k: i64 = k.parse().map_err(|_| super::MODULE.usage())?;
             let path = shader(k.clamp(2500, 6500))?;
             return hyprctl(&format!("keyword decoration:screen_shader {path}")).map(drop);
         }
@@ -264,8 +263,8 @@ pub async fn cmd(args: &[&str]) -> Res {
             clock(to)?;
             (c.from, c.to) = (from.to_string(), to.to_string());
         }
-        ["temp", k] => c.temp = k.parse::<i64>().map_err(|_| USAGE.to_string())?.clamp(2500, 6500),
-        _ => return Err(USAGE.into()),
+        ["temp", k] => c.temp = k.parse::<i64>().map_err(|_| super::MODULE.usage())?.clamp(2500, 6500),
+        _ => return Err(super::MODULE.usage()),
     }
     save(&c)?;
     apply(&c)

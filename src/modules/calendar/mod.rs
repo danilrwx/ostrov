@@ -8,11 +8,9 @@ use super::{widget, words, Fut, Module};
 use crate::cc::Show;
 use crate::services::{Ctx, Kick, Res};
 
-pub const USAGE: &str = "calendar refresh";
-
 pub const MODULE: Module = Module {
     id: "calendar",
-    usage: USAGE,
+    forms: &["refresh"],
     state: Some(state),
     run: Some(run),
     worker: Some(worker),
@@ -20,6 +18,7 @@ pub const MODULE: Module = Module {
         widget("month", "Month", "x-office-calendar-symbolic", &[(4, 5), (8, 5), (4, 6)], widget::month),
         widget("agenda", "Coming Up", "view-list-symbolic", &[(4, 4), (4, 2), (8, 2), (8, 4)], widget::agenda).bar(Show::Active),
     ],
+    ..Module::NONE
 };
 
 fn state(_: &Ctx) -> Fut<'_, serde_json::Value> {

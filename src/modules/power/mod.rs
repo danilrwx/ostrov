@@ -3,18 +3,17 @@
 pub mod service;
 mod widget;
 
-use super::{widget, words, Fut, Module, TOGGLE};
+use super::{values, widget, words, Fut, Module, TOGGLE};
 use crate::services::{signals, Ctx, Kick, Res};
-
-pub const USAGE: &str = "power set PROFILE";
 
 pub const MODULE: Module = Module {
     id: "power",
-    usage: USAGE,
+    forms: &["set PROFILE"],
     state: Some(state),
     run: Some(run),
     worker: Some(worker),
     widgets: &[widget("power", "Power Mode", "power-profile-balanced-symbolic", TOGGLE, widget::power)],
+    complete: Some(|st, _| values(&st["profiles"], "", |_| String::new())),
 };
 
 fn state(c: &Ctx) -> Fut<'_, serde_json::Value> {

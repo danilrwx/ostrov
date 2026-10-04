@@ -7,11 +7,9 @@ use std::time::Duration;
 use super::{words, Fut, Module};
 use crate::services::{every, Ctx, Kick, Res};
 
-pub const USAGE: &str = "night mode off|on|time|sun|time FROM TO|temp K|preview K|apply";
-
 pub const MODULE: Module = Module {
     id: "night",
-    usage: USAGE,
+    forms: &["mode off|on|time|sun", "time FROM TO", "temp K", "preview K", "apply"],
     state: Some(state),
     run: Some(run),
     worker: Some(worker),

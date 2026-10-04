@@ -3,18 +3,18 @@
 mod service;
 mod widget;
 
-use super::{widget, words, Fut, Module, TOGGLE};
+use super::{values, widget, words, Fut, Module, TOGGLE};
 use crate::services::{signals, Ctx, Kick, Res};
-
-pub const USAGE: &str = "bt on|off|scan|connect ADDR|disconnect ADDR|pair ADDR|forget ADDR";
 
 pub const MODULE: Module = Module {
     id: "bt",
-    usage: USAGE,
+    forms: &["on|off|scan", "connect|disconnect|pair|forget ADDR"],
     state: Some(state),
     run: Some(run),
     worker: Some(worker),
     widgets: &[widget("bt", "Bluetooth", "bluetooth-active-symbolic", TOGGLE, widget::bluetooth)],
+    // ADDR: the devices paired or found, by name
+    complete: Some(|st, _| values(&st["devices"], "address", |d| d["name"].as_str().unwrap_or("").into())),
 };
 
 fn state(c: &Ctx) -> Fut<'_, serde_json::Value> {

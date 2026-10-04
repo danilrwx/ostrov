@@ -7,11 +7,9 @@ mod widget;
 use super::{widget, words, Fut, Module, SLIDER};
 use crate::services::{Ctx, Res};
 
-pub const USAGE: &str = "brightness PERCENT";
-
 pub const MODULE: Module = Module {
     id: "brightness",
-    usage: USAGE,
+    forms: &["PERCENT"],
     state: Some(state),
     run: Some(run),
     widgets: &[widget("brightness", "Brightness", "display-brightness-symbolic", SLIDER, widget::brightness)],

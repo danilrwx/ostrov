@@ -8,6 +8,8 @@ use gtk4::prelude::*;
 use super::{pill, slot, Block, Ctx};
 use crate::popup::Side;
 
+const FORMS: &[&str] = &["menu NAME", "settings [SECTION]", "appearance"];
+
 pub fn build(cx: &Rc<Ctx>, id: &str, side: Side) -> Block {
     let face = pill();
     let s = slot(&face);
@@ -34,8 +36,9 @@ pub fn build(cx: &Rc<Ctx>, id: &str, side: Side) -> Block {
                 p.open_page("appearance", None);
                 Ok(String::new())
             }
-            _ => Err("usage: ostrov panel.ID menu NAME | settings [SECTION] | appearance".into()),
+            _ => Err(crate::forms::usage("panel.ID", FORMS)),
         })),
+        forms: FORMS,
         ..Block::new(&s)
     }
 }

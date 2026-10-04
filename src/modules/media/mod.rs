@@ -6,15 +6,14 @@ mod widget;
 use super::{widget, words, Fut, Module};
 use crate::services::{Ctx, Kick, Res};
 
-pub const USAGE: &str = "media play-pause|next|previous";
-
 pub const MODULE: Module = Module {
     id: "media",
-    usage: USAGE,
+    forms: &["play-pause|next|previous"],
     state: Some(state),
     run: Some(run),
     worker: Some(worker),
     widgets: &[widget("media", "Now Playing", "audio-x-generic-symbolic", &[(4, 2), (8, 2)], widget::player)],
+    ..Module::NONE
 };
 
 fn state(c: &Ctx) -> Fut<'_, serde_json::Value> {

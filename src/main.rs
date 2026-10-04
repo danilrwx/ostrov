@@ -11,6 +11,7 @@ mod calc;
 mod cc;
 mod clip;
 mod config;
+mod forms;
 mod greet;
 mod hub;
 mod idle;
@@ -49,8 +50,18 @@ thread_local! {
     static PROMPTS: std::cell::RefCell<Option<Rc<prompt::Prompts>>> = Default::default();
 }
 
-const USAGE: &str = "usage: ostrov [panel | menu NAME | settings [SECTION] | appearance | calendar | run | ask QUESTION | clip | windows [app] | overview [close] | lock | restart | hyprland | key NAME | awake | screenshot | \
-capture FILE | record [--audio] | bar toggle|peek|unpeek | state | dump | toast TITLE [BODY] | dialog JSON | plugins | plugin [ID [ARGS]] | help | BLOCK ARGS | MODULE ARGS]";
+/// ostrov's own commands, in forms.rs's grammar; besides them a bar block's (BLOCK ARGS) and a module's (MODULE
+/// ARGS).
+const FORMS: &[&str] = &[
+    "panel", "menu NAME", "settings [SECTION]", "appearance", "calendar", "run", "ask QUESTION...", "clip",
+    "windows [app]", "overview [close]", "lock", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "record [--audio]",
+    "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
+    "plugin [ID] [ARGS...]", "help", "complete [WORD...]", "completions zsh|bash|fish",
+];
+
+fn usage() -> String {
+    forms::usage("", FORMS) + " | BLOCK ARGS | MODULE ARGS"
+}
 
 fn activate(app: &gtk4::Application) {
     // the bar's window, the popups laid over it (popup.rs); the bar and the launcher over it its strip
@@ -165,8 +176,19 @@ fn activate(app: &gtk4::Application) {
                     notes.post("dialog-information-symbolic", title, &body.join(" "), false)
                 }
                 ["plugins"] => return Ok(plugins::list()),
+                // the shells' completion (forms.rs), from what this ostrov knows
+                ["complete", ref words @ ..] => {
+                    let known = forms::Known {
+                        state: hub.state(),
+                        widgets: cc::menus(),
+                        sections: settings::entries().into_iter().map(|e| (e.id, e.title)).collect(),
+                        plugins: plugins::known(),
+                        blocks: bar.forms(),
+                    };
+                    return Ok(forms::lines(&forms::complete(&known, if words.is_empty() { &[""] } else { words })));
+                }
                 ["help"] => {
-                    return Ok(format!("{USAGE}\n\nthe modules' commands:\n{}\n\nthe plugins' commands:\n{}", services::usage(), plugins::help()));
+                    return Ok(format!("{}\n\nthe modules' commands:\n{}\n\nthe plugins' commands:\n{}", usage(), services::usage(), plugins::help()));
                 }
                 // what is open, and the bar's mode: for a script, a test
                 ["state"] => {
@@ -185,7 +207,7 @@ fn activate(app: &gtk4::Application) {
                 }
                 // the services' commands, wmd's words: their outcome said by the running ostrov
                 [first, ..] if services::is_command(first) => hub::service(&args),
-                _ => return Err(format!("{USAGE}\n{}", services::usage())),
+                _ => return Err(format!("{}\n{}", usage(), services::usage())),
             }
             Ok(String::new())
         }))
@@ -282,16 +304,35 @@ fn main() -> glib::ExitCode {
     // one ostrov: run again, it hands its arguments to the running one and exits
     // OSTROV_APP_ID: another id, a second ostrov beside the running one (a build tried out without stopping it)
     let id = std::env::var("OSTROV_APP_ID").unwrap_or_else(|_| "dev.danil.ostrov".into());
+    // the shells' completion: the script printed here; its candidates by the running ostrov, nothing with none
+    // (never this one made the shell)
+    match std::env::args().nth(1).as_deref() {
+        Some("completions") => {
+            let script = std::env::args().nth(2).and_then(|s| forms::script(&s));
+            let Some(script) = script else {
+                eprintln!("{}", forms::usage("completions", &["zsh|bash|fish"]));
+                return glib::ExitCode::FAILURE;
+            };
+            print!("{script}");
+            return glib::ExitCode::SUCCESS;
+        }
+        Some("complete") if !forms::running(&id) => return glib::ExitCode::SUCCESS,
+        _ => {}
+    }
     let app = gtk4::Application::builder()
         .application_id(id.as_str())
         .flags(gtk4::gio::ApplicationFlags::HANDLES_COMMAND_LINE)
         .build();
     app.connect_activate(activate);
     app.connect_command_line(|app, cl| {
+        let args: Vec<String> = cl.arguments().iter().skip(1).map(|a| a.to_string_lossy().into_owned()).collect();
         if COMMAND.with(|c| c.borrow().is_none()) {
+            // a completion that found the ostrov it asked gone by now: answered by nothing here either
+            if args.first().is_some_and(|a| a == "complete") {
+                return glib::ExitCode::SUCCESS;
+            }
             app.activate();
         }
-        let args: Vec<String> = cl.arguments().iter().skip(1).map(|a| a.to_string_lossy().into_owned()).collect();
         if args.is_empty() {
             return glib::ExitCode::SUCCESS;
         }

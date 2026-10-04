@@ -166,6 +166,24 @@ pub fn registry() -> Rc<Vec<Meta>> {
     })
 }
 
+/// The old panel's names for widgets' menus, `ostrov menu NAME` still takes them.
+const ALIASES: &[(&str, &str)] = &[
+    ("system", "session"),
+    ("outs", "volume"),
+    ("ins", "mic"),
+    ("night", "brightness"),
+    ("theme", "wallpaper"),
+];
+
+/// What `ostrov menu NAME` takes, for completion: the widgets (the plugins' too) by name, the old names, "edit".
+pub fn menus() -> Vec<(String, String)> {
+    let own = crate::modules::ALL.iter().flat_map(|m| m.widgets).map(|d| (d.id.to_string(), d.name.to_string()));
+    let mut all: Vec<_> = own.chain(crate::plugins::widgets()).collect();
+    all.extend(ALIASES.iter().map(|(old, key)| (old.to_string(), format!("{key}'s"))));
+    all.push(("edit".into(), "the grid, edited".into()));
+    all
+}
+
 /// A panel: its id, the name and icon its face falls back to, how wide it is, its layout until one is saved;
 /// the control centre's has the Settings and Appearance pages under it.
 pub struct Spec {
@@ -741,14 +759,7 @@ fn fit_band(bx: &gtk4::Widget) {
 
 /// A widget by the name its menu had in the panel before the grid (ostrov menu night), or by its own.
 pub fn alias(name: &str) -> &str {
-    match name {
-        "system" => "session",
-        "outs" => "volume",
-        "ins" => "mic",
-        "night" => "brightness",
-        "theme" => "wallpaper",
-        n => n,
-    }
+    ALIASES.iter().find(|(old, _)| *old == name).map_or(name, |(_, key)| key)
 }
 
 thread_local! {

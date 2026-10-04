@@ -54,7 +54,7 @@ pub struct Manifest {
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct CommandDecl {
     pub name: String,
-    /// its words after the id ("set N"), its name if left out
+    /// its words after the id in forms.rs's grammar ("set N", "mode on|off"), its name if left out
     #[serde(default)]
     pub usage: String,
     #[serde(default)]
@@ -434,10 +434,44 @@ pub fn list() -> String {
 fn usage(m: &Manifest) -> String {
     let mut s = format!("{} ({}): {}", m.id, m.name, m.description);
     for c in &m.commands {
-        let words = format!("ostrov plugin {} {}", m.id, if c.usage.is_empty() { &c.name } else { &c.usage });
+        let words = format!("ostrov plugin {} {}", m.id, c.form());
         s += &format!("\n  {words:<40} {}", c.help);
     }
     s
+}
+
+impl CommandDecl {
+    /// Its words after the plugin's id.
+    fn form(&self) -> &str {
+        if self.usage.is_empty() { &self.name } else { &self.usage }
+    }
+}
+
+/// The plugins for completion: their ids, names, commands' forms with their help (the form itself if none).
+pub fn known() -> Vec<crate::forms::Plugin> {
+    PLUGINS.with(|ps| {
+        let ps = ps.borrow();
+        let commands = |m: &Manifest| -> Vec<(String, String)> {
+            let help = |c: &CommandDecl| if c.help.is_empty() { c.form().to_string() } else { c.help.clone() };
+            m.commands.iter().map(|c| (c.form().to_string(), help(c))).collect()
+        };
+        let known = |m: &Manifest| {
+            crate::forms::Plugin { id: m.id.clone(), name: m.name.clone(), commands: commands(m) }
+        };
+        ps.iter().map(|p| known(&p.m)).collect()
+    })
+}
+
+/// The plugins' widgets, plugin.<id>.<widget>, by name.
+pub fn widgets() -> Vec<(String, String)> {
+    PLUGINS.with(|ps| {
+        let ps = ps.borrow();
+        let each = |p: &Rc<Plugin>| {
+            let m = &p.m;
+            m.widgets.iter().map(|w| (format!("plugin.{}.{}", m.id, w.id), w.name.clone())).collect::<Vec<_>>()
+        };
+        ps.iter().flat_map(each).collect()
+    })
 }
 
 /// Every plugin's commands, under it.
