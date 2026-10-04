@@ -1,5 +1,5 @@
 //! The login screen, greetd's greeter in tuigreet's place: `ostrov greet`, under cage on greetd's vt
-//! (etc/greetd/config.toml). None of the desktop, only the lock screen's look: black, the time large, the date, then
+//! (docs/greetd-config.toml). None of the desktop, only the lock screen's look: black, the time large, the date, then
 //! the user (the last one logged in, else the first human in /etc/passwd), the password, the session (the
 //! .desktop files of wayland-sessions and xsessions, an X one through startx as tuigreet's --xsession-wrapper did)
 //! and the power buttons. The user and the session are remembered in greetd's own cache (STATE), the greeter user

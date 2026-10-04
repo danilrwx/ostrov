@@ -275,8 +275,8 @@ ostrov owns `dev.ostrov.Shell` on the session bus, object `/dev/ostrov/Shell`, i
 | `State() -> s`                | the desktop's state as JSON (`ostrov dump`)                      |
 | `OpenPanel(s menu)`           | the control centre, that widget's menu unfolded (`""` for none)  |
 | `Toast(s title, s body)`      | a notification of ostrov's own (`ostrov toast TITLE BODY`)        |
+| signal `StateChanged(s state)`| the state, whenever it changes                                   |
 
 `Run(["dialog", JSON])` asks a dialog and answers once it is answered (a no is a D-Bus error).
-| signal `StateChanged(s state)`| the state, whenever it changes                                   |
 
     busctl --user call dev.ostrov.Shell /dev/ostrov/Shell dev.ostrov.Shell Run as 2 menu wifi

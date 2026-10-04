@@ -397,17 +397,19 @@ fn own() -> Vec<Entry> {
         icon: icon.into(),
         schema: Schema { sections },
     };
-    let blocks = "workspaces, clock, record, privacy, layout, tray, status";
+    let blocks = "workspaces, window, record, privacy, layout, tray, panel.control (status), panel.calendar (clock), \
+                  panel.ID";
+    // the bar's defaults the ones config.rs takes, so the form shows what an empty file means
+    let bar = crate::config::Bar::default();
     let options = |o: &[(&str, &str)]| -> Vec<Opt> {
         o.iter().map(|(v, l)| Opt::Labeled { value: v.to_string(), label: l.to_string() }).collect()
     };
     vec![
         e("appearance", "Appearance", "preferences-desktop-appearance-symbolic", appearance()),
         e("bar", "Bar", "view-continuous-symbolic", vec![Section::new("bar", "Bar", vec![
-            Field::new("left", "Left", Kind::List).default(["workspaces"].to_vec()).help(blocks),
-            Field::new("center", "Middle", Kind::List).default(["clock"].to_vec()),
-            Field::new("right", "Right", Kind::List)
-                .default(["record", "privacy", "layout", "tray", "status"].to_vec()),
+            Field::new("left", "Left", Kind::List).default(bar.left).help(blocks),
+            Field::new("center", "Middle", Kind::List).default(bar.center),
+            Field::new("right", "Right", Kind::List).default(bar.right),
         ])
         .help("The bar's blocks from left to right; taken at ostrov's start.")]),
         e("idle", "Idle", "preferences-system-time-symbolic", vec![Section::new("idle", "Idle", vec![

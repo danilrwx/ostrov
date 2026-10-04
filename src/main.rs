@@ -268,9 +268,10 @@ fn piped(cl: &gtk4::gio::ApplicationCommandLine) -> Option<async_channel::Receiv
     Some(rx)
 }
 
-/// ssh's askpass (bin/askpass, SSH_ASKPASS): `ostrov askpass [--confirm|--none] PROMPT`, a key's passphrase
-/// asked and printed, or a yes or no to using a key (--confirm: the exit status says it; --none: a word alone).
-/// The asking ostrov waits for the answer: the command line kept until it comes, its status set then.
+/// ssh's askpass (SSH_ASKPASS, a script running `exec ostrov askpass "$@"`): `ostrov askpass [--confirm|--none]
+/// PROMPT`, a key's passphrase asked and printed, or a yes or no to using a key (--confirm: the exit status says it;
+/// --none: a word alone). The asking ostrov waits for the answer: the command line kept until it comes, its status set
+/// then.
 fn askpass(cl: &gtk4::gio::ApplicationCommandLine, args: &[String]) {
     let (secret, text) = match args {
         [flag, rest @ ..] if flag == "--confirm" || flag == "--none" => (false, rest.join(" ")),

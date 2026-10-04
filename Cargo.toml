@@ -2,6 +2,14 @@
 name = "ostrov"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.93"
+description = "A whole desktop shell for Hyprland in one binary: bar, panels, launcher, notifications, lock screen and more"
+license = "MIT"
+repository = "https://github.com/ostrov-shell/ostrov"
+readme = "README.md"
+keywords = ["hyprland", "wayland", "desktop", "shell", "gtk4"]
+categories = ["gui"]
+exclude = ["/.github", "/packaging/arch", "/flake.nix"]
 
 [dependencies]
 async-channel = "2.5.0"
@@ -26,3 +34,32 @@ wayland-protocols = { version = "0.32", features = ["client", "staging"] }
 wayland-protocols-hyprland = { version = "1.2", features = ["client"] }
 wayland-protocols-wlr = { version = "0.3", features = ["client"] }
 zbus = { version = "5", default-features = false, features = ["tokio"] }
+
+# `cargo deb` (cargo-deb): a .deb with the binary, the shells' completions, the lock screen's PAM profile and the
+# docs; the libraries' packages ($auto) found from the binary, the programs it runs named here.
+[package.metadata.deb]
+section = "x11"
+priority = "optional"
+extended-description = """\
+ostrov is a desktop shell for Hyprland: the bar, panels of widgets (Wi-Fi, Bluetooth, sound, power, the \
+calendar...), a launcher, notifications and the OSD, the lock screen, the polkit agent, the clipboard's history, \
+screenshots and screen recording, a window switcher and an overview, the wallpaper and the night light, in one \
+binary."""
+depends = "$auto, pipewire-bin, wireplumber, gstreamer1.0-tools, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good"
+recommends = """\
+hyprland, iwd | network-manager, bluez, upower, power-profiles-daemon, polkitd, gstreamer1.0-plugins-bad, \
+gstreamer1.0-libav, gstreamer1.0-pulseaudio, pipewire-pulse"""
+suggests = "fd-find, unicode-data, gnome-keyring, greetd, cage"
+assets = [
+    ["target/release/ostrov", "usr/bin/", "755"],
+    ["completions/_ostrov", "usr/share/zsh/vendor-completions/", "644"],
+    ["completions/ostrov.bash", "usr/share/bash-completion/completions/ostrov", "644"],
+    ["completions/ostrov.fish", "usr/share/fish/vendor_completions.d/", "644"],
+    ["packaging/pam/ostrov", "etc/pam.d/", "644"],
+    ["README.md", "usr/share/doc/ostrov/", "644"],
+    ["CHANGELOG.md", "usr/share/doc/ostrov/", "644"],
+    ["docs/*", "usr/share/doc/ostrov/", "644"],
+    ["config/example.toml", "usr/share/doc/ostrov/", "644"],
+    ["examples/widgets/*", "usr/share/doc/ostrov/examples/widgets/", "644"],
+    ["wit/ostrov-plugin.wit", "usr/share/doc/ostrov/", "644"],
+]

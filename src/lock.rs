@@ -1,7 +1,7 @@
 //! The lock screen, in the bar's look: black, the time large in the middle, the date under it, the password in a
 //! white-ruled box, a wrong one said in red. Through Wayland's session lock (the compositor shows nothing else
 //! until it lets go, gtk4-session-lock) and ostrov's PAM profile (login's auth). ostrov lock: $mod+Shift+x,
-//! the quick settings' button (loginctl lock-session), swayidle on idle and before sleep (bin/wl-autostart).
+//! the quick settings' button (loginctl lock-session), idle.rs on idle and before sleep.
 
 use std::ffi::{c_char, c_int, c_void, CString};
 use std::rc::Rc;
@@ -23,9 +23,9 @@ impl Lock {
     }
 }
 
-/// Kept while the screen is locked, gone once it is unlocked: an ostrov that died locked leaves it, and the one
-/// started after it (bin/wl-autostart starts it again) locks again at once. Hyprland keeps the session locked
-/// meanwhile and lets the new one take the lock over (misc:allow_session_lock_restore).
+/// Kept while the screen is locked, gone once it is unlocked: an ostrov that died locked leaves it, and the one started
+/// after it (by whatever restarts it: a loop in the session's autostart) locks again at once. Hyprland keeps the
+/// session locked meanwhile and lets the new one take the lock over (misc:allow_session_lock_restore).
 fn marker() -> std::path::PathBuf {
     std::path::PathBuf::from(std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".into())).join("ostrov-locked")
 }
