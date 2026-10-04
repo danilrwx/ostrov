@@ -73,9 +73,9 @@ async fn buses(out: &mut Vec<Line>) {
     if has(&sys, "net.connman.iwd") {
         out.push(('✓', "Wi-Fi: iwd".into()));
     } else if has(&sys, "org.freedesktop.NetworkManager") {
-        out.push(('!', "Wi-Fi: NetworkManager runs, ostrov's Wi-Fi speaks iwd alone for now".into()));
+        out.push(('✓', "Wi-Fi: NetworkManager".into()));
     } else {
-        out.push(('!', "Wi-Fi: no iwd".into()));
+        out.push(('!', "Wi-Fi: neither iwd nor NetworkManager, the Wi-Fi widget is empty".into()));
     }
     for (name, what, cost) in [
         ("org.bluez", "Bluetooth: BlueZ", "the Bluetooth widget is empty"),

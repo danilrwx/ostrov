@@ -1,35 +1,36 @@
-//! Wi-Fi through iwd.
+//! Wi-Fi through iwd, or through NetworkManager (nm.rs) where it runs and iwd does not.
 
 use serde::Serialize;
 use serde_json::Value;
 use zbus::zvariant::{self, OwnedObjectPath, OwnedValue};
 
+use super::nm;
 use crate::services::dbus::{call, err, managed, prop, Objects};
 use crate::services::rfkill;
 use crate::services::{Ctx, Res};
 
-const IWD: &str = "net.connman.iwd";
+pub(super) const IWD: &str = "net.connman.iwd";
 
 /// The passphrase agent's object path on the system bus, ostrov's own.
 const AGENT_PATH: &str = "/dev/ostrov/wifi_agent";
 
 /// A Wi-Fi network iwd has seen: signal in bars, 0 to 4, as iwctl draws them.
 #[derive(Serialize)]
-struct Network {
-    ssid: String,
-    signal: u8,
-    security: String,
-    known: bool,
-    connected: bool,
+pub(super) struct Network {
+    pub(super) ssid: String,
+    pub(super) signal: u8,
+    pub(super) security: String,
+    pub(super) known: bool,
+    pub(super) connected: bool,
 }
 
 /// The radio's state, the network it is on, and the networks in sight, the strongest first.
 #[derive(Serialize)]
-struct Wifi {
-    on: bool,
-    ssid: String,
-    signal: u8,
-    networks: Vec<Network>,
+pub(super) struct Wifi {
+    pub(super) on: bool,
+    pub(super) ssid: String,
+    pub(super) signal: u8,
+    pub(super) networks: Vec<Network>,
 }
 
 /// The path of the first device in station mode, None while the radio is off.
@@ -49,6 +50,9 @@ fn bars(signal: i16) -> u8 {
 }
 
 pub async fn state(c: &Ctx) -> Value {
+    if nm::backs(c).await {
+        return serde_json::to_value(nm::state(c).await).unwrap_or_default();
+    }
     let mut w = Wifi { on: !rfkill::blocked("wlan"), ssid: String::new(), signal: 0, networks: Vec::new() };
     if let Err(e) = networks(c, &mut w).await {
         eprintln!("ostrov: wifi: {e}");
@@ -105,7 +109,15 @@ impl Agent {
     fn cancel(&self, _reason: String) {}
 }
 
+/// A command's stdin as a passphrase: read to its end, a line, "" when only its newline; nothing at all is none.
+pub(super) fn passphrase(input: Option<String>) -> Option<String> {
+    input.filter(|s| !s.is_empty()).map(|s| s.trim_end_matches(['\r', '\n']).to_owned())
+}
+
 pub async fn cmd(c: &Ctx, args: &[&str], input: Option<String>) -> Res {
+    if nm::backs(c).await {
+        return nm::cmd(c, args, passphrase(input)).await;
+    }
     match args {
         [w @ ("on" | "off")] => rfkill::set_blocked(rfkill::WLAN, *w == "off"),
         [w @ ("scan" | "disconnect")] => {
@@ -125,8 +137,7 @@ pub async fn cmd(c: &Ctx, args: &[&str], input: Option<String>) -> Res {
         }
         ["connect", ssid] => {
             let path = network(c, ssid).await?;
-            // stdin read to its end: a line, "" when only its newline; nothing at all is no passphrase
-            let passphrase = input.filter(|s| !s.is_empty()).map(|s| s.trim_end_matches(['\r', '\n']).to_owned());
+            let passphrase = passphrase(input);
             let server = c.system.object_server();
             // the agent of a connect still waiting is replaced, as another ostrov's would stand in for it
             let _ = server.remove::<Agent, _>(AGENT_PATH).await;
