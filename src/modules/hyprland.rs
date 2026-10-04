@@ -54,6 +54,8 @@ pub const KEYS: &[(&str, &str, &str, &str)] = &[
     ("tools", "bind", ", XF86Tools", "settings"),
     ("notifications", "bind", ", XF86NotificationCenter", "calendar"),
     ("display", "bind", ", XF86Display", "menu displays"),
+    // Windows' Project, which a laptop's projection key sends as Super+P
+    ("project", "bind", "SUPER, P", "menu displays"),
 ];
 
 /// The gestures it would have, the user's to add (Hyprland lists none to see whether they are free).

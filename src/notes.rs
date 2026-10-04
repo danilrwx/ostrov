@@ -326,26 +326,37 @@ impl Notes {
             n.actions.iter().filter(|(k, _)| k != "default" && k != "inline-reply").collect();
         // an answer typed right here, for a chat's notification that offers one
         let reply = n.actions.iter().find(|(k, _)| k == "inline-reply").map(|(_, t)| t.clone());
-        if !others.is_empty() {
-            let row = gtk4::FlowBox::new();
-            row.set_selection_mode(gtk4::SelectionMode::None);
+        // the actions in one row, the answer's chip among them; its entry under them while it is typed in
+        if !others.is_empty() || reply.is_some() {
+            let row = crate::ui::chip_flow();
             row.set_margin_top(6);
+            row.add_css_class("note-actions");
             for (key, text) in others {
                 let b = gtk4::Button::with_label(text);
                 b.add_css_class("chip");
                 let (me, id, key) = (self.clone(), n.id, key.clone());
                 b.connect_clicked(move |_| me.invoke(id, &key));
-                row.insert(&b, -1);
+                crate::ui::flow_in(&row, &b);
             }
             card.append(&row);
-        }
-        if let Some(prompt) = reply {
-            card.append(&self.reply_box(n.id, &prompt));
+            if let Some(prompt) = reply {
+                let (chip, line) = self.reply_box(n.id, &prompt);
+                crate::ui::flow_in(&row, &chip);
+                card.append(&line);
+            }
         }
         let click = gtk4::GestureClick::new();
         click.set_button(0);
         let (me, id, default) = (self.clone(), n.id, n.actions.iter().any(|(k, _)| k == "default"));
-        click.connect_released(move |g, _, _, _| {
+        click.connect_released(move |g, _, x, y| {
+            // a click on its actions or its answer theirs, not the card's
+            let mut hit = g.widget().and_then(|w| w.pick(x, y, gtk4::PickFlags::DEFAULT));
+            while let Some(w) = hit {
+                if w.has_css_class("note-actions") || w.has_css_class("note-reply") {
+                    return;
+                }
+                hit = w.parent();
+            }
             if g.current_button() == 1 && default && !history {
                 me.invoke(id, "default");
             } else {
@@ -359,28 +370,26 @@ impl Notes {
 }
 
 impl Notes {
-    /// The answer's chip, unfolding an entry: Enter (or Send) sends what is typed; the toast held up meanwhile.
-    fn reply_box(self: &Rc<Self>, id: u32, prompt: &str) -> gtk4::Box {
-        let bx = gtk4::Box::new(Orientation::Vertical, 4);
-        bx.set_margin_top(6);
+    /// The answer's chip, and the entry it unfolds under the actions: Enter (or Send) sends what is typed; the
+    /// toast held up meanwhile.
+    fn reply_box(self: &Rc<Self>, id: u32, prompt: &str) -> (gtk4::Button, gtk4::Box) {
         let open = gtk4::Button::with_label(if prompt.is_empty() { "Reply" } else { prompt });
         open.add_css_class("chip");
-        open.set_halign(gtk4::Align::Start);
         let line = gtk4::Box::new(Orientation::Horizontal, 6);
+        line.add_css_class("note-reply");
+        line.set_margin_top(6);
         line.set_visible(false);
         let entry = gtk4::Entry::new();
         entry.set_hexpand(true);
-        entry.set_placeholder_text(Some("Reply…"));
-        let send = gtk4::Button::with_label("Send");
+        entry.set_placeholder_text(Some(if prompt.is_empty() { "Reply…" } else { prompt }));
+        let send = gtk4::Button::from_icon_name("mail-send-symbolic");
         send.add_css_class("connect");
         line.append(&entry);
         line.append(&send);
-        bx.append(&open);
-        bx.append(&line);
-        let (me, l, e, o) = (self.clone(), line.clone(), entry.clone(), open.clone());
-        open.connect_clicked(move |_| {
+        let (me, l, e) = (self.clone(), line.clone(), entry.clone());
+        open.connect_clicked(move |o| {
             me.replying.borrow_mut().insert(id);
-            o.set_visible(false);
+            o.set_sensitive(false);
             l.set_visible(true);
             e.grab_focus();
         });
@@ -396,13 +405,7 @@ impl Notes {
         let g = go.clone();
         entry.connect_activate(move |_| g());
         send.connect_clicked(move |_| go());
-        // its clicks its own: not the card's (its default action, its dismissal)
-        let mine = gtk4::GestureClick::new();
-        mine.connect_pressed(|g, _, _, _| {
-            g.set_state(gtk4::EventSequenceState::Claimed);
-        });
-        bx.add_controller(mine);
-        bx
+        (open, line)
     }
 }
 

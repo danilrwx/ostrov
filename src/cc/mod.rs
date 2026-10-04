@@ -402,6 +402,10 @@ impl Panel {
     /// Open with one widget's menu unfolded (ostrov menu wifi: a key to it, or a look without a click); the
     /// old panel's names for theirs still work. "edit" opens it in its editing.
     pub fn open_menu(self: &Rc<Self>, name: &str) {
+        // that menu open already: closed (a key that opens it closes it again)
+        if self.popup.is_open() && name != "edit" && *self.open.borrow() == alias(name) {
+            return self.popup.close();
+        }
         self.popup.open();
         if name == "edit" {
             return self.set_editing(true);
