@@ -1,5 +1,5 @@
 //! The battery, through UPower: its state and its widget; where it stops charging (limit.rs), `ostrov battery
-//! limit N`, and its toggle.
+//! limit N` (`limit install` the udev rule letting it, as root), and its toggle.
 
 pub mod limit;
 pub mod service;
@@ -11,7 +11,7 @@ use crate::services::{signals, Ctx, Kick, Res};
 
 pub const MODULE: Module = Module {
     id: "battery",
-    forms: &["limit PERCENT"],
+    forms: &["limit PERCENT|install"],
     state: Some(state),
     run: Some(run),
     worker: Some(worker),
@@ -37,6 +37,7 @@ fn state(c: &Ctx) -> Fut<'_, serde_json::Value> {
 fn run(_: &Ctx, args: Vec<String>, _: Option<String>) -> Fut<'_, Res> {
     Box::pin(async move {
         match words(&args)[..] {
+            ["limit", "install"] => limit::install().await,
             ["limit", n] => limit::set(n.parse().map_err(|_| MODULE.usage())?),
             _ => Err(MODULE.usage()),
         }

@@ -16,35 +16,41 @@ use crate::ui::{header, setting};
 pub fn page(back: impl Fn() + 'static) -> gtk4::Box {
     let root = gtk4::Box::new(Orientation::Vertical, 6);
     root.append(&header(t("Appearance"), back).0);
-    let body = gtk4::Box::new(Orientation::Vertical, 0);
     let scroll = gtk4::ScrolledWindow::new();
     scroll.set_hscrollbar_policy(gtk4::PolicyType::Never);
     scroll.set_propagate_natural_height(true);
     scroll.set_max_content_height(560);
-    body.add_css_class("page-body");
-    scroll.set_child(Some(&body));
+    scroll.set_child(Some(&body(&[])));
     root.append(&scroll);
-    fill(&body);
+    root
+}
+
+/// The page's body without its header: the themes, the accent, then of the rest of [appearance] the fields keep
+/// names (none: all of them), drawn anew as the config changes. The first run's welcome has it too.
+pub fn body(keep: &'static [&'static str]) -> gtk4::Box {
+    let body = gtk4::Box::new(Orientation::Vertical, 0);
+    body.add_css_class("page-body");
+    fill(&body, keep);
     let b = body.clone();
-    crate::settings::on_outside(move || fill(&b));
+    crate::settings::on_outside(move || fill(&b, keep));
     // a theme installed or removed (its card in or out), or picked by `ostrov theme set`
     let seen = std::cell::RefCell::new(themes());
     let b = body.clone();
     crate::style::on_config(move || {
         if seen.replace(themes()) != *seen.borrow() {
-            fill(&b);
+            fill(&b, keep);
         }
     });
-    root
+    body
 }
 
 /// key of [appearance] set (None: the default again), the page drawn anew once the click that set it is over.
-fn set(body: &gtk4::Box, key: &'static str, v: Option<Value>) {
+fn set(body: &gtk4::Box, keep: &'static [&'static str], key: &'static str, v: Option<Value>) {
     if let Err(e) = crate::settings::write("appearance", key, v.as_ref(), false) {
         eprintln!("ostrov: appearance: {e}");
     }
     let body = body.clone();
-    glib::idle_add_local_once(move || fill(&body));
+    glib::idle_add_local_once(move || fill(&body, keep));
 }
 
 /// The themes' ids in the page's order, and the one picked.
@@ -52,7 +58,7 @@ fn themes() -> (Vec<String>, String) {
     (crate::theme::all().into_iter().map(|t| t.id).collect(), crate::config::load().appearance.theme)
 }
 
-fn fill(body: &gtk4::Box) {
+fn fill(body: &gtk4::Box, keep: &'static [&'static str]) {
     clear(body);
     let a = crate::config::load().appearance;
 
@@ -82,7 +88,7 @@ fn fill(body: &gtk4::Box) {
         card.append(&l);
         b.set_child(Some(&card));
         let body = body.clone();
-        b.connect_clicked(move |_| set(&body, "theme", Some(t.id.clone().into())));
+        b.connect_clicked(move |_| set(&body, keep, "theme", Some(t.id.clone().into())));
         themes.insert(&b, -1);
     }
     body.append(&setting(t("Theme"), "", &themes, true));
@@ -99,7 +105,7 @@ fn fill(body: &gtk4::Box) {
         own.add_css_class("picked");
     }
     let b2 = body.clone();
-    own.connect_clicked(move |_| set(&b2, "accent", None));
+    own.connect_clicked(move |_| set(&b2, keep, "accent", None));
     accents.insert(&own, -1);
     for (i, c) in ACCENTS.iter().enumerate() {
         let b = gtk4::Button::new();
@@ -110,7 +116,7 @@ fn fill(body: &gtk4::Box) {
             b.add_css_class("picked");
         }
         let body = body.clone();
-        b.connect_clicked(move |_| set(&body, "accent", Some((*c).into())));
+        b.connect_clicked(move |_| set(&body, keep, "accent", Some((*c).into())));
         accents.insert(&b, -1);
     }
     // any other colour, through GTK's dialog
@@ -126,11 +132,14 @@ fn fill(body: &gtk4::Box) {
         custom.add_css_class("picked");
     }
     let body2 = body.clone();
-    custom.connect_rgba_notify(move |b| set(&body2, "accent", Some(crate::settings::form::hex(&b.rgba()).into())));
+    custom.connect_rgba_notify(move |b| {
+        set(&body2, keep, "accent", Some(crate::settings::form::hex(&b.rgba()).into()))
+    });
     accents.insert(&custom, -1);
     body.append(&setting(t("Accent"), "", &accents, true));
 
     let mut rest = crate::settings::appearance().remove(0);
-    rest.fields.retain(|f| f.key != "theme" && f.key != "accent");
+    let kept = |k: &str| k != "theme" && k != "accent" && (keep.is_empty() || keep.contains(&k));
+    rest.fields.retain(|f| kept(&f.key));
     body.append(&crate::settings::form::section(&rest));
 }

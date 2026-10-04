@@ -19,7 +19,10 @@ pub const MODULE: Module = Module { id: "hyprland", worker: Some(worker), ..Modu
 
 /// Its layers' rules, as layerrule lines.
 const RULES: &[&str] = &[
-    "blur on, ignore_alpha 0.2, xray on, match:namespace ^(ostrov-toast|ostrov-osd|ostrov-prompt|ostrov-switcher|ostrov-overview)$",
+    concat!(
+        "blur on, ignore_alpha 0.2, xray on, ",
+        "match:namespace ^(ostrov-toast|ostrov-osd|ostrov-prompt|ostrov-welcome|ostrov-switcher|ostrov-overview)$"
+    ),
     "no_anim on, match:namespace ^(ostrov-switcher|ostrov-overview)$",
 ];
 
@@ -90,7 +93,7 @@ fn mask(mods: &str) -> u64 {
 }
 
 /// The combination a key of its is at, as [hyprland.keys] says or its own.
-fn combo(name: &str, own: &str) -> String {
+pub fn combo(name: &str, own: &str) -> String {
     crate::config::load().hyprland.keys.get(name).cloned().unwrap_or(own.into())
 }
 

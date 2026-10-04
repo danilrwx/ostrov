@@ -32,7 +32,7 @@ use crate::i18n::t;
 use crate::popup::{Popup, Side};
 use crate::style::{clear, label};
 
-mod appearance;
+pub mod appearance;
 mod bar_editor;
 pub mod grid;
 

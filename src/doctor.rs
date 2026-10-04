@@ -121,9 +121,8 @@ fn programs(out: &mut Vec<Line>) {
     }
     let limit = crate::modules::battery::limit::state();
     if !limit.is_null() && limit["writable"] != true {
-        out.push(('·', fill(t("charge limit: the thresholds are root's; to set them: {}"), &[&"sudo cp \
-            packaging/udev/90-ostrov-battery.rules /etc/udev/rules.d/ && sudo udevadm trigger \
-            --subsystem-match=power_supply"])));
+        let text = "charge limit: the thresholds are root's; to let ostrov set them, run: ostrov battery limit install";
+        out.push(('·', t(text).into()));
     }
     match crate::greet::stale() {
         Some(true) => out.push(('!', t("login screen: /usr/local/bin/ostrov is another build than this one; \

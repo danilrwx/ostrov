@@ -26,7 +26,7 @@
 "an output in another of a card's profiles not switched to" = "не переключается на выход из другого профиля звуковой карты"
 "no screen recording" = "нет записи экрана"
 "the lock button does nothing" = "кнопка блокировки не работает"
-"charge limit: the thresholds are root's; to set them: {}" = "предел заряда: пороги доступны только root; чтобы задавать их: {}"
+"charge limit: the thresholds are root's; to let ostrov set them, run: ostrov battery limit install" = "предел заряда: пороги доступны только root; чтобы ostrov задавал их, выполните: ostrov battery limit install"
 "PAM: no /etc/pam.d/ostrov, the lock screen checks passwords as login does" = "PAM: нет /etc/pam.d/ostrov, экран блокировки проверяет пароль как login"
 "{} thing missing" = "{} проблема"
 "{} things missing|few" = "{} проблемы"

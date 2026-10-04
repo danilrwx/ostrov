@@ -39,6 +39,7 @@ mod switcher;
 mod theme;
 mod ui;
 mod wallpaper;
+mod welcome;
 mod widgets;
 mod wm;
 
@@ -64,7 +65,7 @@ const FORMS: &[&str] = &[
     "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
     "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID",
     "theme list", "theme set ID", "theme install PATH|GIT-URL", "theme remove ID",
-    "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor", "greeter update",
+    "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor", "greeter update", "welcome",
 ];
 
 fn usage() -> String {
@@ -125,6 +126,8 @@ fn activate(app: &gtk4::Application) {
     keys::battery(&hub, &notes, &prompts);
     let keys = keys::Keys::new(&hub, &notes);
     PROMPTS.with(|p| *p.borrow_mut() = Some(prompts));
+    let welcome = welcome::Welcome::new(app);
+    welcome.first_run();
 
     // ostrov ARGS, from a key or a script, handed over to this ostrov by GApplication
     COMMAND.with(|c| {
@@ -149,6 +152,7 @@ fn activate(app: &gtk4::Application) {
                 ["clip"] => launcher.toggle(true),
                 ["lock"] => lock.lock(),
                 ["restart"] => restart(),
+                ["welcome"] => welcome.open(),
                 ["hyprland"] => return Ok(modules::hyprland::conf()),
                 ["screenshot"] => shot.take(),
                 ["awake"] => idle::set_awake(!idle::awake()),

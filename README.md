@@ -238,6 +238,7 @@ ostrov's own:
     ostrov dump                        the desktop's state as JSON
     ostrov hyprland                    the hyprland.conf lines for what ostrov sets itself
     ostrov doctor                      what ostrov finds of what it works with
+    ostrov welcome                     the first run's welcome again
     ostrov restart                     ostrov started again in place
     ostrov plugins                     the plugins found
     ostrov plugin [ID] [ARGS...]       a plugin's command, or its help
