@@ -88,12 +88,6 @@ user = ""
 password_command = ""   # e.g. "secret-tool lookup service caldav"
 ics = []                # .ics and webcal:// links
 
-# Games played in a power profile of their own: while a window of one of these classes has the focus (a trailing *
-# a prefix), the power profile is this one, the previous one put back as the focus leaves.
-[games]
-classes = [] # none unless said, e.g. ["dota2", "cs2", "steam_app_*"]
-profile = "performance" # performance, balanced, power-saver
-
 # The launcher's web search, `s words` in it: the engine's URL, {} the words escaped.
 [launcher]
 search = "https://duckduckgo.com/?q={}"
@@ -102,6 +96,7 @@ search = "https://duckduckgo.com/?q={}"
 # through all the same.
 [notifications]
 quiet_in_games = true
+games = []               # window classes, a trailing * a prefix: ["dota2", "cs2", "steam_app_*"]
 quiet_from = ""          # a time of day, 23:00; "" never
 quiet_to = ""            # 08:00
 allow = []               # ["Telegram Desktop"]

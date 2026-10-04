@@ -403,9 +403,6 @@ fn own() -> Vec<Entry> {
                   panel.ID";
     // the bar's defaults the ones config.rs takes, so the form shows what an empty file means
     let bar = crate::config::Bar::default();
-    let options = |o: &[(&str, &str)]| -> Vec<Opt> {
-        o.iter().map(|(v, l)| Opt::Labeled { value: v.to_string(), label: l.to_string() }).collect()
-    };
     vec![
         e("appearance", "Appearance", "preferences-desktop-appearance-symbolic", appearance()),
         e("bar", "Bar", "view-continuous-symbolic", vec![Section::new("bar", "Bar", vec![
@@ -432,25 +429,15 @@ fn own() -> Vec<Entry> {
                 .help("Prints the password when the keyring has none: secret-tool lookup service caldav"),
             Field::new("ics", "Shared calendars", Kind::List).help(".ics and webcal:// links."),
         ])]),
-        e("games", "Games", "input-gaming-symbolic", vec![Section::new("games", "Games", vec![
-            Field::new("classes", "Window classes", Kind::List)
-                .help("Their windows focused, the power profile below; a trailing * a prefix: dota2, cs2, steam_app_*."),
-            Field::new("profile", "Power profile", Kind::Choice {
-                options: options(&[
-                    ("performance", "Performance"),
-                    ("balanced", "Balanced"),
-                    ("power-saver", "Power Saver"),
-                ]),
-            })
-            .default("performance"),
-        ])]),
         e("notifications", "Notifications", "preferences-system-notifications-symbolic", vec![Section::new(
             "notifications",
             "Notifications",
             vec![
                 Field::new("quiet_in_games", "Quiet in games", Kind::Bool)
                     .default(true)
-                    .help("Their toasts kept back while a game of [games] has the focus."),
+                    .help("Their toasts kept back while a game below has the focus."),
+                Field::new("games", "Games", Kind::List)
+                    .help("Window classes, a trailing * a prefix: dota2, steam_app_*. The Games plugin has its own."),
                 Field::new("quiet_from", "Quiet from", Kind::String)
                     .default("")
                     .help("A time of day, 23:00; empty: never."),

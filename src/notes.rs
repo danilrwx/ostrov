@@ -201,7 +201,7 @@ impl Notes {
         let cfg = crate::config::load();
         let n = &cfg.notifications;
         *self.dnd.borrow()
-            || n.quiet_in_games && crate::modules::games::service::is_game(&self.focused.borrow(), &cfg.games.classes)
+            || n.quiet_in_games && is_game(&self.focused.borrow(), &n.games)
             || quiet_hours(&n.quiet_from, &n.quiet_to)
     }
 
@@ -427,6 +427,14 @@ impl Notes {
     }
 }
 
+/// A window's class one of the games ([notifications] games): equal, or a prefix before a trailing *.
+fn is_game(class: &str, games: &[String]) -> bool {
+    games.iter().any(|g| match g.strip_suffix('*') {
+        Some(prefix) => class.starts_with(prefix),
+        None => class == g,
+    })
+}
+
 /// Whether now is between from and to ("23:00", "08:00"; over midnight when from is the later), neither empty.
 fn quiet_hours(from: &str, to: &str) -> bool {
     let min = |t: &str| {
@@ -445,6 +453,15 @@ fn within(now: u32, from: u32, to: u32) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn is_game() {
+        let games = ["dota2".to_string(), "steam_app_*".to_string()];
+        assert!(super::is_game("dota2", &games));
+        assert!(super::is_game("steam_app_570", &games));
+        assert!(!super::is_game("dota", &games));
+        assert!(!super::is_game("Alacritty", &games));
+    }
+
     #[test]
     fn quiet_hours_over_midnight() {
         use super::within;

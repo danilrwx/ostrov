@@ -411,7 +411,7 @@ fn secret(key: &str, f: &Field, err: &gtk4::Label) -> gtk4::PasswordEntry {
 /// The groups of the Settings list, by an entry's id.
 fn group(id: &str) -> &'static str {
     match id {
-        "appearance" | "bar" | "idle" | "calendar" | "games" | "launcher" | "notifications" => "ostrov",
+        "appearance" | "bar" | "idle" | "calendar" | "launcher" | "notifications" => "ostrov",
         id if id.starts_with("widget.") => "Widgets",
         _ => "Plugins",
     }

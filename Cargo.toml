@@ -70,6 +70,9 @@ assets = [
     ["config/example.toml", "usr/share/doc/ostrov/", "644"],
     ["examples/widgets/*", "usr/share/doc/ostrov/examples/widgets/", "644"],
     ["wit/ostrov-plugin.wit", "usr/share/doc/ostrov/", "644"],
+    ["target/release/ostrov-plugin-games", "usr/bin/", "755"],
+    ["plugins/games/manifest.toml", "usr/share/ostrov/plugins/games/", "644"],
+    ["plugins/games/i18n/*", "usr/share/ostrov/plugins/games/i18n/", "644"],
     # the official plugins, each so (hello, the SDK's example, is not one):
     # ["target/release/ostrov-plugin-ID", "usr/bin/", "755"],
     # ["plugins/ID/manifest.toml", "usr/share/ostrov/plugins/ID/", "644"],

@@ -1,0 +1,11 @@
+# Games played in a power profile of their own, gamemode's work without it: while a window of one of its classes
+# has the focus, power-profiles-daemon's profile is its own, the one before put back as the focus leaves
+id = "games"
+name = "Games"
+version = "0.1.0"
+api = 1
+exec = "ostrov-plugin-games"
+icon = "input-gaming-symbolic"
+description = "The performance power profile while a game has the focus."
+permissions = ["events"]
+events = ["window"]

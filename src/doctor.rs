@@ -91,7 +91,7 @@ async fn buses(out: &mut Vec<Line>) {
     }
     for (name, what, cost) in [
         ("org.bluez", "Bluetooth: BlueZ", "the Bluetooth widget is empty"),
-        ("net.hadess.PowerProfiles", "power profiles: power-profiles-daemon", "no Power Mode, no games' profile"),
+        ("net.hadess.PowerProfiles", "power profiles: power-profiles-daemon", "no Power Mode"),
         ("org.freedesktop.UPower", "battery: UPower", "no battery"),
         ("org.freedesktop.login1", "session: logind", "no brightness, no idle's lock before sleep"),
         ("org.freedesktop.PolicyKit1", "polkit", "no polkit agent"),

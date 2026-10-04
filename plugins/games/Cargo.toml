@@ -1,0 +1,11 @@
+[package]
+name = "ostrov-plugin-games"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+description = "ostrov's games mode: the performance power profile while a game has the focus"
+license = "MIT"
+publish = false
+
+[dependencies]
+ostrov-plugin = { path = "../../sdk" }

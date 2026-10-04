@@ -456,6 +456,25 @@ It starts as the config is saved (its widgets join the gallery after `ostrov res
 stops it again. `ostrov plugins` lists the official plugins found, `"official": true`, those off with
 `"enabled": false`. `ostrov plugin remove` leaves an official plugin be, saying how to turn it off.
 
+### games
+
+While a window of one of its `classes` has the focus (a trailing `*` a prefix: `steam_app_*` any of Steam's), the
+power profile is its `profile` (`performance` by default), set with `powerprofilesctl` (power-profiles-daemon); the
+one before is put back as the focus leaves, unless it was picked by hand while the game played. It follows the
+`window` event; no widget, no command. ostrov's old `[games]` section is these keys: move them to
+`[plugin.games]` beside `enabled = true`. Notifications keep quiet in games by a list of their own,
+`[notifications] games`, the same globs; copy the classes there too to keep that.
+
+```toml
+[plugin.games]
+enabled = true
+classes = ["dota2", "cs2", "steam_app_*"]
+profile = "performance"   # performance, balanced, power-saver
+
+[notifications]
+games = ["dota2", "cs2", "steam_app_*"]
+```
+
 ## D-Bus
 
 ostrov owns `dev.ostrov.Shell` on the session bus, object `/dev/ostrov/Shell`, interface `dev.ostrov.Shell`:

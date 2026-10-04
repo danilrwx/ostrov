@@ -53,7 +53,7 @@ Services and programs, each optional; what a missing one costs is said by `ostro
 | iwd **or** NetworkManager | Wi-Fi |
 | BlueZ | Bluetooth |
 | UPower | the battery |
-| power-profiles-daemon | power modes, the games' profile |
+| power-profiles-daemon (`powerprofilesctl` for the games plugin) | power modes, the games' profile |
 | systemd-logind | brightness, lock before sleep, `loginctl lock-session` |
 | polkit with its agent helper's socket, `/run/polkit/agent-helper.socket` (recent polkit under systemd) | the polkit agent |
 | GStreamer: `gst-launch-1.0`, plugins base and good; `vah264enc` (va) or `openh264enc` (bad); `avenc_aac` (libav) and `pulsesrc` (pipewire-pulse) for audio | screen recording |
@@ -150,8 +150,8 @@ Everything lives under `~/.config/ostrov/`; every key has a default, so no file 
   file is saved.
 - `[hyprland]`, `[hyprland.keys]`: what ostrov puts into Hyprland, and keys moved.
 - `[calendar]`: a CalDAV account and .ics links.
-- `[games]`: window classes played in the performance power profile.
 - `[launcher]`: the web search's engine (`search`, {} the query; DuckDuckGo's by default).
+- `[notifications]`: when toasts keep back: a game focused (`games`, window classes), quiet hours, apps let through.
 - `[panels.ID]`: panels of your own.
 - `[widget.ID]`, `[plugin.ID]`: a widget's or a plugin's own settings.
 

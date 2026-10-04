@@ -1,0 +1,11 @@
+# Russian: "English" = "Русский"
+"Games" = "Игры"
+"Window classes" = "Классы окон"
+"Their windows focused, the power profile below; a trailing * a prefix: dota2, cs2, steam_app_*." = "Пока такое окно в фокусе, действует профиль питания ниже; * в конце — префикс: dota2, cs2, steam_app_*."
+"Power profile" = "Профиль питания"
+"Performance" = "Производительность"
+"Balanced" = "Баланс"
+"Power Saver" = "Энергосбережение"
+
+# its manifest's, translated by ostrov
+"The performance power profile while a game has the focus." = "Профиль производительности, пока игра в фокусе."

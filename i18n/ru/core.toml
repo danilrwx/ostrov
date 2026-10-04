@@ -15,7 +15,7 @@
 "session: logind" = "сеанс: logind"
 "{} missing: {}" = "{} отсутствует: {}"
 "the Bluetooth widget is empty" = "виджет Bluetooth пуст"
-"no Power Mode, no games' profile" = "нет режима питания и игрового профиля"
+"no Power Mode" = "нет режима питания"
 "no battery" = "нет батареи"
 "no brightness, no idle's lock before sleep" = "нет яркости и блокировки перед сном"
 "no polkit agent" = "нет агента polkit"

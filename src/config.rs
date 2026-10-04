@@ -24,10 +24,6 @@
 //!     [launcher]          # the launcher's web search (s words), {} the query
 //!     search = "https://duckduckgo.com/?q={}"
 //!
-//!     [games]             # their windows focused, the power profile theirs (services/games.rs)
-//!     classes = ["dota2", "cs2", "steam_app_*"]
-//!     profile = "performance"
-//!
 //!     [appearance]        # the look (style.rs), taken as the file is saved; the control centre's Appearance
 //!     theme = "dark"      # dark, light, graphite, nord, solarized, or an installed one (theme.rs)
 //!     accent = "#5e81ac"  # "" the theme's own
@@ -103,26 +99,14 @@ impl Default for Idle {
     }
 }
 
-/// The games (window classes; a trailing * a prefix) played in a power profile of their own (services/games.rs).
-#[derive(Deserialize)]
-#[serde(default)]
-pub struct Games {
-    pub classes: Vec<String>,
-    pub profile: String,
-}
-
-impl Default for Games {
-    fn default() -> Games {
-        Games { classes: Vec::new(), profile: "performance".into() }
-    }
-}
-
-/// When the notifications keep quiet (their toasts back, the history kept): while a game has the focus, between
-/// two times of day ("23:00", "08:00"; empty, never), and the apps let through all the same.
+/// When the notifications keep quiet (their toasts back, the history kept): while a game has the focus (its window's
+/// class one of games, a trailing * a prefix), between two times of day ("23:00", "08:00"; empty, never), and the
+/// apps let through all the same. The games plugin's classes are a list of its own.
 #[derive(Deserialize)]
 #[serde(default)]
 pub struct Notifications {
     pub quiet_in_games: bool,
+    pub games: Vec<String>,
     pub quiet_from: String,
     pub quiet_to: String,
     pub allow: Vec<String>,
@@ -130,7 +114,13 @@ pub struct Notifications {
 
 impl Default for Notifications {
     fn default() -> Notifications {
-        Notifications { quiet_in_games: true, quiet_from: String::new(), quiet_to: String::new(), allow: Vec::new() }
+        Notifications {
+            quiet_in_games: true,
+            games: Vec::new(),
+            quiet_from: String::new(),
+            quiet_to: String::new(),
+            allow: Vec::new(),
+        }
     }
 }
 
@@ -237,7 +227,6 @@ pub struct Config {
     pub idle: Idle,
     pub colors: BTreeMap<String, String>,
     pub calendar: Calendar,
-    pub games: Games,
     pub launcher: Launcher,
     pub notifications: Notifications,
     pub appearance: Appearance,
@@ -312,7 +301,7 @@ mod tests {
         assert_eq!(c.bar.monitors, d.bar.monitors);
         assert_eq!((c.idle.lock, c.idle.screens_off), (d.idle.lock, d.idle.screens_off));
         assert_eq!((c.appearance.theme, c.appearance.opacity, c.appearance.radius), (d.appearance.theme, 0.75, None));
-        assert_eq!((c.games.classes, c.games.profile), (d.games.classes, d.games.profile));
+        assert_eq!(c.notifications.games, d.notifications.games);
         assert_eq!(c.launcher.search, d.launcher.search);
         assert!(c.hyprland.rules && c.hyprland.binds && c.hyprland.keys.is_empty() && c.panels.is_empty());
     }
