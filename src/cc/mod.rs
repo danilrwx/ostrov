@@ -30,6 +30,7 @@ use crate::popup::{Popup, Side};
 use crate::style::{clear, label};
 
 mod appearance;
+mod bar_editor;
 pub mod grid;
 
 use grid::{Item, COLS};
@@ -368,7 +369,7 @@ impl Panel {
         if let Some(s) = self.settings.as_ref().filter(|_| page == "settings") {
             s.show(entry);
         }
-        if !(page == "settings" && entry == Some("appearance")) {
+        if !(page == "settings" && matches!(entry, Some("appearance" | "bar"))) {
             self.pages.set_visible_child_full(page, gtk4::StackTransitionType::None);
         }
     }
@@ -818,13 +819,16 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
 
     let settings = spec.pages.then(|| {
         let (pg, pg2) = (pages.clone(), pages.clone());
+        // the Appearance and the bar's entries their own pages, not forms
         let settings = crate::settings::form::Page::new(
             move || pg.set_visible_child_name("grid"),
-            move |id| id == "appearance" && { pg2.set_visible_child_name("appearance"); true },
+            move |id| (id == "appearance" || id == "bar") && { pg2.set_visible_child_name(id); true },
         );
         pages.add_named(&settings.root, Some("settings"));
         let pg = pages.clone();
         pages.add_named(&appearance::page(move || pg.set_visible_child_name("grid")), Some("appearance"));
+        let pg = pages.clone();
+        pages.add_named(&bar_editor::page(move || pg.set_visible_child_name("settings")), Some("bar"));
         settings
     });
 

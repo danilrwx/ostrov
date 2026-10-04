@@ -49,7 +49,7 @@ thread_local! {
     static PROMPTS: std::cell::RefCell<Option<Rc<prompt::Prompts>>> = Default::default();
 }
 
-const USAGE: &str = "usage: ostrov [panel | menu NAME | settings [SECTION] | appearance | calendar | run | ask QUESTION | clip | windows [app] | overview [close] | lock | key NAME | awake | screenshot | \
+const USAGE: &str = "usage: ostrov [panel | menu NAME | settings [SECTION] | appearance | calendar | run | ask QUESTION | clip | windows [app] | overview [close] | lock | restart | key NAME | awake | screenshot | \
 capture FILE | record [--audio] | bar toggle|peek|unpeek | state | dump | toast TITLE [BODY] | dialog JSON | plugins | plugin [ID [ARGS]] | help | BLOCK ARGS | MODULE ARGS]";
 
 fn activate(app: &gtk4::Application) {
@@ -138,6 +138,7 @@ fn activate(app: &gtk4::Application) {
                 }
                 ["clip"] => launcher.toggle(true),
                 ["lock"] => lock.lock(),
+                ["restart"] => restart(),
                 ["screenshot"] => shot.take(),
                 ["awake"] => idle::set_awake(!idle::awake()),
                 ["capture", path] => shot::capture(path.to_string()),
@@ -210,6 +211,15 @@ fn command(args: &[String], input: Option<String>) -> Reply {
     }
     let r = COMMAND.with(|c| c.borrow().as_ref().map(|f| f(args))).unwrap_or(Err("ostrov is starting".into()));
     Box::pin(std::future::ready(r))
+}
+
+/// ostrov started again in its own place (its pid, its stdout, its environment): the binary at its path now (a
+/// new build installed), its config read anew. Locked, it locks again at once (lock.rs).
+pub fn restart() {
+    use std::os::unix::process::CommandExt;
+    let me = std::env::args_os().next().unwrap_or_else(|| "ostrov".into());
+    let e = std::process::Command::new(me).exec();
+    eprintln!("ostrov: restart: {e}");
 }
 
 /// The questions ostrov puts, once built.
