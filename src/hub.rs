@@ -43,12 +43,42 @@ impl Hub {
         self.subs.borrow_mut().push(Box::new(f));
     }
 
-    fn set(&self, v: Value) {
+    fn set(&self, mut v: Value) {
+        if let Some(d) = demo() {
+            merge(&mut v, d);
+        }
         *self.state.borrow_mut() = v;
         let st = self.state.borrow().clone();
         for f in self.subs.borrow().iter() {
             f(&st);
         }
+    }
+}
+
+/// OSTROV_DEMO, a JSON file whose object is laid over every state the services send: made-up networks, devices,
+/// battery and music in place of the machine's, for screenshots that show nothing of it (docs/screenshots/make.sh).
+/// Read once; a file that does not read is said on stderr and ignored.
+fn demo() -> Option<&'static Value> {
+    static DEMO: std::sync::OnceLock<Option<Value>> = std::sync::OnceLock::new();
+    DEMO.get_or_init(|| {
+        let path = std::env::var_os("OSTROV_DEMO")?;
+        let read = std::fs::read(&path).map_err(|e| e.to_string());
+        read.and_then(|b| serde_json::from_slice(&b).map_err(|e| e.to_string()))
+            .map_err(|e| eprintln!("ostrov: OSTROV_DEMO: {e}"))
+            .ok()
+    })
+    .as_ref()
+}
+
+/// over laid onto into: objects merged key by key, anything else (arrays too) replacing what was there.
+fn merge(into: &mut Value, over: &Value) {
+    match (into, over) {
+        (Value::Object(a), Value::Object(b)) => {
+            for (k, v) in b {
+                merge(a.entry(k.clone()).or_insert(Value::Null), v);
+            }
+        }
+        (a, b) => *a = b.clone(),
     }
 }
 
@@ -115,4 +145,19 @@ pub fn service(args: &[&str]) {
 /// A value of the state as text, "" when missing.
 pub fn s<'a>(v: &'a Value, path: &[&str]) -> &'a str {
     path.iter().fold(v, |v, k| &v[*k]).as_str().unwrap_or("")
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    #[test]
+    fn merge_lays_objects_over_and_replaces_the_rest() {
+        let mut v = json!({"wifi": {"on": false, "networks": [1, 2, 3]}, "battery": {"percent": 40}});
+        super::merge(&mut v, &json!({"wifi": {"networks": ["Home"]}, "media": {"title": "Song"}}));
+        assert_eq!(
+            v,
+            json!({"wifi": {"on": false, "networks": ["Home"]}, "battery": {"percent": 40}, "media": {"title": "Song"}})
+        );
+    }
 }

@@ -50,8 +50,8 @@ priority = "optional"
 extended-description = """\
 ostrov is a desktop shell for Hyprland: the bar, panels of widgets (Wi-Fi, Bluetooth, sound, power, the \
 calendar...), a launcher, notifications and the OSD, the lock screen, the polkit agent, the clipboard's history, \
-screenshots and screen recording, a window switcher and an overview, the wallpaper and the night light, in one \
-binary."""
+screenshots, the wallpaper, and official plugins for screen recording, the night light, CalDAV calendars and \
+displays, in one binary."""
 depends = "$auto, pipewire-bin, wireplumber"
 recommends = """\
 hyprland, iwd | network-manager, bluez, upower, power-profiles-daemon, polkitd, wf-recorder, wl-clipboard, udisks2"""

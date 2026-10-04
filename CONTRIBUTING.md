@@ -37,6 +37,26 @@ build beside your own ostrov without stopping it by giving it another applicatio
   than as a module.
 - `src/services/`: the runtime and the shared D-Bus, rfkill and location helpers.
 
+## Screenshots
+
+The README's screenshots are made by `docs/screenshots/make.sh`, so they can be made again as ostrov changes and
+show nothing of anyone's machine:
+
+    cargo build --release --workspace
+    docs/screenshots/make.sh
+
+It needs sway (run headless, nothing shows on your screen), `dbus-run-session` and python3 with PIL. It builds a
+sandbox in a temporary directory, its own HOME, runtime directory and session bus, a few made-up apps, the plugin
+caldav reading a calendar served from 127.0.0.1, and a wallpaper it draws; starts ostrov in a headless sway, sends
+a few `ostrov toast`s, opens each view (`ostrov menu wifi`, `calendar`, `run`, `menu edit`, `appearance` in the
+light theme, `welcome`, `lock`), captures it with `ostrov capture`, and crops the PNGs into `docs/screenshots/`.
+`KEEP=1` leaves the sandbox behind, its raw captures and logs in it.
+
+What the system would say (networks, devices, the battery, the player, the weather) comes from
+`docs/screenshots/demo.json`: `OSTROV_DEMO=FILE` makes ostrov lay that JSON object over every state its services
+publish (`src/hub.rs`), objects merged key by key, anything else replaced. Its keys are those of `ostrov dump`.
+It is for screenshots only; the services still run underneath, and a command still acts on the real system.
+
 ## Commits
 
 One change per commit, its message `ostrov: <what changed>`, in the style of the log.

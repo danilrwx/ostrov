@@ -1,0 +1,47 @@
+{
+  "audio": {
+    "volume": 0.62, "muted": false, "mic": 0.7, "micMuted": false, "headset": "",
+    "camApps": [], "micApps": [],
+    "sinks": [{"def": true, "id": 1, "name": "Headphones"}, {"def": false, "id": 2, "name": "Speakers"}],
+    "sources": [{"def": true, "id": 3, "name": "Microphone"}],
+    "streams": [{"bin": "music", "icon": "audio-x-generic", "id": 4, "name": "Music", "volume": 0.8}]
+  },
+  "battery": {
+    "icon": "battery-level-70-symbolic", "percent": 76, "present": true, "state": "discharging",
+    "toEmpty": 18900, "toFull": 0, "limit": {"start": 0, "end": 100, "writable": false}
+  },
+  "brightness": 64,
+  "bt": {
+    "on": true, "discovering": false, "connected": "Headphones",
+    "devices": [
+      {"address": "00:11:22:33:44:01", "connected": true, "icon": "audio-headphones", "name": "Headphones", "paired": true},
+      {"address": "00:11:22:33:44:02", "connected": false, "icon": "input-keyboard", "name": "Keyboard", "paired": true}
+    ]
+  },
+  "keymap": "English (US)",
+  "media": {
+    "name": "org.mpris.MediaPlayer2.demo", "identity": "Music", "title": "Song", "artist": "Artist", "art": "@COVER@",
+    "playing": true, "position": 0, "length": 214000000, "canPrev": true, "canNext": true, "canPlay": true
+  },
+  "power": {"active": "balanced", "profiles": ["power-saver", "balanced", "performance"]},
+  "weather": {
+    "place": "Lisbon", "temp": 21, "icon": "weather-few-clouds-symbolic", "text": "Partly cloudy", "high": 24,
+    "low": 16, "at": "14:00", "wind": 3.2,
+    "hours": [
+      {"time": "15:00", "temp": 22, "icon": "weather-few-clouds-symbolic"},
+      {"time": "17:00", "temp": 21, "icon": "weather-clear-symbolic"},
+      {"time": "19:00", "temp": 19, "icon": "weather-clear-symbolic"},
+      {"time": "21:00", "temp": 17, "icon": "weather-clear-night-symbolic"},
+      {"time": "23:00", "temp": 16, "icon": "weather-few-clouds-night-symbolic"},
+      {"time": "01:00", "temp": 16, "icon": "weather-overcast-symbolic"}
+    ]
+  },
+  "wifi": {
+    "on": true, "ssid": "Home", "signal": 4,
+    "networks": [
+      {"connected": true, "known": true, "security": "psk", "signal": 4, "ssid": "Home"},
+      {"connected": false, "known": true, "security": "psk", "signal": 3, "ssid": "Office"},
+      {"connected": false, "known": false, "security": "open", "signal": 2, "ssid": "Café"}
+    ]
+  }
+}
