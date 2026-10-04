@@ -170,6 +170,17 @@ impl Live {
         self.listening.borrow_mut().drain(..).for_each(|p| p.force_exit());
         for s in self.decl.borrow().sources.clone() {
             let me = self.clone();
+            // an event's last payload, followed while this generation of its sources lasts
+            if let Some(on) = s.event.clone() {
+                let me = Rc::downgrade(self);
+                crate::events::on(move |name, payload| {
+                    let Some(me) = me.upgrade().filter(|m| m.generation.get() == generation) else { return };
+                    if name == on {
+                        me.set(&s.name, payload.clone());
+                    }
+                });
+                continue;
+            }
             match s.every {
                 Some(_) => glib::spawn_future_local(async move { me.poll(&s.name, generation).await }),
                 None => glib::spawn_future_local(async move { me.listen(&s.name, generation).await }),

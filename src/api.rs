@@ -1,7 +1,8 @@
 //! ostrov's face on the session bus, dev.ostrov.Shell at /dev/ostrov/Shell (docs/plugins.md): Run(as) -> s,
 //! `ostrov ARGS`'s own commands and outcome; State() -> s, the services' state as JSON (ostrov dump); the
 //! StateChanged(s) signal as it changes; OpenPanel(s), the control centre with that widget's menu unfolded ("" for
-//! none); Toast(s, s), a notification of ostrov's own. The server runs in a Tokio thread of its own, the commands
+//! none); Toast(s, s), a notification of ostrov's own; the Event(s, s) signal, every event of events.rs's (its
+//! name, its payload as JSON). The server runs in a Tokio thread of its own, the commands
 //! on GTK's, through main.rs's one dispatch. Nothing if the name is taken (another ostrov has it).
 
 use std::rc::Rc;
@@ -52,16 +53,23 @@ impl Shell {
 
     #[zbus(signal)]
     async fn state_changed(e: &SignalEmitter<'_>, state: String) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn event(e: &SignalEmitter<'_>, name: String, payload: String) -> zbus::Result<()>;
 }
 
 /// The server started, the hub's every state signalled.
 pub fn start(hub: &Rc<Hub>) {
     let (calls, asked) = async_channel::unbounded::<Call>();
-    let (states, changed) = async_channel::unbounded::<String>();
+    let (states, changed) = async_channel::unbounded::<Signal>();
+    let s2 = states.clone();
     hub.on(move |st| {
         if !st.is_null() {
-            let _ = states.send_blocking(st.to_string());
+            let _ = s2.send_blocking(Signal::State(st.to_string()));
         }
+    });
+    crate::events::on(move |name, payload| {
+        let _ = states.send_blocking(Signal::Event(name.into(), payload.to_string()));
     });
     std::thread::spawn(move || serve(calls, changed));
     glib::spawn_future_local(async move {
@@ -74,7 +82,13 @@ pub fn start(hub: &Rc<Hub>) {
     });
 }
 
-fn serve(calls: async_channel::Sender<Call>, changed: async_channel::Receiver<String>) {
+/// What goes out as a signal: a new state, an event.
+enum Signal {
+    State(String),
+    Event(String, String),
+}
+
+fn serve(calls: async_channel::Sender<Call>, changed: async_channel::Receiver<Signal>) {
     let rt = match tokio::runtime::Builder::new_multi_thread().worker_threads(1).enable_all().build() {
         Ok(rt) => rt,
         Err(e) => return eprintln!("ostrov: {NAME}: {e}"),
@@ -87,8 +101,11 @@ fn serve(calls: async_channel::Sender<Call>, changed: async_channel::Receiver<St
             Err(e) => return eprintln!("ostrov: {NAME}: {e}"),
         };
         let Ok(iface) = conn.object_server().interface::<_, Shell>(PATH).await else { return };
-        while let Ok(st) = changed.recv().await {
-            let _ = Shell::state_changed(iface.signal_emitter(), st).await;
+        while let Ok(sig) = changed.recv().await {
+            let _ = match sig {
+                Signal::State(st) => Shell::state_changed(iface.signal_emitter(), st).await,
+                Signal::Event(name, payload) => Shell::event(iface.signal_emitter(), name, payload).await,
+            };
         }
     });
 }

@@ -19,6 +19,7 @@ impl Lock {
         if !self.inst.is_locked() {
             let _ = std::fs::write(marker(), "");
             self.inst.lock();
+            crate::events::emit("lock", serde_json::json!({}));
         }
     }
 }
@@ -89,6 +90,7 @@ fn face(inst: &Instance) -> gtk4::Box {
             if ok {
                 error.set_text("");
                 inst.unlock();
+                crate::events::emit("unlock", serde_json::json!({}));
                 let _ = std::fs::remove_file(marker());
             } else {
                 error.set_text("Wrong password");

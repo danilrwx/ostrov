@@ -46,7 +46,12 @@ root, more are drawn in a column.
 
     poll "NAME" every="5s" exec="COMMAND"
     listen "NAME" exec="COMMAND"
+    event "NAME" on="EVENT"
 
+- `event "NAME" on="EVENT"` holds the payload of ostrov's last such event (`window` `{class, title}`,
+  `workspace`, `lock`, `unlock`, `wallpaper` `{on, path}`, `network` `{on, ssid}`, `power` `{state, plugged,
+  percent}`, `bluetooth` `{on, connected}`, `output` `{name}`, `media` `{playing, title, artist}`), null till one
+  comes: `event "win" on="window"` then `label text="{win.title}"`.
 - `poll` runs its command through `sh -c` every so long (`30`, `"5s"`, `"10m"`, `"1h"`), and right after any of
   the widget's events has run. One taking over a minute is ended.
 - `listen` runs its command and leaves it running: every line it prints is a new value. When it ends it is started

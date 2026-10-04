@@ -12,6 +12,7 @@ mod cc;
 mod clip;
 mod config;
 mod doctor;
+mod events;
 mod forms;
 mod greet;
 mod hub;
@@ -77,6 +78,7 @@ fn activate(app: &gtk4::Application) {
     let notes = notes::start(app);
     let cfg = config::load();
     // the plugins' widgets before the control centre takes them; ostrov's D-Bus face (api.rs)
+    events::watch(&hub);
     plugins::start(&hub);
     api::start(&hub);
     fn names(v: &[String]) -> Vec<&str> {

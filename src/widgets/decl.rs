@@ -42,13 +42,16 @@ impl Node {
     }
 }
 
-/// What a widget is fed by: a command polled every so many seconds, or one left running, a value a line.
+/// What a widget is fed by: a command polled every so many seconds, or one left running, a value a line; or one
+/// of ostrov's events (events.rs), its last payload.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Source {
     pub name: String,
     pub exec: String,
     /// seconds between polls; None for a listen
     pub every: Option<u64>,
+    /// the event followed, for an event source (its exec "")
+    pub event: Option<String>,
 }
 
 /// One widget a file declares.
@@ -158,6 +161,16 @@ fn decl(n: &Node) -> Result<Decl, Error> {
     };
     for c in &n.children {
         match c.name.as_str() {
+            "event" => {
+                let Some(name) = c.arg().filter(|s| word(&s.replace('_', "-"))) else {
+                    return err(c, "event: its name first: event \"win\" on=\"window\"".into());
+                };
+                if ["state", "config", "value"].contains(&name) || d.sources.iter().any(|s| s.name == name) {
+                    return err(c, format!("{name:?}: taken"));
+                }
+                let Some(on) = c.prop("on") else { return err(c, "event: on=\"window\" (an event of ostrov's)".into()) };
+                d.sources.push(Source { name: name.into(), exec: String::new(), every: None, event: Some(on.into()) });
+            }
             "poll" | "listen" => {
                 let Some(name) = c.arg().filter(|s| word(&s.replace('_', "-"))) else {
                     return err(c, format!("{}: its name first: {} \"st\" exec=\"...\"", c.name, c.name));
@@ -176,7 +189,7 @@ fn decl(n: &Node) -> Result<Decl, Error> {
                 if c.name == "poll" && every.is_none() {
                     return err(c, "poll: every=\"5s\" (or 30, \"10m\", \"1h\")".into());
                 }
-                d.sources.push(Source { name: name.into(), exec: exec.into(), every });
+                d.sources.push(Source { name: name.into(), exec: exec.into(), every, event: None });
             }
             "badge" => {
                 check(c, false)?;
@@ -391,7 +404,7 @@ widget "vless" name="VLESS" icon="network-vpn-symbolic" sizes="4x1 2x1 1x1" {
         let d = &ds[0];
         assert_eq!((d.id.as_str(), d.name.as_str()), ("vless", "VLESS"));
         assert_eq!(d.sizes, [(4, 1), (2, 1), (1, 1)]);
-        assert_eq!(d.sources, [Source { name: "st".into(), exec: "vless status --json".into(), every: Some(5) }]);
+        assert_eq!(d.sources, [Source { name: "st".into(), exec: "vless status --json".into(), every: Some(5), event: None }]);
         assert_eq!(d.bar, Show::Active);
         assert_eq!(d.body.len(), 1);
         assert_eq!(d.body[0].line, 4);
@@ -433,6 +446,7 @@ widget "vless" name="VLESS" icon="network-vpn-symbolic" sizes="4x1 2x1 1x1" {
         assert!(bad("widget \"A\"").1.contains("id"));
         assert!(bad("thing \"a\"").1.contains("widget"));
         assert!(bad("widget \"a\" sizes=\"9x1\"").1.contains("sizes"));
+        assert!(bad("widget \"a\" {\n event \"w\"\n}").1.contains("on="));
         assert!(bad("widget \"a\" {\n poll \"s\" exec=\"x\"\n}").1.contains("every"));
         assert!(bad("widget \"a\" {\n poll \"state\" every=1 exec=\"x\"\n}").1.contains("taken"));
         assert!(bad("widget \"a\" {\n label {\n  menu\n }\n}").1.contains("menu"));

@@ -149,6 +149,13 @@ impl Bar {
                 for f in cx2.wm.borrow().iter() {
                     f(&e);
                 }
+                match &e {
+                    crate::wm::Event::Window(class, title) => {
+                        crate::events::emit("window", serde_json::json!({"class": class, "title": title}))
+                    }
+                    crate::wm::Event::Workspaces => crate::events::emit("workspace", serde_json::json!({})),
+                    crate::wm::Event::Done => {}
+                }
                 if matches!(e, crate::wm::Event::Done) && host.peeking.get() {
                     host.peeking.set(false);
                     host.apply();

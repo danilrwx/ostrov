@@ -40,6 +40,8 @@ pub fn start(app: &gtk4::Application) {
             return;
         }
         *shown.borrow_mut() = want.clone();
+        let path = want.as_ref().map_or(String::new(), |p| p.to_string_lossy().into_owned());
+        crate::events::emit("wallpaper", serde_json::json!({"on": want.is_some(), "path": path}));
         let stack = stack.clone();
         let (tx, rx) = async_channel::bounded::<Option<gdk::Texture>>(1);
         std::thread::spawn(move || {

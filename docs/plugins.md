@@ -276,6 +276,7 @@ ostrov owns `dev.ostrov.Shell` on the session bus, object `/dev/ostrov/Shell`, i
 | `OpenPanel(s menu)`           | the control centre, that widget's menu unfolded (`""` for none)  |
 | `Toast(s title, s body)`      | a notification of ostrov's own (`ostrov toast TITLE BODY`)        |
 | signal `StateChanged(s state)`| the state, whenever it changes                                   |
+| signal `Event(s name, s payload)` | each of ostrov's events (src/events.rs: window, workspace, lock, unlock, wallpaper, network, power, bluetooth, output, media), its payload as JSON |
 
 `Run(["dialog", JSON])` asks a dialog and answers once it is answered (a no is a D-Bus error).
 
