@@ -24,7 +24,7 @@ Hyprland desktop is usually pieced together from, made to look and work as one t
   themes and an accent, both writing `config.toml` in place, comments kept.
 - **Extensible**: widgets in KDL without code, plugins in any language (a Rust SDK and a Python one), themes,
   a D-Bus interface, shell completion for every command.
-- **Official plugins** for the rest: screen recording, the night light, CalDAV calendars, Win+P for displays,
+- **Official plugins** for the rest: screen recording, the night light, CalDAV calendars, Win+P for displays, removable drives,
   a power profile for games.
 
 <table>
