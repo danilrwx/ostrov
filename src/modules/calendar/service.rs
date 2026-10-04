@@ -1,4 +1,4 @@
-//! The calendar's events for the calendar popup: a CalDAV account's (any server's: Example, iCloud, Fastmail,
+//! The calendar's events for the calendar popup: a CalDAV account's (any server's: iCloud, Fastmail,
 //! Nextcloud...; Google's wants OAuth, not had here; the login, and an app password printed by a command, never
 //! kept in the config), and calendars shared as .ics
 //! links, as config.toml's [calendar] says. Fetched every 15 min and on `calendar refresh`; the events of this

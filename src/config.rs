@@ -15,7 +15,7 @@
 //!     surface = "rgba(0, 0, 0, 0.75)"
 //!
 //!     [calendar]          # the calendar popup's events (services/calendar.rs), read anew on every fetch
-//!     caldav_url = "https://caldav.example.com"                     # any CalDAV server: Example, iCloud's
+//!     caldav_url = "https://caldav.example.com"                   # any CalDAV server: iCloud's
 //!     user = "you@example.com"                                    # https://caldav.icloud.com, Fastmail's,
 //!     password_command = "secret-tool lookup service caldav"      # Nextcloud's...; prints the app password
 //!     ics = ["https://example.org/calendar.ics"]                  # and/or calendars' shared links

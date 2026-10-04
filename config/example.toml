@@ -60,8 +60,8 @@ binds = true
 [hyprland.keys]
 # run = "SUPER, R"
 
-# The calendar's events: one CalDAV account (iCloud's https://caldav.icloud.com, Fastmail's, Nextcloud's, Example's
-# https://caldav.example.com...) and/or .ics links. The password is never kept here: the Settings page puts it in the
+# The calendar's events: one CalDAV account (iCloud's https://caldav.icloud.com, Fastmail's, Nextcloud's...) and/or
+# .ics links. The password is never kept here: the Settings page puts it in the
 # Secret Service (or ~/.local/share/ostrov/secrets.toml, mode 0600, without one), else password_command prints it.
 [calendar]
 caldav_url = ""

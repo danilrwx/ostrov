@@ -421,7 +421,7 @@ fn own() -> Vec<Entry> {
         .help("Taken at ostrov's start.")]),
         e("calendar", "Calendar", "x-office-calendar-symbolic", vec![Section::new("calendar", "Calendar", vec![
             Field::new("caldav_url", "CalDAV server", Kind::Url)
-                .help("https://caldav.example.com, https://caldav.icloud.com, Fastmail's, Nextcloud's…"),
+                .help("https://caldav.icloud.com, Fastmail's, Nextcloud's…"),
             Field::new("user", "User", Kind::String),
             Field::new("password", "App password", Kind::Secret)
                 .help("Kept in the keyring, never in the file.")
