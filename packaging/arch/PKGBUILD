@@ -22,9 +22,7 @@ optdepends=('hyprland: the compositor ostrov is made for'
             'pipewire-pulse: screen recording with audio'
             'fd: the launcher finding files'
             'unicode-emoji: the launcher finding emoji'
-            'gnome-keyring: secrets in the Secret Service'
-            'greetd: the login screen (ostrov greet)'
-            'cage: the login screen (ostrov greet)')
+            'gnome-keyring: secrets in the Secret Service')
 provides=('ostrov')
 conflicts=('ostrov')
 backup=('etc/pam.d/ostrov')

@@ -124,12 +124,6 @@ fn programs(out: &mut Vec<Line>) {
         let text = "charge limit: the thresholds are root's; to let ostrov set them, run: ostrov battery limit install";
         out.push(('·', t(text).into()));
     }
-    match crate::greet::stale() {
-        Some(true) => out.push(('!', t("login screen: /usr/local/bin/ostrov is another build than this one; \
-            ostrov greeter update puts this one there").into())),
-        Some(false) => out.push(('✓', t("login screen: this ostrov").into())),
-        None => {}
-    }
     out.push(if std::path::Path::new("/etc/pam.d/ostrov").exists() {
         ('✓', "PAM: /etc/pam.d/ostrov".into())
     } else {

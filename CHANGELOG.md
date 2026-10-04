@@ -31,7 +31,6 @@ The first release: the whole shell in one binary.
 - A window switcher held like Alt+Tab (all windows or the focused app's) and an overview of every window.
 - The wallpaper, picked from a directory, with a hook run on every change.
 - Games played in the performance power profile (`[games]`).
-- The login screen: `ostrov greet`, a greeter for greetd.
 - Settings and Appearance pages in the control centre, editing `config.toml` in place; themes (dark, light,
   graphite, nord, solarized), accent, opacity, corners, density, Hyprland's blur.
 - Themes as packages: `theme.toml` (the palette's colours, suggested corners, density, blur) and an optional

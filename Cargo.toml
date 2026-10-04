@@ -49,7 +49,7 @@ depends = "$auto, pipewire-bin, wireplumber, gstreamer1.0-tools, gstreamer1.0-pl
 recommends = """\
 hyprland, iwd | network-manager, bluez, upower, power-profiles-daemon, polkitd, gstreamer1.0-plugins-bad, \
 gstreamer1.0-libav, gstreamer1.0-pulseaudio, pipewire-pulse"""
-suggests = "fd-find, unicode-data, gnome-keyring, greetd, cage"
+suggests = "fd-find, unicode-data, gnome-keyring"
 assets = [
     ["target/release/ostrov", "usr/bin/", "755"],
     ["completions/_ostrov", "usr/share/zsh/vendor-completions/", "644"],

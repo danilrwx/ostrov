@@ -115,7 +115,7 @@ across releases. Anything else (a widget's inner nodes, an order of children) ma
 | `.preview` | the clipboard entry picked, under the launcher |
 | `.switch`, `.switch.picked` | the window switcher's cards |
 | `window.overview`, `.ov-win`, `.ov-win.picked` | the overview, a window in it |
-| `window.lock`, `.lock-time`, `.lock-entry` | the lock screen; `.greet` the login screen |
+| `window.lock`, `.lock-time`, `.lock-entry` | the lock screen |
 | `window.prompt` | a question (polkit's, askpass's) |
 | `.page-title`, `.field`, `.field-help` | the control centre's Settings and Appearance pages |
 

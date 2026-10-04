@@ -62,7 +62,6 @@ Services and programs, each optional; what a missing one costs is said by `ostro
 | a Secret Service (GNOME Keyring, KeePassXC...) | the calendar's password; without one secrets go to `~/.local/share/ostrov/secrets.toml` (0600) |
 | `fd` | the launcher's file search |
 | `/usr/share/unicode/emoji/emoji-test.txt` (unicode-data, unicode-emoji) | the launcher's emoji |
-| greetd and cage | the login screen, `ostrov greet` (see `docs/greetd-config.toml`) |
 
 Wi-Fi: iwd is spoken to directly over D-Bus. A NetworkManager backend is being added; until it lands, `ostrov
 doctor` reports NetworkManager as unsupported for Wi-Fi.
@@ -244,7 +243,6 @@ ostrov's own:
     ostrov plugin [ID] [ARGS...]       a plugin's command, or its help
     ostrov completions zsh|bash|fish   the shell's completion script
     ostrov help
-    ostrov greet                       the login screen, as greetd's greeter
     ostrov askpass [--confirm|--none] PROMPT
 
 A panel in the bar (`panel.ID`):

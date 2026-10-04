@@ -2,11 +2,7 @@
 
 # Lock screen and greeter
 "password" = "пароль"
-"user" = "пользователь"
 "Wrong password" = "Неверный пароль"
-"No sessions" = "Нет сеансов"
-"reboot" = "Перезагрузить"
-"poweroff" = "Выключить"
 
 # Notifications
 "Reply" = "Ответить"

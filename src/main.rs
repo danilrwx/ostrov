@@ -15,7 +15,6 @@ mod config;
 mod doctor;
 mod events;
 mod forms;
-mod greet;
 mod hub;
 mod i18n;
 mod idle;
@@ -65,7 +64,7 @@ const FORMS: &[&str] = &[
     "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
     "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID",
     "theme list", "theme set ID", "theme install PATH|GIT-URL", "theme remove ID",
-    "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor", "greeter update", "welcome",
+    "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor", "welcome",
 ];
 
 fn usage() -> String {
@@ -233,7 +232,6 @@ fn command(args: &[String], input: Option<String>) -> Reply {
     match args {
         [first, rest @ ..] if first == "plugin" => return plugins::run(rest, input),
         [first] if first == "doctor" => return Box::pin(doctor::report()),
-        [first, second] if first == "greeter" && second == "update" => return Box::pin(greet::update()),
         // a theme's install clones a repository: awaited, ostrov going on meanwhile
         [first, rest @ ..] if first == "theme" => return Box::pin(theme::command(rest.to_vec())),
         [first, rest @ ..] if first == "dialog" => {
@@ -311,10 +309,6 @@ fn askpass(cl: &gtk4::gio::ApplicationCommandLine, args: &[String]) {
 }
 
 fn main() -> glib::ExitCode {
-    // the login screen, greetd's greeter (greet.rs): none of the desktop, nor the one ostrov
-    if std::env::args().nth(1).as_deref() == Some("greet") {
-        return greet::run();
-    }
     // one ostrov: run again, it hands its arguments to the running one and exits
     // OSTROV_APP_ID: another id, a second ostrov beside the running one (a build tried out without stopping it)
     let id = std::env::var("OSTROV_APP_ID").unwrap_or_else(|_| "dev.ostrov.Ostrov".into());
