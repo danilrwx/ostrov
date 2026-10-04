@@ -9,7 +9,7 @@ locker, idle daemon, polkit agent, clipboard manager, screenshot tools and wallp
   (`widget.ID`: its badge in the bar, its menu on a click).
 - **Panels of widgets**, macOS-style: the control centre and the calendar are grids of widgets (Wi-Fi, Bluetooth,
   volume and mic with per-app sliders and device ports, brightness, power profiles, battery,
-  displays, wallpaper, Keep Awake, the player, the month and its events (CalDAV and .ics by the plugin caldav),
+  wallpaper, Keep Awake, the player, the month and its events (CalDAV and .ics by the plugin caldav),
   the weather, notifications' history with Do Not Disturb). Each panel is edited in place: drag, resize, remove,
   add from the gallery, choose which widgets show a badge in the bar. Make panels of your own.
 - **A launcher** in the bar, dmenu-style: apps, a calculator, emoji (`:name`), files (`/name`), web search
@@ -36,8 +36,7 @@ locker, idle daemon, polkit agent, clipboard manager, screenshot tools and wallp
 ## Requirements
 
 ostrov is made for **Hyprland 0.53** or newer. It also speaks sway's IPC for the basics (workspaces, the keyboard
-layout, screens off), but the window's title and displays need Hyprland
-(and so does the night light plugin).
+layout, screens off), but the window's title needs Hyprland (and so do the plugins night and displays).
 
 Libraries:
 
@@ -154,7 +153,7 @@ Everything lives under `~/.config/ostrov/`; every key has a default, so no file 
 - `[panels.ID]`: panels of your own.
 - `[widget.ID]`, `[plugin.ID]`: a widget's or a plugin's own settings.
 
-The panels' layouts are kept in `panel.toml`, written by Edit; display profiles in `displays.toml`. Runtime state
+The panels' layouts are kept in `panel.toml`, written by Edit. Runtime state
 (the wallpaper, the location, the night light) is in `~/.local/state/ostrov/`, the clipboard's history in
 `~/.cache/ostrov/`.
 
@@ -178,6 +177,8 @@ launcher modes into ostrov over JSON lines (the protocol is `wit/ostrov-plugin.w
 and `examples/plugins/google` (`g words`). ostrov's official plugins come with it, off until `[plugin.ID] enabled =
 true`: `night`, the night light (`ostrov plugin night on|off|toggle | mode off|on|time|sun | warmth K`);
 `caldav`, the calendar's CalDAV account and .ics links. The same document describes ostrov's D-Bus interface, `dev.ostrov.Shell`.
+
+Official plugins: [displays](plugins/displays/README.md), Win+P's quick modes and kanshi's profiles.
 
 ## Languages
 
@@ -255,7 +256,6 @@ The modules':
     ostrov location CITY... | LAT LON
     ostrov media play-pause|next|previous
     ostrov wallpaper on|off|random | set PATH
-    ostrov displays set NAME MODE POSITION SCALE | on|off NAME | mirror NAME OF | save|load|delete PROFILE
     ostrov calendar refresh
 
 ## Shell completion

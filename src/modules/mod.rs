@@ -19,7 +19,6 @@ pub mod brightness;
 pub mod bt;
 pub mod calendar;
 pub mod clock;
-pub mod displays;
 pub mod hyprland;
 pub mod keymap;
 pub mod location;
@@ -117,7 +116,6 @@ pub const ALL: &[&Module] = &[
     &media::MODULE,
     &wallpaper::MODULE,
     &weather::MODULE,
-    &displays::MODULE,
     &calendar::MODULE,
     &clock::MODULE,
     &hyprland::MODULE,

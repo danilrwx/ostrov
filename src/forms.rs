@@ -238,7 +238,6 @@ mod tests {
                 ]},
                 "bt": {"devices": [{"address": "AA:BB", "name": "Buds", "connected": true}]},
                 "power": {"profiles": ["power-saver", "balanced", "performance"]},
-                "displays": {"monitors": [{"name": "eDP-1", "description": "Panel"}], "profiles": ["desk"]},
                 "audio": {"streams": [{"id": 116, "name": "Chromium"}]},
             }),
             widgets: vec![("wifi".into(), "Wi-Fi".into()), ("ins".into(), "mic".into())],
@@ -268,8 +267,6 @@ mod tests {
         ]);
         assert_eq!(c(&["bt", "connect", "A"]), [("AA:BB".into(), "Buds".into())]);
         assert_eq!(words(&c(&["power", "set", "b"])), ["balanced"]);
-        assert_eq!(words(&c(&["displays", "on", ""])), ["eDP-1"]);
-        assert_eq!(words(&c(&["displays", "load", ""])), ["desk"]);
         assert_eq!(c(&["audio", "volume", ""]), [("116".into(), "Chromium".into())]);
         assert_eq!(words(&c(&["menu", ""])), ["wifi", "ins"]);
         assert_eq!(words(&c(&["status", "menu", "w"])), ["wifi"]);

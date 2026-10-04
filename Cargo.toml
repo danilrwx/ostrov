@@ -55,7 +55,7 @@ binary."""
 depends = "$auto, pipewire-bin, wireplumber"
 recommends = """\
 hyprland, iwd | network-manager, bluez, upower, power-profiles-daemon, polkitd, wf-recorder, wl-clipboard"""
-suggests = "fd-find, unicode-data, gnome-keyring"
+suggests = "fd-find, unicode-data, gnome-keyring, kanshi"
 assets = [
     ["target/release/ostrov", "usr/bin/", "755"],
     ["completions/_ostrov", "usr/share/zsh/vendor-completions/", "644"],
@@ -85,4 +85,7 @@ assets = [
     ["target/release/ostrov-plugin-caldav", "usr/bin/", "755"],
     ["plugins/caldav/manifest.toml", "usr/share/ostrov/plugins/caldav/", "644"],
     ["plugins/caldav/i18n/*", "usr/share/ostrov/plugins/caldav/i18n/", "644"],
+    ["target/release/ostrov-plugin-displays", "usr/bin/", "755"],
+    ["plugins/displays/manifest.toml", "usr/share/ostrov/plugins/displays/", "644"],
+    ["plugins/displays/i18n/*", "usr/share/ostrov/plugins/displays/i18n/", "644"],
 ]

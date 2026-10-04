@@ -1,0 +1,11 @@
+[package]
+name = "ostrov-plugin-displays"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+description = "ostrov's displays: the laptop's and an external screen's quick modes, kanshi's profiles"
+license = "MIT"
+publish = false
+
+[dependencies]
+ostrov-plugin = { path = "../../sdk" }

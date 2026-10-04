@@ -1077,6 +1077,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ostrov-plugin-displays"
+version = "0.1.0"
+dependencies = [
+ "ostrov-plugin",
+]
+
+[[package]]
 name = "ostrov-plugin-games"
 version = "0.1.0"
 dependencies = [

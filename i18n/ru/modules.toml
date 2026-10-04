@@ -70,19 +70,6 @@
 "Nov" = "ноя"
 "Dec" = "дек"
 
-# displays
-"Displays" = "Дисплеи"
-"{} on" = "включено: {}"
-"off" = "выкл."
-"mirrors {}" = "повтор {}"
-"Left" = "Слева"
-"Right" = "Справа"
-"Above" = "Сверху"
-"Below" = "Снизу"
-"Mirror" = "Повтор"
-"Delete" = "Удалить"
-"Save as…" = "Сохранить как…"
-
 # media
 "Nothing playing" = "Ничего не играет"
 

@@ -1,0 +1,39 @@
+# ostrov's displays, as Windows' Win+P: the laptop's screen only, the external one only, both side by side or the
+# same picture on both, set through hyprctl; kanshi's profiles when kanshi runs
+id = "displays"
+name = "Displays"
+version = "0.1.0"
+api = 1
+exec = "ostrov-plugin-displays"
+icon = "video-display-symbolic"
+description = "The laptop's screen, an external one, or both; kanshi's profiles."
+permissions = ["run", "keys"]
+
+[[widgets]]
+id = "displays"
+name = "Displays"
+icon = "video-display-symbolic"
+sizes = [[4, 1], [2, 1]]
+
+[[commands]]
+name = "menu"
+help = "the control centre with its menu unfolded"
+
+[[commands]]
+name = "mode"
+usage = "mode laptop|external|extend|mirror"
+help = "the screens set so"
+
+[[commands]]
+name = "profile"
+usage = "profile NAME"
+help = "kanshi's profile switched to"
+
+[[keys]]
+combo = ", XF86Display"
+command = "menu"
+
+# Windows' Project, which a laptop's projection key sends as Super+P
+[[keys]]
+combo = "SUPER, P"
+command = "menu"
