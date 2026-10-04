@@ -36,7 +36,7 @@
 "no Bluetooth adapter" = "нет адаптера Bluetooth"
 
 # calendar
-"Coming Up" = "Скоро"
+"Coming Up" = "Предстоящее"
 "Nothing coming" = "Ничего не запланировано"
 "all day" = "весь день"
 
@@ -101,7 +101,7 @@
 "Power Mode" = "Режим питания"
 "Power Saver" = "Энергосбережение"
 "Performance" = "Производительность"
-"Balanced" = "Сбалансированный"
+"Balanced" = "Баланс"
 
 # system
 "Screenshot" = "Снимок экрана"
