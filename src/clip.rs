@@ -93,7 +93,7 @@ pub fn list() -> Vec<(u64, bool, String)> {
                 String::from_utf8_lossy(&b[..n]).into_owned()
             } else {
                 let kib = std::fs::metadata(&e.path).map_or(0, |m| m.len() / 1024);
-                format!("[{} picture, {kib} KiB]", e.kind)
+                crate::i18n::fill(crate::i18n::t("[{} picture, {} KiB]"), &[&e.kind, &kib])
             };
             (e.id, e.kind != "text", shown)
         })

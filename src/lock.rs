@@ -57,7 +57,7 @@ fn face(inst: &Instance) -> gtk4::Box {
     let entry = gtk4::PasswordEntry::new();
     entry.add_css_class("lock-entry");
     entry.set_alignment(0.5);
-    entry.set_placeholder_text(Some("password"));
+    entry.set_placeholder_text(Some(crate::i18n::t("password")));
     let error = gtk4::Label::new(None);
     error.add_css_class("error");
     col.append(&entry);
@@ -93,7 +93,7 @@ fn face(inst: &Instance) -> gtk4::Box {
                 crate::events::emit("unlock", serde_json::json!({}));
                 let _ = std::fs::remove_file(marker());
             } else {
-                error.set_text("Wrong password");
+                error.set_text(crate::i18n::t("Wrong password"));
                 e.grab_focus();
             }
         });

@@ -12,6 +12,7 @@ use gtk4::glib;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use zbus::zvariant::{OwnedValue, Value};
 
+use crate::i18n::{fill, t};
 use crate::prompt::{Ask, Kind, Prompts};
 
 const AGENT_PATH: &str = "/dev/ostrov/PolkitAgent";
@@ -82,9 +83,9 @@ impl Agent {
             while let Ok(Some(line)) = lines.next_line().await {
                 if let Some(prompt) = line.strip_prefix("PAM_PROMPT_ECHO_OFF ").or(line.strip_prefix("PAM_PROMPT_ECHO_ON ")) {
                     let (reply, answer) = async_channel::bounded(1);
-                    let title = if prompt.trim().trim_end_matches(':').is_empty() { "Password" } else { prompt.trim().trim_end_matches(':') };
+                    let title = if prompt.trim().trim_end_matches(':').is_empty() { t("Password") } else { prompt.trim().trim_end_matches(':') };
                     let text = if info.is_empty() { message.to_string() } else { format!("{message}\n{info}") };
-                    let mut ask = Ask::new(icon, &format!("{title} for {user}"), &text, Kind::Secret, reply);
+                    let mut ask = Ask::new(icon, &fill(t("{} for {}"), &[&title, &user]), &text, Kind::Secret, reply);
                     ask.error = std::mem::take(&mut error);
                     self.up.send(Up::Ask(ask)).await.map_err(|e| e.to_string())?;
                     let Some(password) = answer.recv().await.ok().flatten() else {
@@ -99,7 +100,7 @@ impl Agent {
                     break;
                 }
             }
-            error = "Wrong password, try again".into();
+            error = t("Wrong password, try again").into();
         }
     }
 }

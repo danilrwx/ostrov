@@ -18,6 +18,7 @@ use gtk4::{glib, Align, Orientation};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use serde_json::Value;
 
+use crate::i18n::{fill, t};
 use crate::style::{clear, label};
 
 /// What a question asks for, and so what its answer is.
@@ -60,8 +61,8 @@ impl Ask {
             text: text.into(),
             kind,
             error: String::new(),
-            ok: "OK".into(),
-            cancel: "Cancel".into(),
+            ok: t("OK").into(),
+            cancel: t("Cancel").into(),
             from: Default::default(),
             reply,
         }
@@ -162,9 +163,9 @@ impl Prompts {
         error.set_wrap(true);
         let buttons = gtk4::Box::new(Orientation::Horizontal, 8);
         buttons.set_halign(Align::End);
-        let cancel = gtk4::Button::with_label("Cancel");
+        let cancel = gtk4::Button::with_label(t("Cancel"));
         cancel.add_css_class("chip");
-        let ok = gtk4::Button::with_label("OK");
+        let ok = gtk4::Button::with_label(t("OK"));
         ok.add_css_class("connect");
         buttons.append(&cancel);
         buttons.append(&ok);
@@ -273,7 +274,7 @@ impl Prompts {
         };
         self.from.set_visible(!a.from.1.is_empty());
         self.from_icon.set_icon_name(Some(&a.from.0));
-        self.from_name.set_text(&format!("{} asks", a.from.1));
+        self.from_name.set_text(&fill(t("{} asks"), &[&a.from.1]));
         self.icon.set_icon_name(Some(if a.icon.is_empty() { "dialog-password-symbolic" } else { &a.icon }));
         self.title.set_text(&a.title);
         self.text.set_text(&a.text);
@@ -367,7 +368,7 @@ mod tests {
         let text = json!({"kind": "text", "title": "Rename", "value": "Hello", "ok": "Rename"});
         let a = Ask::from_json(&text, tx.clone()).unwrap();
         assert!(matches!(&a.kind, Kind::Text { value, .. } if value == "Hello"));
-        assert_eq!((a.title.as_str(), a.ok.as_str(), a.cancel.as_str()), ("Rename", "Rename", "Cancel"));
+        assert_eq!((a.title.as_str(), a.ok.as_str(), a.cancel.as_str()), ("Rename", "Rename", t("Cancel")));
         let choice = Ask::from_json(&json!({"kind": "choice", "options": ["a", "b"]}), tx.clone()).unwrap();
         assert!(matches!(choice.kind, Kind::Choice(o) if o.len() == 2));
         assert!(Ask::from_json(&json!({"kind": "choice", "options": []}), tx.clone()).is_err());

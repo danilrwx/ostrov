@@ -1,1 +1,57 @@
 # Russian: "English" = "Русский"
+
+# Lock screen and greeter
+"password" = "пароль"
+"user" = "пользователь"
+"Wrong password" = "Неверный пароль"
+"No sessions" = "Нет сеансов"
+"reboot" = "Перезагрузить"
+"poweroff" = "Выключить"
+
+# Notifications
+"Reply" = "Ответить"
+"Reply…" = "Ответ…"
+"Send" = "Отправить"
+
+# Launcher
+"clip" = "буфер"
+"emoji" = "эмодзи"
+"web" = "веб"
+"files" = "файлы"
+"calc" = "счёт"
+"run" = "запуск"
+"Search the web for {}" = "Искать в сети: {}"
+"[{} picture, {} KiB]" = "[изображение {}, {} КиБ]"
+
+# Dialogs and polkit
+"OK" = "OK"
+"Cancel" = "Отмена"
+"{} asks" = "Запрос от {}"
+"Password" = "Пароль"
+"{} for {}" = "{} для {}"
+"Wrong password, try again" = "Неверный пароль, попробуйте ещё раз"
+
+# Screen recording
+"Recording saved" = "Запись сохранена"
+"Recording failed" = "Не удалось записать экран"
+"a region too small to record" = "область слишком мала для записи"
+"no H.264 encoder in GStreamer" = "в GStreamer нет кодировщика H.264"
+"gst-launch-1.0 ended with {}" = "gst-launch-1.0 завершился: {}"
+"the encoder quit: {}" = "кодировщик остановился: {}"
+
+# Keys' OSD and battery
+"Power profile  {}" = "Режим питания  {}"
+"Power Saver" = "Энергосбережение"
+"Balanced" = "Баланс"
+"Performance" = "Производительность"
+"on" = "вкл."
+"off" = "выкл."
+"Camera  {}" = "Камера  {}"
+"Volume" = "Громкость"
+"Microphone" = "Микрофон"
+"{}  muted" = "{}  без звука"
+"{}  on" = "{}  вкл."
+"Touchpad  {}" = "Тачпад  {}"
+"Battery low" = "Низкий заряд батареи"
+"Battery critical" = "Критический заряд батареи"
+"{}. Suspend now?" = "{}. Перейти в ждущий режим?"

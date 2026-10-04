@@ -58,12 +58,12 @@ fn build(app: &gtk4::Application) {
     let user = gtk4::Entry::new();
     user.add_css_class("lock-entry");
     EditableExt::set_alignment(&user, 0.5);
-    user.set_placeholder_text(Some("user"));
+    user.set_placeholder_text(Some(crate::i18n::t("user")));
     user.set_text(&last_user.or_else(first_user).unwrap_or_default());
     let password = gtk4::PasswordEntry::new();
     password.add_css_class("lock-entry");
     password.set_alignment(0.5);
-    password.set_placeholder_text(Some("password"));
+    password.set_placeholder_text(Some(crate::i18n::t("password")));
     let names: Vec<&str> = sessions.iter().map(|s| s.name.as_str()).collect();
     let session = gtk4::DropDown::from_strings(&names);
     session.add_css_class("lock-entry");
@@ -84,7 +84,7 @@ fn build(app: &gtk4::Application) {
     power.set_margin_bottom(24);
     for (icon, verb) in [("system-reboot-symbolic", "reboot"), ("system-shutdown-symbolic", "poweroff")] {
         let b = gtk4::Button::from_icon_name(icon);
-        b.set_tooltip_text(Some(verb));
+        b.set_tooltip_text(Some(crate::i18n::t(verb)));
         b.connect_clicked(move |_| {
             let _ = std::process::Command::new("systemctl").arg(verb).spawn();
         });
@@ -106,7 +106,7 @@ fn build(app: &gtk4::Application) {
     password.connect_activate(move |e| {
         let name = u.text().trim().to_string();
         let Some(chosen) = sessions.get(s.selected() as usize) else {
-            error.set_text("No sessions");
+            error.set_text(crate::i18n::t("No sessions"));
             return;
         };
         if name.is_empty() {
@@ -280,7 +280,7 @@ fn converse(
     env: &[String],
 ) -> Result<(), String> {
     let failed = |error_type: String, description: String| {
-        if error_type == "auth_error" { "Wrong password".to_string() } else { description }
+        if error_type == "auth_error" { crate::i18n::t("Wrong password").to_string() } else { description }
     };
     let mut reply = ask(sock, json!({"type": "create_session", "username": user}))?;
     let mut answered = false;
@@ -369,7 +369,7 @@ mod tests {
              json!({"type": "error", "error_type": "auth_error", "description": "pam_authenticate: AUTH_ERR"})),
             (json!({"type": "cancel_session"}), json!({"type": "success"})),
         ]);
-        assert_eq!(r, Err("Wrong password".into()));
+        assert_eq!(r, Err(crate::i18n::t("Wrong password").into()));
     }
 
     #[test]

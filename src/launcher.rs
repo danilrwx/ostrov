@@ -20,6 +20,7 @@ use gtk4::prelude::*;
 use gtk4::{gio, glib, Orientation};
 
 use crate::hub::run;
+use crate::i18n::{fill, t};
 
 /// A hit: what the row shows, and what picking it does.
 #[derive(Clone)]
@@ -195,22 +196,22 @@ impl Launcher {
         self.typed.set(self.typed.get() + 1);
         let plugin = crate::plugins::mode(&q);
         let (mode, hits) = if self.clip.get() {
-            ("clip", self.matching(&q))
+            (t("clip"), self.matching(&q))
         } else if let Some(name) = q.strip_prefix(':') {
-            ("emoji", emoji(name))
+            (t("emoji"), emoji(name))
         } else if let Some(words) = q.strip_prefix("s ").map(str::trim) {
-            let hit = Hit::Open(format!("Search the web for {words}"), web(&self.search.borrow(), words));
-            ("web", if words.is_empty() { vec![] } else { vec![hit] })
+            let hit = Hit::Open(fill(t("Search the web for {}"), &[&words]), web(&self.search.borrow(), words));
+            (t("web"), if words.is_empty() { vec![] } else { vec![hit] })
         } else if let Some(name) = q.strip_prefix('/') {
             self.files(name.trim());
-            ("files", vec![])
+            (t("files"), vec![])
         } else if let Some((m, text)) = &plugin {
             self.ask(m, text);
             (m.decl.name.as_str(), vec![])
         } else if let Some(r) = crate::calc::eval(&q) {
-            ("calc", [vec![Hit::Copy(format!("= {r}"), r)], self.matching(&q)].concat())
+            (t("calc"), [vec![Hit::Copy(format!("= {r}"), r)], self.matching(&q)].concat())
         } else {
-            ("run", self.matching(&q))
+            (t("run"), self.matching(&q))
         };
         self.prompt.set_text(mode);
         *self.hits.borrow_mut() = hits;
@@ -369,7 +370,7 @@ impl Launcher {
     /// or an emoji copied, a search or a file opened; with none, what was typed run, when it is a run.
     fn pick(self: &Rc<Self>, n: usize) {
         let typed = self.query.text().to_string();
-        let run_mode = self.prompt.text() == "run";
+        let run_mode = self.prompt.text() == t("run");
         let hit = self.hits.borrow().get(n).cloned();
         self.close();
         let ctx = gtk4::gdk::Display::default().map(|d| d.app_launch_context());

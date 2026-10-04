@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 use gtk4::{gio, glib};
 
 use crate::hub::Hub;
+use crate::i18n::{fill, t};
 use crate::notes::Notes;
 use crate::modules::{audio::service as audio, brightness::service as backlight};
 
@@ -80,12 +81,19 @@ impl Keys {
             "profile" => self.later(600, |k| {
                 let st = k.hub.state();
                 let p = crate::hub::s(&st, &["power", "active"]);
-                k.notes.osd(&format!("power-profile-{p}-symbolic"), &format!("Power profile  {p}"), None, WORD_MS);
+                let name = match p {
+                    "power-saver" => t("Power Saver"),
+                    "performance" => t("Performance"),
+                    _ => t("Balanced"),
+                };
+                let text = fill(t("Power profile  {}"), &[&name]);
+                k.notes.osd(&format!("power-profile-{p}-symbolic"), &text, None, WORD_MS);
             }),
             "camera" => self.later(500, |k| {
                 let on = std::path::Path::new("/dev/video0").exists();
-                let (icon, word) = if on { ("camera-web-symbolic", "on") } else { ("camera-disabled-symbolic", "off") };
-                k.notes.osd(icon, &format!("Camera  {word}"), None, WORD_MS);
+                let (icon, word) =
+                    if on { ("camera-web-symbolic", t("on")) } else { ("camera-disabled-symbolic", t("off")) };
+                k.notes.osd(icon, &fill(t("Camera  {}"), &[&word]), None, WORD_MS);
             }),
             "play-pause" | "next" | "previous" => crate::hub::service(&["media", name]),
             _ => return Err(crate::forms::usage("key", &[&NAMES.join("|")])),
@@ -116,11 +124,13 @@ impl Keys {
                 Err(_) => return,
             };
             let level = if muted { 0 } else { level };
-            let what = if sink { "Volume" } else { "Microphone" };
+            let what = if sink { t("Volume") } else { t("Microphone") };
             match (stepped, muted) {
                 (true, _) => k.notes.osd(&icon(sink, level), &format!("{level}%"), Some(level), LEVEL_MS),
-                (false, true) => k.notes.osd(&icon(sink, 0), &format!("{what}  muted"), None, WORD_MS),
-                (false, false) => k.notes.osd(&icon(sink, level), &format!("{what}  on"), Some(level), WORD_MS),
+                (false, true) => k.notes.osd(&icon(sink, 0), &fill(t("{}  muted"), &[&what]), None, WORD_MS),
+                (false, false) => {
+                    k.notes.osd(&icon(sink, level), &fill(t("{}  on"), &[&what]), Some(level), WORD_MS)
+                }
             }
         });
     }
@@ -164,8 +174,9 @@ impl Keys {
         let on = on.unwrap_or(!self.touchpad.get());
         self.touchpad.set(on);
         crate::wm::hyprctl(&format!("keyword device[{pad}]:enabled {on}"));
-        let (icon, word) = if on { ("input-touchpad-symbolic", "on") } else { ("touchpad-disabled-symbolic", "off") };
-        self.notes.osd(icon, &format!("Touchpad  {word}"), None, WORD_MS);
+        let (icon, word) =
+            if on { ("input-touchpad-symbolic", t("on")) } else { ("touchpad-disabled-symbolic", t("off")) };
+        self.notes.osd(icon, &fill(t("Touchpad  {}"), &[&word]), None, WORD_MS);
         Ok(())
     }
 }
@@ -191,15 +202,15 @@ pub fn battery(hub: &Rc<Hub>, notes: &Rc<Notes>, prompts: &Rc<crate::prompt::Pro
                 let pct = pct.round();
                 let body = if left.is_empty() { format!("{pct}%") } else { format!("{pct}%, {left}") };
                 if level > 5 {
-                    notes.post("battery-low-symbolic", "Battery low", &body, false);
+                    notes.post("battery-low-symbolic", t("Battery low"), &body, false);
                     return;
                 }
-                notes.post("battery-caution-symbolic", "Battery critical", &body, true);
+                notes.post("battery-caution-symbolic", t("Battery critical"), &body, true);
                 let (reply, answer) = async_channel::bounded(1);
-                let text = format!("{body}. Suspend now?");
+                let text = fill(t("{}. Suspend now?"), &[&body]);
                 let kind = crate::prompt::Kind::Confirm;
                 let icon = "battery-caution-symbolic";
-                prompts.ask(crate::prompt::Ask::new(icon, "Battery critical", &text, kind, reply));
+                prompts.ask(crate::prompt::Ask::new(icon, t("Battery critical"), &text, kind, reply));
                 glib::spawn_future_local(async move {
                     if let Ok(Some(_)) = answer.recv().await {
                         crate::hub::run(&["systemctl", "suspend"]);

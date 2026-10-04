@@ -18,6 +18,7 @@ use gtk4::prelude::*;
 use gtk4::{gdk, gio, glib};
 
 use crate::bar::{pill, slot, Block};
+use crate::i18n::{fill, t};
 use crate::shot::{Screen, Shot};
 
 /// The video's frames a second.
@@ -77,11 +78,11 @@ fn start(region: (i32, i32, i32, i32), audio: bool) {
         let (title, body) = match done {
             Ok(()) => {
                 crate::clip::put(file.to_string_lossy().into_owned().into_bytes(), "text");
-                ("Recording saved", file.display().to_string())
+                (t("Recording saved"), file.display().to_string())
             }
             Err(e) => {
                 eprintln!("ostrov: record: {e}");
-                ("Recording failed", e)
+                (t("Recording failed"), e)
             }
         };
         // GApplication's notification, to the notification server: ostrov's own (notes.rs)
@@ -99,13 +100,13 @@ fn record(region: (i32, i32, i32, i32), file: &Path, audio: bool, stop: &AtomicB
     // the selector's frozen screen gone before the first frame
     std::thread::sleep(Duration::from_millis(200));
     let first = screen.frame(Some(region), true)?;
-    let (w, h) = even(first.width, first.height).ok_or("a region too small to record")?;
+    let (w, h) = even(first.width, first.height).ok_or(t("a region too small to record"))?;
     let format = match first.format {
         gdk::MemoryFormat::B8g8r8a8 | gdk::MemoryFormat::B8g8r8x8 => "bgrx",
         _ => "rgbx",
     };
     let has = |e: &str| Command::new("gst-inspect-1.0").args(["--exists", e]).status().is_ok_and(|s| s.success());
-    let encoder = ["vah264enc", "openh264enc"].into_iter().find(|e| has(e)).ok_or("no H.264 encoder in GStreamer")?;
+    let encoder = ["vah264enc", "openh264enc"].into_iter().find(|e| has(e)).ok_or(t("no H.264 encoder in GStreamer"))?;
     let mut gst = Command::new("gst-launch-1.0")
         .args(pipeline(w, h, format, encoder, file, audio))
         .stdin(Stdio::piped())
@@ -122,7 +123,7 @@ fn record(region: (i32, i32, i32, i32), file: &Path, audio: bool, stop: &AtomicB
     let status = gst.wait().map_err(|e| e.to_string())?;
     fed?;
     if !status.success() {
-        return Err(format!("gst-launch-1.0 ended with {status}"));
+        return Err(fill(t("gst-launch-1.0 ended with {}"), &[&status]));
     }
     Ok(())
 }
@@ -143,7 +144,7 @@ fn feed(
         let rows = frame.crop((0, 0, w, h)).ok_or("a frame short of the region")?;
         let due = (begun.elapsed().as_secs_f64() * FPS as f64) as u64 + 1;
         while sent < due {
-            out.write_all(&rows).map_err(|e| format!("the encoder quit: {e}"))?;
+            out.write_all(&rows).map_err(|e| fill(t("the encoder quit: {}"), &[&e]))?;
             sent += 1;
         }
         std::thread::sleep((begun + Duration::from_secs_f64(sent as f64 / FPS as f64)).saturating_duration_since(Instant::now()));

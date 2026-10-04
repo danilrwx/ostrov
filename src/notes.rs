@@ -390,7 +390,7 @@ impl Notes {
     /// The answer's chip, and the entry it unfolds under the actions: Enter (or Send) sends what is typed; the
     /// toast held up meanwhile.
     fn reply_box(self: &Rc<Self>, id: u32, prompt: &str) -> (gtk4::Button, gtk4::Box) {
-        let open = gtk4::Button::with_label(if prompt.is_empty() { "Reply" } else { prompt });
+        let open = gtk4::Button::with_label(if prompt.is_empty() { crate::i18n::t("Reply") } else { prompt });
         open.add_css_class("chip");
         let line = gtk4::Box::new(Orientation::Horizontal, 6);
         line.add_css_class("note-reply");
@@ -398,10 +398,10 @@ impl Notes {
         line.set_visible(false);
         let entry = gtk4::Entry::new();
         entry.set_hexpand(true);
-        entry.set_placeholder_text(Some(if prompt.is_empty() { "Reply…" } else { prompt }));
+        entry.set_placeholder_text(Some(if prompt.is_empty() { crate::i18n::t("Reply…") } else { prompt }));
         let send = gtk4::Button::from_icon_name("go-up-symbolic");
         send.add_css_class("send");
-        send.set_tooltip_text(Some("Send"));
+        send.set_tooltip_text(Some(crate::i18n::t("Send")));
         line.append(&entry);
         line.append(&send);
         let (me, l, e) = (self.clone(), line.clone(), entry.clone());
