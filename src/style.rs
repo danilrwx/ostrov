@@ -102,8 +102,10 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 /* the control centre's grid (cc/): its tiles, and in its editing their minus and corner, the one dragged lifted */
 .cc .battery { min-height: 0; }
 /* every tile of a panel on the same ground as a toggle's */
-.cc .card, .cc .clock, .cc calendar { background: @raised; border: 1px solid @rule; border-radius: 6px; }
+.cc .month calendar { background: none; border: none; padding: 0; }
+.cc .card, .cc .clock { background: @raised; border: 1px solid @rule; border-radius: 6px; }
 .cc.editing .tile > :first-child { opacity: 0.85; }
+.cc.editing { margin: 6px; }
 .tile.dragged > :first-child { opacity: 0.6; }
 button.tile-remove { background: @urgent; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
 button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }

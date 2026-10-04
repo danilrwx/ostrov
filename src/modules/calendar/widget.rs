@@ -15,6 +15,8 @@ use crate::style::{clear, label};
 /// The month, the picked day's events under it (none, no card).
 pub fn month(_: &Ctx) -> Widget {
     let col = gtk4::Box::new(Orientation::Vertical, 4);
+    col.add_css_class("card");
+    col.add_css_class("month");
     let cal = gtk4::Calendar::new();
     col.append(&cal);
     let agenda = gtk4::Box::new(Orientation::Vertical, 6);

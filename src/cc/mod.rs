@@ -477,7 +477,13 @@ impl Panel {
         let wrap = gtk4::Overlay::new();
         wrap.add_css_class("tile");
         wrap.set_widget_name(key);
-        wrap.set_child(Some(&widget.root));
+        // the tile as tall as its cells and no taller: what it holds clipped to them (scrolled, a scroll of its
+        // own aside), never a row pushed taller than its neighbours
+        let clip = gtk4::ScrolledWindow::new();
+        clip.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::External);
+        clip.set_propagate_natural_width(true);
+        clip.set_child(Some(&widget.root));
+        wrap.set_child(Some(&clip));
         let remove = gtk4::Button::from_icon_name("list-remove-symbolic");
         remove.add_css_class("tile-remove");
         remove.set_halign(Align::Start);
@@ -676,9 +682,11 @@ impl Panel {
         self.edit_button.set_label(if on { "Done" } else { "Edit" });
         for t in self.tiles.borrow().values() {
             t.widget.root.set_can_target(!on);
-            let mut c = t.widget.root.next_sibling();
+            let mut c = t.wrap.first_child();
             while let Some(w) = c {
-                w.set_visible(on);
+                if ["tile-remove", "tile-grip", "tile-eye", "tile-up"].iter().any(|k| w.has_css_class(k)) {
+                    w.set_visible(on);
+                }
                 c = w.next_sibling();
             }
         }
@@ -932,12 +940,20 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     ghost.set_visible(false);
     over.add_overlay(&ghost);
     over.set_clip_overlay(&ghost, false);
-    page.append(&over);
+    // the grid and the gallery scrolled within the screen's height, the footer under them always in sight
+    let body = gtk4::Box::new(Orientation::Vertical, 10);
+    let scroll = gtk4::ScrolledWindow::new();
+    scroll.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::Automatic);
+    scroll.set_propagate_natural_height(true);
+    scroll.set_propagate_natural_width(true);
+    scroll.set_child(Some(&body));
+    page.append(&scroll);
+    body.append(&over);
 
     let gallery = gtk4::Box::new(Orientation::Vertical, 2);
     gallery.add_css_class("menu");
     gallery.set_visible(false);
-    page.append(&gallery);
+    body.append(&gallery);
 
     // the footer: the control centre's gear to the Settings and palette to the Appearance, Edit
     let foot = gtk4::Box::new(Orientation::Horizontal, 4);
@@ -1024,6 +1040,13 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     // every opening at the grid, the menus folded, out of the editing (saved as it was left), drawn as things
     // are now: Keep Awake flips from outside the state too
     let me = Rc::downgrade(&p);
+    // as tall as the screen lets it be, under the bar, its edges and footer
+    let (sc, h) = (scroll.clone(), Rc::downgrade(host));
+    popup.on_open(move || {
+        if let Some(h) = h.upgrade() {
+            sc.set_max_content_height((h.win.height() - crate::popup::BAR - 110).max(200));
+        }
+    });
     popup.on_open(move || {
         if let Some(p) = me.upgrade() {
             p.pages.set_visible_child_full("grid", gtk4::StackTransitionType::None);
