@@ -81,3 +81,11 @@
 "Device Batteries" = "Батареи устройств"
 "Screen shared" = "Экран транслируется"
 "Screen shared: {}" = "Экран транслируется: {}"
+
+# the privacy block's menu
+"Camera" = "Камера"
+"Screen" = "Экран"
+"Mute microphone" = "Выключить микрофон"
+"Unmute microphone" = "Включить микрофон"
+"Turn off for {}" = "Выключить для {}"
+"Stop sharing" = "Остановить трансляцию"

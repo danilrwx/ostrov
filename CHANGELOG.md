@@ -5,8 +5,9 @@
 The first release: the whole shell in one binary.
 
 - The bar, made of blocks: workspaces with animated dots, the focused window's title, the keyboard layout, the
-  system tray with its menus, the privacy indicator (mic, camera, the screen shared), panels' faces made of
-  their widgets' badges. Docked or hidden and peeking (`ostrov bar toggle|peek|unpeek`); the blocks set in
+  system tray with its menus, the privacy indicator (mic, camera, the screen shared; a click lists the apps, the mic
+  muted, an app's camera turned off, a share stopped: `ostrov audio mic-mute|stop-camera APP|stop-screen`), panels'
+  faces made of their widgets' badges. Docked or hidden and peeking (`ostrov bar toggle|peek|unpeek`); the blocks set in
   `[bar]` or with the bar's editor in Settings.
 - Panels: the control centre and the calendar as grids of widgets eight cells wide, unrolling out of the bar; Edit
   drags, resizes by a corner, removes and adds widgets from a gallery, an inspector per widget (sizes, its badge in

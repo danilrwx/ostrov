@@ -67,6 +67,9 @@ struct Audio {
     mic_apps: Vec<App>,
     #[serde(rename = "camApps")]
     cam_apps: Vec<String>,
+    /// the camera's streams in PipeWire, the ones `audio stop-camera APP` can end
+    #[serde(rename = "camStreams")]
+    cam_streams: Vec<App>,
     /// the screen shared through the portal (its stream a Video/Source of no device: xdg-desktop-portal-hyprland's
     /// xdph-streaming-N), and the apps taking it, kept out of camApps
     screen: bool,
@@ -114,6 +117,28 @@ fn app_name(p: &Value) -> String {
         .into()
 }
 
+/// Whether a pw-dump object is a screen's stream: a Video/Source node of no device (xdg-desktop-portal-hyprland's
+/// xdph-streaming-N), a camera's having its device.
+fn screen_source(o: &Value) -> bool {
+    let p = &o["info"]["props"];
+    str(o, &["type"]) == "PipeWire:Interface:Node"
+        && str(p, &["media.class"]) == "Video/Source"
+        && p.get("device.id").is_none()
+}
+
+/// The screens' streams by node id.
+fn screens(objs: &[Value]) -> HashSet<i64> {
+    objs.iter().filter(|o| screen_source(o)).map(|o| num(o, &["id"])).collect()
+}
+
+/// What each node takes from: its links, input node to output node.
+fn takes(objs: &[Value]) -> HashMap<i64, i64> {
+    objs.iter()
+        .filter(|o| str(o, &["type"]) == "PipeWire:Interface:Link")
+        .map(|o| (num(o, &["info", "input-node-id"]), num(o, &["info", "output-node-id"])))
+        .collect()
+}
+
 async fn pw_dump() -> Result<Vec<Value>, String> {
     let out = tokio::process::Command::new("pw-dump").output().await.map_err(|e| e.to_string())?;
     if !out.status.success() {
@@ -136,23 +161,7 @@ fn parse(objs: &[Value]) -> Audio {
     let mut a = Audio::default();
     let mut defaults = HashMap::new();
     let mut routes = HashMap::new();
-    // the screens' streams, and what each node takes from: links, output node to input node
-    let mut screens = std::collections::HashSet::new();
-    let mut takes = HashMap::new();
-    for o in objs {
-        match str(o, &["type"]) {
-            "PipeWire:Interface:Node" => {
-                let p = &o["info"]["props"];
-                if str(p, &["media.class"]) == "Video/Source" && p.get("device.id").is_none() {
-                    screens.insert(num(o, &["id"]));
-                }
-            }
-            "PipeWire:Interface:Link" => {
-                takes.insert(num(o, &["info", "input-node-id"]), num(o, &["info", "output-node-id"]));
-            }
-            _ => {}
-        }
-    }
+    let (screens, takes) = (screens(objs), takes(objs));
     a.screen = !screens.is_empty();
     for o in objs {
         match str(o, &["type"]) {
@@ -186,6 +195,9 @@ fn parse(objs: &[Value]) -> Audio {
             }
             "Stream/Input/Video" if running => {
                 let screen = takes.get(&num(o, &["id"])).is_some_and(|src| screens.contains(src));
+                if !screen {
+                    a.cam_streams.push(App { id: num(o, &["id"]), name: app_name(p) });
+                }
                 if screen { &mut a.screen_apps } else { &mut a.cam_apps }.push(app_name(p));
                 continue;
             }
@@ -386,23 +398,67 @@ pub async fn events(kick: Kick) {
     let _ = child.wait().await;
 }
 
+/// A program run to its end, an error if it fails.
+async fn exec(line: &[String]) -> Res {
+    let Some((prog, args)) = line.split_first() else { return Ok(()) };
+    let status = tokio::process::Command::new(prog).args(args).status().await.map_err(|e| e.to_string())?;
+    if status.success() { Ok(()) } else { Err(format!("{prog}: {status}")) }
+}
+
+/// What audio mic-mute, stop-screen and stop-camera APP run, out of pw-dump's objects: the default source's mute
+/// flipped; pw-cli destroy of every screen's stream, the portal's (the app taking one sees it end and ends its
+/// share); of APP's camera streams, its Stream/Input/Video nodes but those taking a screen (the node itself:
+/// WirePlumber would link a stream again were its links alone destroyed). Another screen or window cannot be picked
+/// for a share from here: the portal's session is the app's, the share started again in the app, its picker then.
+fn privacy(args: &[&str], objs: &[Value]) -> Result<Vec<Vec<String>>, String> {
+    if args == ["mic-mute"] {
+        return Ok(vec![["wpctl", "set-mute", default(false), "toggle"].map(String::from).to_vec()]);
+    }
+    let screens = screens(objs);
+    let mut ids: Vec<i64> = match args {
+        ["stop-camera", app] => {
+            let takes = takes(objs);
+            objs.iter()
+                .filter(|o| str(o, &["type"]) == "PipeWire:Interface:Node")
+                .filter(|o| str(o, &["info", "props", "media.class"]) == "Stream/Input/Video")
+                .filter(|o| app_name(&o["info"]["props"]) == *app)
+                .map(|o| num(o, &["id"]))
+                .filter(|id| !takes.get(id).is_some_and(|src| screens.contains(src)))
+                .collect()
+        }
+        _ => screens.into_iter().collect(),
+    };
+    if ids.is_empty() {
+        return Err(match args {
+            ["stop-camera", app] => format!("no camera stream of {app} in PipeWire"),
+            _ => "no screen shared through the portal".into(),
+        });
+    }
+    ids.sort();
+    Ok(ids.iter().map(|id| vec!["pw-cli".into(), "destroy".into(), id.to_string()]).collect())
+}
+
 /// audio volume ID LEVEL: a stream's level (0 to 1, as wpctl puts it), through wpctl. The state is read anew
 /// after: PipeWire's monitor tells a level's change to nothing watched.
 pub async fn cmd(args: &[&str]) -> Res {
+    if matches!(args, ["mic-mute"] | ["stop-screen"] | ["stop-camera", _]) {
+        let objs = if args == ["mic-mute"] { Vec::new() } else { pw_dump().await? };
+        for line in privacy(args, &objs)? {
+            exec(&line).await?;
+        }
+        STALE.store(true, std::sync::atomic::Ordering::Relaxed);
+        return Ok(());
+    }
     // a card's profile switched (the speaker's, from the headphones'), then the port asked for put on in it:
     // WirePlumber restores the routes it saved for the profile, which may hold no output at all
     if let ["port", card, profile, route, device] = args {
         let n = |s: &str| s.parse::<u32>().map_err(|_| "audio port: CARD PROFILE ROUTE DEVICE".to_string());
         let (card, profile, route, device) = (n(card)?, n(profile)?, n(route)?, n(device)?);
-        let run = |prog: &'static str, args: Vec<String>| async move {
-            let status = tokio::process::Command::new(prog).args(&args).status().await.map_err(|e| e.to_string())?;
-            if status.success() { Ok(()) } else { Err(format!("{prog}: {status}")) }
-        };
-        run("wpctl", vec!["set-profile".into(), card.to_string(), profile.to_string()]).await?;
+        exec(&["wpctl".into(), "set-profile".into(), card.to_string(), profile.to_string()]).await?;
         // the profile's nodes made before its route is set
         tokio::time::sleep(std::time::Duration::from_millis(400)).await;
         let param = format!("{{ index: {route}, device: {device}, save: true }}");
-        run("pw-cli", vec!["set-param".into(), card.to_string(), "Route".into(), param]).await?;
+        exec(&["pw-cli".into(), "set-param".into(), card.to_string(), "Route".into(), param]).await?;
         STALE.store(true, std::sync::atomic::Ordering::Relaxed);
         return Ok(());
     }
@@ -497,6 +553,7 @@ mod tests {
         assert_eq!(v["volume"], serde_json::json!(0.5));
         assert_eq!(v["micApps"], serde_json::json!([{"id": 88, "name": "Chromium input"}]));
         assert_eq!(v["camApps"], serde_json::json!(["zoom"]));
+        assert_eq!(v["camStreams"], serde_json::json!([{"id": 90, "name": "zoom"}]));
         assert_eq!(v["screen"], serde_json::json!(true));
         assert_eq!(v["screenApps"], serde_json::json!(["obs"]));
         assert_eq!(
@@ -506,6 +563,22 @@ mod tests {
                 {"id": 120, "name": "mpv", "icon": "mpv", "bin": "mpv", "volume": 0.5},
             ])
         );
+    }
+
+    #[test]
+    fn privacy() {
+        let objs: Vec<serde_json::Value> = serde_json::from_str(include_str!("audio_test.json")).unwrap();
+        let lines = |args: &[&str]| {
+            super::privacy(args, &objs).map(|ls| ls.iter().map(|l| l.join(" ")).collect::<Vec<_>>())
+        };
+        assert_eq!(lines(&["mic-mute"]), Ok(vec!["wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle".into()]));
+        // the portal's two streams, not the camera's source
+        assert_eq!(lines(&["stop-screen"]), Ok(vec!["pw-cli destroy 92".into(), "pw-cli destroy 96".into()]));
+        // zoom's streams, the paused one too
+        assert_eq!(lines(&["stop-camera", "zoom"]), Ok(vec!["pw-cli destroy 90".into(), "pw-cli destroy 97".into()]));
+        // obs takes the screen, not a camera
+        assert!(lines(&["stop-camera", "obs"]).is_err());
+        assert!(super::privacy(&["stop-screen"], &[]).is_err());
     }
 
     #[test]

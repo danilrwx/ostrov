@@ -7,7 +7,8 @@ Hyprland desktop is usually pieced together from, made to look and work as one t
 ![The bar and the control centre, its Wi-Fi unfolded](docs/screenshots/hero.png)
 
 - **A bar made of blocks**: workspaces, the focused window's title, the tray, the keyboard layout, the privacy
-  indicator (mic or camera in use, the screen shared), and the faces of the panels, made of their widgets' badges.
+  indicator (mic or camera in use, the screen shared; its menu mutes the mic, turns an app's camera off, stops a
+  share), and the faces of the panels, made of their widgets' badges.
 - **Panels of widgets**, macOS-style: the control centre and the calendar are grids of widgets (Wi-Fi, Bluetooth,
   volume and mic with per-app sliders, brightness, power modes, battery, Airplane Mode, wallpaper, the player, the weather, the
   month and its events, notifications with Do Not Disturb). Edit them in place, add from a gallery, make your

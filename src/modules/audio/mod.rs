@@ -1,5 +1,6 @@
-//! Sound, through PipeWire: its state (devices, the apps playing, the mic and camera in use), `ostrov audio
-//! ...`, `ostrov headset`; the volume and mic sliders, the headset's toggle.
+//! Sound, through PipeWire: its state (devices, the apps playing, the mic, camera and screen in use), `ostrov audio
+//! ...` (the privacy block's menu's actions among them), `ostrov headset`; the volume and mic sliders, the headset's
+//! toggle.
 
 pub mod service;
 mod widget;
@@ -12,9 +13,18 @@ use crate::services::{every, Ctx, Kick, Res};
 
 pub const MODULE: Module = Module {
     id: "audio",
-    forms: &["volume ID LEVEL", "port CARD PROFILE ROUTE DEVICE"],
-    // ID: the streams playing, by their app
-    complete: Some(|st, _| super::values(&st["streams"], "id", |s| s["name"].as_str().unwrap_or("").into())),
+    forms: &[
+        "volume ID LEVEL",
+        "port CARD PROFILE ROUTE DEVICE",
+        "mic-mute",
+        "stop-screen",
+        "stop-camera APP",
+    ],
+    // ID: the streams playing, by their app; APP: the camera's
+    complete: Some(|st, ph| match ph {
+        "APP" => super::values(&st["camStreams"], "name", |_| "camera".into()),
+        _ => super::values(&st["streams"], "id", |s| s["name"].as_str().unwrap_or("").into()),
+    }),
     state: Some(state),
     run: Some(run),
     worker: Some(worker),

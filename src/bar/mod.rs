@@ -71,7 +71,7 @@ fn block(name: &str, cx: &Rc<Ctx>, side: Side) -> Option<Block> {
         "workspaces" => workspaces::build(cx),
         "window" => window::build(cx),
         "layout" => layout::build(cx),
-        "privacy" => privacy::build(cx),
+        "privacy" => privacy::build(cx, side),
         "tray" => tray::build(cx),
         "status" => panel::build(cx, "control", side),
         "clock" => panel::build(cx, "calendar", side),
