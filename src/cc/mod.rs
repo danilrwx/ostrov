@@ -412,6 +412,23 @@ impl Panel {
         self.set_open(alias(name));
     }
 
+    /// A widget on the grid made w×h, a size it allows, saved.
+    pub fn resize(self: &Rc<Self>, key: &str, w: u8, h: u8) -> Result<(), String> {
+        let m = self.reg.iter().find(|m| m.id == key).ok_or(format!("no widget {key}"))?;
+        if !m.sizes.contains(&(w, h)) {
+            let all: Vec<String> = m.sizes.iter().map(|(w, h)| format!("{w}×{h}")).collect();
+            return Err(format!("{key} is {}", all.join(", ")));
+        }
+        let it = self.items.borrow().iter().find(|i| i.key == key).cloned().ok_or(format!("{key} is not on the grid"))?;
+        let mut items = self.items.borrow().clone();
+        grid::place(&mut items, key, it.x, it.y, w, h);
+        *self.items.borrow_mut() = items;
+        self.layout();
+        self.faces();
+        save(&self.spec.id, &self.items.borrow(), &self.hidden.borrow(), &self.shows.borrow());
+        Ok(())
+    }
+
     /// Whether a widget key is on it.
     pub fn has(&self, key: &str) -> bool {
         self.items.borrow().iter().chain(self.hidden.borrow().iter()).any(|i| i.key == key)
@@ -933,16 +950,19 @@ impl Panel {
             let mut a = a.borrow_mut();
             let Some((it, corner, start, last, at)) = a.as_mut() else { return };
             let (x, y, w, h) = *at;
-            p.place_ghost(if *corner { (x, y, (w + dx).max(24.0), (h + dy).max(24.0)) } else { (x + dx, y + dy, w, h) });
             let Some(m) = p.reg.iter().find(|m| m.id == it.key) else { return };
             let (row, gap) = p.dims.get();
             let cw = (p.grid.width() + gap) as f64 / COLS as f64;
             let (fx, fy) = (dx / cw, dy / (row + gap) as f64);
             let (cx, cy) = (fx.round() as i32, fy.round() as i32);
             let next = if *corner {
-                let (w, h) = toward(m.sizes, (it.w, it.h), (fx, fy));
-                (it.x, it.y, w, h)
+                // the frame the size it will be, from the cells: what is seen is what it takes
+                let (nw, nh) = toward(m.sizes, (it.w, it.h), (fx, fy));
+                let pitch = (row + gap) as f64;
+                p.place_ghost((x, y, nw as f64 * cw - gap as f64, nh as f64 * pitch - gap as f64));
+                (it.x, it.y, nw, nh)
             } else {
+                p.place_ghost((x + dx, y + dy, w, h));
                 let x = (it.x as i32 + cx).clamp(0, (COLS - it.w) as i32) as u8;
                 (x, (it.y as i32 + cy).max(0) as u8, it.w, it.h)
             };

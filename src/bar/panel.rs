@@ -8,7 +8,7 @@ use gtk4::prelude::*;
 use super::{pill, slot, Block, Ctx};
 use crate::popup::Side;
 
-const FORMS: &[&str] = &["menu NAME", "settings [SECTION]", "appearance"];
+const FORMS: &[&str] = &["menu NAME", "settings [SECTION]", "appearance", "size NAME W H"];
 
 pub fn build(cx: &Rc<Ctx>, id: &str, side: Side) -> Block {
     let face = pill();
@@ -30,6 +30,12 @@ pub fn build(cx: &Rc<Ctx>, id: &str, side: Side) -> Block {
             }
             ["settings", entry @ ..] => {
                 p.open_page("settings", entry.first().copied());
+                Ok(String::new())
+            }
+            // a widget sized on the grid, as the inspector's chips do: from a script, a test
+            ["size", key, w, h] => {
+                let (Ok(w), Ok(h)) = (w.parse(), h.parse()) else { return Err(crate::forms::usage("panel.ID", FORMS)) };
+                p.resize(key, w, h)?;
                 Ok(String::new())
             }
             ["appearance"] => {
