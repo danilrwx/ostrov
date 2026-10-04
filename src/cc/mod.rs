@@ -264,6 +264,9 @@ struct Placed {
     h: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     bar: Option<Show>,
+    /// in the bar alone, no tile on the panel (the clock's time up there, nothing of it below)
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    hidden: bool,
 }
 
 /// panel.toml: each panel's widgets, under its id ([[control]], [[calendar]]); [[widget]] the control centre's
@@ -306,11 +309,12 @@ fn toward(sizes: &[(u8, u8)], (w, h): (u8, u8), (dw, dh): (f64, f64)) -> (u8, u8
 }
 
 /// A panel's layout as panel.toml has it (widgets unknown dropped, sizes not allowed made the nearest allowed),
-/// else its spec's; and when its badges show where it says.
-fn load(reg: &[Meta], spec: &Spec) -> (Vec<Item>, HashMap<String, Show>) {
+/// else its spec's; the widgets in the bar alone, where they were; and when its badges show where it says.
+fn load(reg: &[Meta], spec: &Spec) -> (Vec<Item>, Vec<Item>, HashMap<String, Show>) {
     let mut saved = read_saved().unwrap_or_default();
     let placed = saved.remove(&spec.id).or_else(|| if spec.id == "control" { saved.remove("widget") } else { None });
     let mut shows = HashMap::new();
+    let mut hidden = Vec::new();
     let mut items: Vec<Item> = match placed {
         Some(ps) => ps
             .into_iter()
@@ -320,22 +324,37 @@ fn load(reg: &[Meta], spec: &Spec) -> (Vec<Item>, HashMap<String, Show>) {
                 if let Some(b) = p.bar {
                     shows.insert(p.id.clone(), b);
                 }
-                Some(Item { key: p.id, x: p.x, y: p.y, w, h })
+                let it = Item { key: p.id, x: p.x, y: p.y, w, h };
+                if p.hidden {
+                    hidden.push(it);
+                    return None;
+                }
+                Some(it)
             })
             .collect(),
         None => spec.layout.clone(),
     };
     let mut seen = std::collections::HashSet::new();
     items.retain(|i| seen.insert(i.key.clone()));
+    hidden.retain(|i| seen.insert(i.key.clone()));
     grid::compact(&mut items);
-    (items, shows)
+    (items, hidden, shows)
 }
 
 /// A panel's layout into panel.toml, the other panels' kept.
-fn save(id: &str, items: &[Item], shows: &HashMap<String, Show>) {
+fn save(id: &str, items: &[Item], hidden: &[Item], shows: &HashMap<String, Show>) {
     let mut s = read_saved().unwrap_or_default();
     s.remove("widget");
-    let placed = items.iter().map(|i| Placed { id: i.key.clone(), x: i.x, y: i.y, w: i.w, h: i.h, bar: shows.get(&i.key).copied() });
+    let all = items.iter().map(|i| (i, false)).chain(hidden.iter().map(|i| (i, true)));
+    let placed = all.map(|(i, hidden)| Placed {
+        id: i.key.clone(),
+        x: i.x,
+        y: i.y,
+        w: i.w,
+        h: i.h,
+        bar: shows.get(&i.key).copied(),
+        hidden,
+    });
     s.insert(id.to_string(), placed.collect());
     let text = match toml::to_string(&s) {
         Ok(t) => format!("# ostrov's panels, as their Edit leaves them\n\n{t}"),
@@ -377,6 +396,8 @@ pub struct Panel {
     gallery: gtk4::Box,
     edit_button: gtk4::Button,
     items: RefCell<Vec<Item>>,
+    /// the widgets in the bar alone, kept where they were on the grid (their badges' order)
+    hidden: RefCell<Vec<Item>>,
     tiles: RefCell<HashMap<String, Tile>>,
     open: RefCell<String>,
     editing: Cell<bool>,
@@ -400,7 +421,7 @@ impl Panel {
 
     /// Whether a widget key is on it.
     pub fn has(&self, key: &str) -> bool {
-        self.items.borrow().iter().any(|i| i.key == key)
+        self.items.borrow().iter().chain(self.hidden.borrow().iter()).any(|i| i.key == key)
     }
 
     /// Open at a page: "settings" (at an entry's form, if given), "appearance", "grid".
@@ -496,6 +517,20 @@ impl Panel {
                 eye.set_icon_name("view-conceal-symbolic");
             }
             marks.push(eye.upcast());
+            // up into the bar alone, its tile off the panel
+            let up = gtk4::Button::from_icon_name("go-top-symbolic");
+            up.add_css_class("tile-up");
+            up.set_tooltip_text(Some("In the bar only"));
+            up.set_halign(Align::Start);
+            up.set_valign(Align::End);
+            let me = Rc::downgrade(self);
+            let k = key.to_string();
+            up.connect_clicked(move |_| {
+                if let Some(p) = me.upgrade() {
+                    p.hide(&k);
+                }
+            });
+            marks.push(up.upcast());
         }
         for w in &marks {
             w.set_visible(self.editing.get());
@@ -603,6 +638,7 @@ impl Panel {
             self.face.remove(&c);
         }
         let mut items = self.items.borrow().clone();
+        items.extend(self.hidden.borrow().iter().cloned());
         items.sort_by_key(|i| (i.y, i.x));
         let tiles = self.tiles.borrow();
         for f in items.iter().filter_map(|i| tiles.get(&i.key)?.widget.face.as_ref()) {
@@ -633,7 +669,7 @@ impl Panel {
     /// In the editing or out of it, the layout saved on the way out.
     fn set_editing(self: &Rc<Self>, on: bool) {
         if !on && self.editing.get() {
-            save(&self.spec.id, &self.items.borrow(), &self.shows.borrow());
+            save(&self.spec.id, &self.items.borrow(), &self.hidden.borrow(), &self.shows.borrow());
         }
         self.editing.set(on);
         self.set_open("");
@@ -657,8 +693,35 @@ impl Panel {
 
     fn remove(self: &Rc<Self>, key: &str) {
         self.items.borrow_mut().retain(|i| i.key != key);
+        self.hidden.borrow_mut().retain(|i| i.key != key);
         grid::compact(&mut self.items.borrow_mut());
         self.tiles.borrow_mut().remove(key);
+        self.layout();
+        self.faces();
+        self.fill_gallery();
+    }
+
+    /// A widget's tile off the panel, its badge left in the bar (shown always, if it was never).
+    fn hide(self: &Rc<Self>, key: &str) {
+        let Some(it) = self.items.borrow().iter().find(|i| i.key == key).cloned() else { return };
+        self.items.borrow_mut().retain(|i| i.key != key);
+        grid::compact(&mut self.items.borrow_mut());
+        self.hidden.borrow_mut().push(it);
+        let bar = self.reg.iter().find(|m| m.id == key).map_or(Show::Never, |m| m.bar);
+        if self.show(key, bar) == Show::Never {
+            self.shows.borrow_mut().insert(key.into(), Show::Always);
+        }
+        self.layout();
+        self.faces();
+        self.fill_gallery();
+    }
+
+    /// A widget in the bar alone back on the panel, in the first place its size fits.
+    fn unhide(self: &Rc<Self>, key: &str) {
+        let Some(mut it) = self.hidden.borrow().iter().find(|i| i.key == key).cloned() else { return };
+        self.hidden.borrow_mut().retain(|i| i.key != key);
+        (it.x, it.y) = grid::free(&self.items.borrow(), it.w, it.h);
+        self.items.borrow_mut().push(it);
         self.layout();
         self.faces();
         self.fill_gallery();
@@ -681,8 +744,23 @@ impl Panel {
     /// The gallery: every widget not on the grid, its sizes, a click putting it on.
     fn fill_gallery(self: &Rc<Self>) {
         clear(&self.gallery);
+        let hidden: Vec<String> = self.hidden.borrow().iter().map(|i| i.key.clone()).collect();
+        if !hidden.is_empty() {
+            self.gallery.append(&label("In the Bar Only", "title"));
+        }
+        for k in &hidden {
+            let Some(m) = self.reg.iter().find(|m| m.id == k) else { continue };
+            let me = Rc::downgrade(self);
+            let k2 = k.clone();
+            self.gallery.append(&crate::ui::row(m.icon, m.name, "back on the panel", false, move || {
+                if let Some(p) = me.upgrade() {
+                    p.unhide(&k2);
+                }
+            }));
+        }
         self.gallery.append(&label("Add Widgets", "title"));
-        let on: Vec<String> = self.items.borrow().iter().map(|i| i.key.clone()).collect();
+        let mut on: Vec<String> = self.items.borrow().iter().map(|i| i.key.clone()).collect();
+        on.extend(hidden);
         let mut any = false;
         for m in self.reg.iter().filter(|m| !on.iter().any(|k| k == m.id)) {
             any = true;
@@ -902,7 +980,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
 
     let popup = Popup::new(host, tab, side, spec.width, &col);
     let reg = registry();
-    let (items, shows) = load(&reg, &spec);
+    let (items, hidden, shows) = load(&reg, &spec);
     let face_icon = gtk4::Image::from_icon_name(&spec.icon);
     face_icon.set_tooltip_text(Some(&spec.name));
     let p = Rc::new(Panel {
@@ -920,12 +998,13 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         gallery,
         edit_button: edit_button.clone(),
         items: RefCell::new(items),
+        hidden: RefCell::new(hidden),
         tiles: RefCell::default(),
         open: RefCell::default(),
         editing: Cell::new(false),
         state: Rc::new(RefCell::new(Value::Null)),
     });
-    let keys: Vec<String> = p.items.borrow().iter().map(|i| i.key.clone()).collect();
+    let keys: Vec<String> = p.items.borrow().iter().chain(p.hidden.borrow().iter()).map(|i| i.key.clone()).collect();
     for k in keys {
         if let Some(t) = p.tile(&k) {
             p.tiles.borrow_mut().insert(k, t);

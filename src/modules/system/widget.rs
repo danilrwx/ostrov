@@ -67,6 +67,7 @@ pub fn awake(c: &Ctx) -> Widget {
 /// Clear under it; its badge a bell struck through while Do Not Disturb is on.
 pub fn notifications(_: &Ctx) -> Widget {
     let col = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
+    col.add_css_class("card");
     col.append(&label("Notifications", "title"));
     let scroll = gtk4::ScrolledWindow::new();
     scroll.set_vexpand(true);

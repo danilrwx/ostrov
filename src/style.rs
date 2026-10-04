@@ -67,7 +67,7 @@ separator { background: @rule; margin: 4px; min-height: 1px; min-width: 1px; }
 .toast.critical { box-shadow: inset 0 0 0 1px @urgent; }
 .menu { background: @card; border: 1px solid @rule; border-radius: 6px; padding: 10px; margin-top: 4px; }
 .menu-head { margin-bottom: 6px; }
-.battery { background: @raised; border-radius: 6px; padding: 0 14px; min-height: 40px; }
+.battery { background: @raised; border: 1px solid @rule; border-radius: 6px; padding: 0 14px; min-height: 40px; }
 .badge { background: @accent; color: @ink; border-radius: 6px; min-width: 32px; min-height: 32px; }
 .art { border-radius: 6px; }
 
@@ -101,18 +101,22 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 
 /* the control centre's grid (cc/): its tiles, and in its editing their minus and corner, the one dragged lifted */
 .cc .battery { min-height: 0; }
+/* every tile of a panel on the same ground as a toggle's */
+.cc .card, .cc .clock, .cc calendar { background: @raised; border: 1px solid @rule; border-radius: 6px; }
 .cc.editing .tile > :first-child { opacity: 0.85; }
 .tile.dragged > :first-child { opacity: 0.6; }
 button.tile-remove { background: @urgent; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
 button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }
 /* a plugin's widget drawn as anything but a toggle, a slider or a round button: on a card like the battery's */
 .plugin-card { background: @raised; border: 1px solid @rule; border-radius: 6px; padding: 4px 14px; }
+button.tile-up { background: @raised; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
+button.tile-up image { -gtk-icon-size: 12px; }
 .tile-ghost { border: 2px solid @accent; border-radius: 6px; background: alpha(@accent, 0.12); }
 .tile-grip { color: @dim; -gtk-icon-size: 12px; min-width: 28px; min-height: 28px; }
 button.tile-eye { background: @raised; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
 button.tile-eye image { -gtk-icon-size: 12px; }
 .clock { padding: 0 14px; }
-.clock-time { font-size: 20pt; font-weight: bold; }
+.surface label.clock-time { font-size: 20pt; font-weight: bold; }
 /* the tiles as tall as the density's rows (look.rs), not their own */
 .cc .toggle, .cc button.round { min-height: 0; }
 
