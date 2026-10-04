@@ -73,7 +73,7 @@ pub struct Meta {
     pub name: &'static str,
     pub icon: &'static str,
     pub sizes: &'static [(u8, u8)],
-    pub make: fn(&Ctx) -> Widget,
+    pub make: Rc<dyn Fn(&Ctx) -> Widget>,
     /// its settings' schema, kept in [widget.ID], a page of the Settings
     pub settings: Option<fn() -> crate::settings::Schema>,
 }
@@ -581,7 +581,8 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
     pages.add_named(&appearance::page(move || pg.set_visible_child_name("grid")), Some("appearance"));
 
     let popup = Popup::new(host, tab, Side::Right, 390, &col);
-    let reg = widgets::all();
+    let mut reg = widgets::all();
+    reg.extend(crate::plugins::metas());
     for m in &reg {
         if let Some(schema) = m.settings {
             crate::settings::register(&format!("widget.{}", m.id), m.name, m.icon, schema());

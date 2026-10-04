@@ -24,7 +24,9 @@ const BUTTON: &[(u8, u8)] = &[(1, 1), (2, 1)];
 const SLIDER: &[(u8, u8)] = &[(8, 1)];
 
 pub fn all() -> Vec<Meta> {
-    let m = |id, name, icon, sizes, make| Meta { id, name, icon, sizes, make, settings: None };
+    let m = |id, name, icon, sizes, make: fn(&Ctx) -> Widget| {
+        Meta { id, name, icon, sizes, make: Rc::new(make), settings: None }
+    };
     vec![
         m("battery", "Battery", "battery-good-symbolic", &[(5, 1), (2, 1), (3, 1), (4, 1), (8, 1)], battery),
         m("screenshot", "Screenshot", "applets-screenshooter-symbolic", BUTTON, screenshot),

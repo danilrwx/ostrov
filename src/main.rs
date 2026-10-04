@@ -4,6 +4,8 @@
 //! lock screen; the desktop's state and switches from its services (services/, wmd's port), the compositor's
 //! through wm.rs, how it all looks in style.rs. One ostrov runs: `ostrov ARGS` hands ARGS to it.
 
+mod api;
+mod backend;
 mod bar;
 mod calc;
 mod calendar;
@@ -19,6 +21,7 @@ mod lock;
 mod look;
 mod notes;
 mod overview;
+mod plugins;
 mod polkit;
 mod popup;
 mod prompt;
@@ -47,7 +50,7 @@ thread_local! {
 }
 
 const USAGE: &str = "usage: ostrov [panel | menu NAME | settings [SECTION] | appearance | calendar | run | ask QUESTION | clip | windows [app] | overview [close] | lock | key NAME | awake | screenshot | \
-capture FILE | record [--audio] | bar toggle|peek|unpeek | state | dump | BLOCK ARGS | SERVICE ARGS]";
+capture FILE | record [--audio] | bar toggle|peek|unpeek | state | dump | toast TITLE [BODY] | dialog JSON | plugins | plugin [ID [ARGS]] | help | BLOCK ARGS | SERVICE ARGS]";
 
 fn activate(app: &gtk4::Application) {
     // the bar's window, the popups laid over it (popup.rs); the bar and the launcher over it its strip
@@ -60,6 +63,9 @@ fn activate(app: &gtk4::Application) {
     let hub = Hub::start();
     let notes = notes::start(app);
     let cfg = config::load();
+    // the plugins' widgets before the control centre takes them; ostrov's D-Bus face (api.rs)
+    plugins::start(&hub);
+    api::start(&hub);
     fn names(v: &[String]) -> Vec<&str> {
         v.iter().map(String::as_str).collect()
     }
@@ -148,6 +154,11 @@ fn activate(app: &gtk4::Application) {
                 }
                 // the services' state, wmd watch's JSON
                 ["dump"] => return Ok(hub.state().to_string()),
+                ["toast", title, ref body @ ..] => {
+                    notes.post("dialog-information-symbolic", title, &body.join(" "), false)
+                }
+                ["plugins"] => return Ok(plugins::list()),
+                ["help"] => return Ok(format!("{USAGE}\n\nthe plugins' commands:\n{}", plugins::help())),
                 // what is open, and the bar's mode: for a script, a test
                 ["state"] => {
                     let mut words: Vec<&str> = bar.open().into_iter().collect();
@@ -175,6 +186,48 @@ fn activate(app: &gtk4::Application) {
     });
 }
 
+/// A command's outcome, once there is one: a plugin's comes when it answers.
+pub type Reply = std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, String>>>>;
+
+/// `ostrov ARGS` done by this ostrov, whoever asks: the command line, D-Bus (api.rs), a plugin. The one dispatch:
+/// `plugin ID ARGS` to that plugin's own (input what was piped to ostrov), `dialog JSON` a question's answer once
+/// given (a no an error), the rest ostrov's own, at once.
+fn command(args: &[String], input: Option<String>) -> Reply {
+    match args {
+        [first, rest @ ..] if first == "plugin" => return plugins::run(rest, input),
+        [first, rest @ ..] if first == "dialog" => {
+            let spec = rest.join(" ");
+            return Box::pin(async move {
+                let spec = serde_json::from_str(&spec).map_err(|e| format!("dialog JSON: {e}"))?;
+                prompt::dialog(&spec, None, None).await?.ok_or("cancelled".into())
+            });
+        }
+        _ => {}
+    }
+    let r = COMMAND.with(|c| c.borrow().as_ref().map(|f| f(args))).unwrap_or(Err("ostrov is starting".into()));
+    Box::pin(std::future::ready(r))
+}
+
+/// The questions ostrov puts, once built.
+pub fn prompts() -> Option<Rc<prompt::Prompts>> {
+    PROMPTS.with(|p| p.borrow().clone())
+}
+
+/// What was piped to `ostrov ARGS`, read on a thread of its own: nothing from a terminal, nothing empty.
+fn piped(cl: &gtk4::gio::ApplicationCommandLine) -> Option<async_channel::Receiver<String>> {
+    use std::io::{IsTerminal, Read};
+    use std::os::fd::AsFd;
+    let stream = cl.stdin()?.downcast::<gio_unix::InputStream>().ok()?;
+    let fd = stream.as_fd().try_clone_to_owned().ok().filter(|fd| !fd.is_terminal())?;
+    let (tx, rx) = async_channel::bounded(1);
+    std::thread::spawn(move || {
+        let mut text = String::new();
+        let _ = std::fs::File::from(fd).read_to_string(&mut text);
+        let _ = tx.send_blocking(text);
+    });
+    Some(rx)
+}
+
 /// ssh's askpass (bin/askpass, SSH_ASKPASS): `ostrov askpass [--confirm|--none] PROMPT`, a key's passphrase
 /// asked and printed, or a yes or no to using a key (--confirm: the exit status says it; --none: a word alone).
 /// The asking ostrov waits for the answer: the command line kept until it comes, its status set then.
@@ -189,7 +242,8 @@ fn askpass(cl: &gtk4::gio::ApplicationCommandLine, args: &[String]) {
         Some((t, rest)) => (t.trim().to_string(), rest.trim().to_string()),
         None => (text.trim().to_string(), String::new()),
     };
-    prompts.ask(prompt::Ask { icon: "dialog-password-symbolic".into(), title, text, secret, error: String::new(), reply });
+    let kind = if secret { prompt::Kind::Secret } else { prompt::Kind::Confirm };
+    prompts.ask(prompt::Ask::new("dialog-password-symbolic", &title, &text, kind, reply));
     let cl = cl.clone();
     glib::spawn_future_local(async move {
         match answer.recv().await.ok().flatten() {
@@ -230,17 +284,30 @@ fn main() -> glib::ExitCode {
             askpass(cl, &args[1..]);
             return glib::ExitCode::FAILURE;
         }
-        match COMMAND.with(|c| c.borrow().as_ref().map(|f| f(&args))) {
-            Some(Err(e)) => {
-                cl.printerr_literal(&format!("{e}\n"));
-                glib::ExitCode::FAILURE
+        // a plugin's command reads what was piped (a built-in one never: a script's loop keeps its stdin), and
+        // answers once it has: the command line kept till then, its status set then
+        let input = if args[0] == "plugin" { piped(cl) } else { None };
+        let cl = cl.clone();
+        glib::spawn_future_local(async move {
+            let input = match input {
+                Some(rx) => rx.recv().await.ok().filter(|t| !t.is_empty()),
+                None => None,
+            };
+            match command(&args, input).await {
+                Err(e) => {
+                    cl.printerr_literal(&format!("{e}\n"));
+                    cl.set_exit_code(glib::ExitCode::FAILURE);
+                }
+                Ok(out) => {
+                    if !out.is_empty() {
+                        cl.print_literal(&format!("{out}\n"));
+                    }
+                    cl.set_exit_code(glib::ExitCode::SUCCESS);
+                }
             }
-            Some(Ok(out)) if !out.is_empty() => {
-                cl.print_literal(&format!("{out}\n"));
-                glib::ExitCode::SUCCESS
-            }
-            _ => glib::ExitCode::SUCCESS,
-        }
+            cl.done();
+        });
+        glib::ExitCode::SUCCESS
     });
     app.run()
 }

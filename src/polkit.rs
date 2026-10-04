@@ -12,7 +12,7 @@ use gtk4::glib;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use zbus::zvariant::{OwnedValue, Value};
 
-use crate::prompt::{Ask, Prompts};
+use crate::prompt::{Ask, Kind, Prompts};
 
 const AGENT_PATH: &str = "/dev/danil/ostrov/PolkitAgent";
 
@@ -84,7 +84,8 @@ impl Agent {
                     let (reply, answer) = async_channel::bounded(1);
                     let title = if prompt.trim().trim_end_matches(':').is_empty() { "Password" } else { prompt.trim().trim_end_matches(':') };
                     let text = if info.is_empty() { message.to_string() } else { format!("{message}\n{info}") };
-                    let ask = Ask { icon: icon.into(), title: format!("{title} for {user}"), text, secret: true, error: std::mem::take(&mut error), reply };
+                    let mut ask = Ask::new(icon, &format!("{title} for {user}"), &text, Kind::Secret, reply);
+                    ask.error = std::mem::take(&mut error);
                     self.up.send(Up::Ask(ask)).await.map_err(|e| e.to_string())?;
                     let Some(password) = answer.recv().await.ok().flatten() else {
                         return Err("cancelled".into());

@@ -105,6 +105,8 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 .tile.dragged > :first-child { opacity: 0.6; }
 button.tile-remove { background: @urgent; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
 button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }
+/* a plugin's widget drawn as anything but a toggle, a slider or a round button: on a card like the battery's */
+.plugin-card { background: @raised; border: 1px solid @rule; border-radius: 6px; padding: 4px 14px; }
 .tile-grip { color: @dim; -gtk-icon-size: 10px; margin: 3px; }
 /* the tiles as tall as the density's rows (look.rs), not their own */
 .cc .toggle, .cc button.round { min-height: 0; }

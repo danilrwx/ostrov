@@ -1,0 +1,52 @@
+/// ostrov's plugin protocol, written once (docs/plugins.md). A plugin running as a process speaks it as JSON
+/// lines over its stdin and stdout, one message a call; a WebAssembly component would speak it as it is. The
+/// same names (kebab-case here, snake_case as the JSON's "type"), the same fields; the JSON carries a JSON
+/// argument (json: string) as the value itself rather than as text.
+package ostrov:plugin@1.0.0;
+
+/// What ostrov gives a plugin. Its permissions are which of these it gets: run needs "run", ask "dialogs",
+/// http-get "network", secret "secrets"; called without, they answer as denied (err, none).
+interface host {
+    /// A line in ostrov's log, the plugin's id before it.
+    log: func(msg: string);
+    /// One of ostrov's commands, `ostrov ARGS`'s: its output, or what went wrong.
+    run: func(args: list<string>) -> result<string, string>;
+    /// A dialog asked of the user (its JSON spec, docs/plugins.md), under the plugin's icon and id: the answer
+    /// (a form's a JSON object), none for a no, or after 5 min, or while another of its dialogs is up.
+    ask: func(dialog: string) -> option<string>;
+    /// A secret field of the plugin's settings, as the Settings page keeps it (plugin.<id>.<key>).
+    secret: func(key: string) -> option<string>;
+    /// A URL's body.
+    http-get: func(url: string) -> result<list<u8>, string>;
+    /// on-timer(id) called once, ms from now.
+    set-timer: func(ms: u32, id: u32);
+    /// The plugin's state changed: ostrov calls state and render for each of its widgets again.
+    kick: func();
+    /// Its settings' form for ostrov's Settings page: its schema (sections of fields) as JSON.
+    set-settings-schema: func(json: string);
+}
+
+/// What a plugin gives ostrov.
+interface plugin {
+    /// Its state as JSON (null for none).
+    state: func() -> string;
+    /// One of its own commands, `ostrov plugin <id> ARGS`, input what was piped to it. As JSON lines, the one
+    /// call that is not "call"/"return": {"type":"run_request","id":N,"args":[...],"input":...} answered by
+    /// {"type":"run_result","id":N,"ok":"..."} or {...,"err":"..."}.
+    run: func(args: list<string>, input: option<string>) -> result<string, string>;
+    /// A widget of its manifest drawn: a tree of nodes as JSON (docs/plugins.md), null to keep what is drawn.
+    render: func(widget: string) -> string;
+    /// Something happened to a node with an id: click, toggle (value "true" or "false"), change (a slider's
+    /// value, a chip's index, an entry's text).
+    on-event: func(widget: string, node: string, event: string, value: string);
+    on-timer: func(id: u32);
+    /// Its config, [plugin.<id>] of ostrov's config.toml, as JSON: at the start and whenever it changes.
+    on-config: func(json: string);
+    /// The desktop's state as JSON (`ostrov dump`'s), whenever it changes, to a plugin with "state".
+    on-state: func(json: string);
+}
+
+world ostrov-plugin {
+    import host;
+    export plugin;
+}

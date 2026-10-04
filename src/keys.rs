@@ -193,14 +193,10 @@ pub fn battery(hub: &Rc<Hub>, notes: &Rc<Notes>, prompts: &Rc<crate::prompt::Pro
                 }
                 notes.post("battery-caution-symbolic", "Battery critical", &body, true);
                 let (reply, answer) = async_channel::bounded(1);
-                prompts.ask(crate::prompt::Ask {
-                    icon: "battery-caution-symbolic".into(),
-                    title: "Battery critical".into(),
-                    text: format!("{body}. Suspend now?"),
-                    secret: false,
-                    error: String::new(),
-                    reply,
-                });
+                let text = format!("{body}. Suspend now?");
+                let kind = crate::prompt::Kind::Confirm;
+                let icon = "battery-caution-symbolic";
+                prompts.ask(crate::prompt::Ask::new(icon, "Battery critical", &text, kind, reply));
                 glib::spawn_future_local(async move {
                     if let Ok(Some(_)) = answer.recv().await {
                         crate::hub::run(&["systemctl", "suspend"]);

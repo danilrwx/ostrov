@@ -1,0 +1,38 @@
+# ostrov's example plugin: a toggle counting its clicks, its menu adding and resetting, its settings a greeting
+# and a token kept in the keyring
+id = "hello-python"
+name = "Hello"
+version = "0.1.0"
+api = 1
+exec = "python3 main.py"
+icon = "face-smile-symbolic"
+description = "Counts its clicks; the SDK's example."
+permissions = ["secrets", "dialogs"]
+
+[[widgets]]
+id = "counter"
+name = "Hello Counter"
+icon = "face-smile-symbolic"
+sizes = [[4, 1], [2, 1], [8, 1]]
+
+[[commands]]
+name = "count"
+help = "the count now"
+
+[[commands]]
+name = "set"
+usage = "set N"
+help = "the count set to N"
+
+[[commands]]
+name = "reset"
+help = "the count back to 0"
+
+[[commands]]
+name = "rename"
+help = "a dialog asking the toggle's new title"
+
+[[commands]]
+name = "note"
+usage = "note < TEXT"
+help = "what is piped in shown in its menu"

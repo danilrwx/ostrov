@@ -35,6 +35,9 @@
 //!     [widget.wallpaper]  # a control centre widget's own, as its schema says (settings/)
 //!     dir = "~/Pictures/wallpapers"
 //!
+//!     [plugin.hello]      # a plugin's own settings (plugins/), handed to it, and again as they change
+//!     greeting = "Hi"
+//!
 //! The Settings page (settings/) edits this file in place, its comments and order kept; secrets (the calendar's
 //! password) go to the Secret Service, never here.
 
@@ -152,6 +155,7 @@ pub struct Config {
     pub appearance: Appearance,
     /// the control centre widgets' own sections, [widget.ID]
     pub widget: BTreeMap<String, toml::Table>,
+    pub plugin: BTreeMap<String, toml::Table>,
 }
 
 pub fn path() -> PathBuf {

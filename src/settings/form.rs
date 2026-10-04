@@ -17,17 +17,25 @@ use crate::ui::{header, options, row, setting};
 /// A field's value handed to be checked and written; whether it was.
 type Put = Rc<dyn Fn(Value) -> bool>;
 
-/// A section's form: its values as last written, the fields shown only while another has some value.
+/// The answers of a form written nowhere (a dialog's), secrets among them.
+pub type Answers = Rc<RefCell<Map<String, Value>>>;
+
+/// A section's form: its values as last written, the fields shown only while another has some value; a dialog's
+/// its answers instead of the config.
 struct State {
     table: String,
     vals: RefCell<Map<String, Value>>,
     shown: RefCell<Vec<(Cond, gtk4::Widget)>>,
+    answers: Option<Answers>,
 }
 
 impl State {
     fn put(&self, f: &Field, v: Value) -> Result<(), String> {
         let v = check(&f.kind, v)?;
-        write(&self.table, &f.key, Some(&v), f.integer())?;
+        match &self.answers {
+            Some(a) => drop(a.borrow_mut().insert(f.key.clone(), v.clone())),
+            None => write(&self.table, &f.key, Some(&v), f.integer())?,
+        }
         self.vals.borrow_mut().insert(f.key.clone(), v);
         self.fit();
         Ok(())
@@ -39,6 +47,17 @@ impl State {
             w.set_visible(vals.get(&c.key) == Some(&c.equals));
         }
     }
+}
+
+/// A schema's form written nowhere, for a dialog: its fields from their defaults, a secret a plain password, what
+/// is set gathered in the answers (every section's keys in one object), no buttons.
+pub fn answers(schema: &Schema) -> (gtk4::Box, Answers) {
+    let answers = Answers::default();
+    let bx = gtk4::Box::new(Orientation::Vertical, 0);
+    for s in &schema.sections {
+        bx.append(&fill(s, Some(answers.clone())));
+    }
+    (bx, answers)
 }
 
 /// A schema's form, a heading a section when it has more than one.
@@ -57,16 +76,23 @@ pub fn form(schema: &Schema) -> gtk4::Box {
 
 /// A section's fields, as the config has them now.
 pub fn section(sec: &Section) -> gtk4::Box {
+    fill(sec, None)
+}
+
+fn fill(sec: &Section, answers: Option<Answers>) -> gtk4::Box {
     let bx = gtk4::Box::new(Orientation::Vertical, 0);
     if !sec.help.is_empty() {
         let h = label(&sec.help, "field-help");
         h.set_wrap(true);
         bx.append(&h);
     }
-    let st = Rc::new(State { table: sec.key.clone(), vals: RefCell::default(), shown: RefCell::default() });
+    let st = Rc::new(State { table: sec.key.clone(), vals: RefCell::default(), shown: RefCell::default(), answers });
     for f in &sec.fields {
-        let cur = value(&sec.key, f);
+        let cur = if st.answers.is_some() { f.default.clone() } else { value(&sec.key, f) };
         st.vals.borrow_mut().insert(f.key.clone(), cur.clone());
+        if let Some(a) = st.answers.as_ref().filter(|_| !cur.is_null()) {
+            a.borrow_mut().insert(f.key.clone(), cur.clone());
+        }
         let err = label("", "error");
         err.set_wrap(true);
         err.set_visible(false);
@@ -79,10 +105,21 @@ pub fn section(sec: &Section) -> gtk4::Box {
                 r.is_ok()
             })
         };
-        let (ctl, wide) = control(f, &cur, &format!("{}.{}", sec.key, f.key), put, &err);
+        let (ctl, wide) = match f.kind {
+            Kind::Secret if st.answers.is_some() => {
+                let e = gtk4::PasswordEntry::new();
+                e.set_show_peek_icon(true);
+                e.set_hexpand(true);
+                e.connect_changed(move |e| {
+                    put(e.text().as_str().into());
+                });
+                (e.upcast(), true)
+            }
+            _ => control(f, &cur, &format!("{}.{}", sec.key, f.key), put, &err),
+        };
         let r = setting(&f.title, &f.help, &ctl, wide);
         r.append(&err);
-        if !f.actions.is_empty() {
+        if !f.actions.is_empty() && st.answers.is_none() {
             r.append(&actions(f, &st));
         }
         if let Some(c) = &f.visible_if {
