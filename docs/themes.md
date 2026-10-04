@@ -79,7 +79,7 @@ The same for the suggestions: `[appearance]`'s `radius`, `density` and `blur`, w
 | `recording` | the mic or the camera in use |
 | `lock` | the lock screen and the login screen |
 | `ground` | under the wallpaper, and in its place with none |
-| `shade` | the screen dimmed under a question (polkit's, askpass's) and under the overview |
+| `shade` | the screen dimmed under a question (polkit's, askpass's) |
 
 A light theme sets `fg`, `dim`, `ink`, `accent`, `hover`, `raised`, `card`, `well`, `sunk`, `rule` and `bar` at least:
 ostrov's own are white on black. Mind that the surface is see-through: over a dark wallpaper a light surface at
@@ -113,8 +113,6 @@ across releases. Anything else (a widget's inner nodes, an order of children) ma
 | `.tray-menu` | a tray item's menu |
 | `.hit`, `.hit.picked` | a launcher's hit, the one picked |
 | `.preview` | the clipboard entry picked, under the launcher |
-| `.switch`, `.switch.picked` | the window switcher's cards |
-| `window.overview`, `.ov-win`, `.ov-win.picked` | the overview, a window in it |
 | `window.lock`, `.lock-time`, `.lock-entry` | the lock screen |
 | `window.prompt` | a question (polkit's, askpass's) |
 | `.page-title`, `.field`, `.field-help` | the control centre's Settings and Appearance pages |

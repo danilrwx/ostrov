@@ -21,9 +21,8 @@ pub const MODULE: Module = Module { id: "hyprland", worker: Some(worker), ..Modu
 const RULES: &[&str] = &[
     concat!(
         "blur on, ignore_alpha 0.2, xray on, ",
-        "match:namespace ^(ostrov-toast|ostrov-osd|ostrov-prompt|ostrov-welcome|ostrov-switcher|ostrov-overview)$"
+        "match:namespace ^(ostrov-toast|ostrov-osd|ostrov-prompt|ostrov-welcome)$"
     ),
-    "no_anim on, match:namespace ^(ostrov-switcher|ostrov-overview)$",
 ];
 
 /// The bar's and its popups' rule: blurred where a surface or the bar is, the threshold under the least opaque of
@@ -44,11 +43,6 @@ pub const KEYS: &[(&str, &str, &str, &str)] = &[
     ("run", "bind", "SUPER, D", "run"),
     ("panel", "bind", "SUPER, X", "panel"),
     ("calendar", "bind", "SUPER, C", "calendar"),
-    ("windows", "bind", "SUPER, Tab", "windows"),
-    ("windows-app", "bind", "SUPER, grave", "windows app"),
-    // the switcher's Super let go, once a combination is done: bindrt, fired after other keys too
-    ("windows-release", "bindrt", "SUPER, Super_L", "windows release"),
-    ("overview", "bind", "SUPER, Up", "overview"),
     ("clip", "bind", "SUPER SHIFT, V", "clip"),
     ("screenshot", "bind", "SUPER SHIFT, S", "screenshot"),
     ("print", "bind", ", Print", "screenshot"),
@@ -73,7 +67,7 @@ pub const KEYS: &[(&str, &str, &str, &str)] = &[
 ];
 
 /// The gestures it would have, the user's to add (Hyprland lists none to see whether they are free).
-const GESTURES: &[&str] = &["3, horizontal, workspace", "3, up, dispatcher, exec, OSTROV overview", "3, down, dispatcher, exec, OSTROV overview close"];
+const GESTURES: &[&str] = &["3, horizontal, workspace"];
 
 /// The modifiers' mask Hyprland's binds list says, of a combination's "SUPER SHIFT".
 fn mask(mods: &str) -> u64 {
@@ -262,9 +256,6 @@ mod tests {
         let run = k.iter().find(|k| k.at == "SUPER, D").unwrap();
         assert_eq!(run.by.as_deref(), Some("exec rofi"));
         assert!(k.iter().find(|k| k.at == "SUPER, X").unwrap().by.is_none());
-        // Super's release is another bind than a press of Super
-        let release = vec![json!({"modmask": 64, "key": "Super_L", "submap": "", "release": false, "dispatcher": "exec", "arg": "x"})];
-        assert!(keys(&release).iter().find(|k| k.at == "SUPER, Super_L").unwrap().by.is_none());
     }
 
     #[test]

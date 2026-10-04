@@ -253,8 +253,8 @@ fn hyprland() -> gtk4::Widget {
         });
         p.append(&setting(title, help, &s, false));
     };
-    switch("rules", cfg.rules, t("Layer rules"), t("Blur under the bar, the panels and the dialogs; no fade for the \
-        switcher and the overview."));
+    switch("rules", cfg.rules, t("Layer rules"), t("Blur under the bar, the panels and the dialogs; no fade for its \
+        dialogs."));
     switch("binds", cfg.binds, t("Keys"), t("Its keys below, each only where it is free: a bind of yours is kept. \
         Turned off, from the next start."));
     let lock = label(t("And always: misc:allow_session_lock_restore, so a new ostrov takes the lock over from one \

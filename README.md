@@ -23,7 +23,6 @@ locker, idle daemon, polkit agent, clipboard manager, screenshot tools and wallp
 - **The clipboard's history** (wlr-data-control), text and pictures, password managers' entries left out.
 - **Screenshots** of a region or the whole screen, and **screen recording** (GStreamer, VA-API or openh264,
   optionally with audio).
-- **A window switcher** (Super+Tab, held like Alt+Tab) and an **overview** of every window, Mission Control-style.
 - **The wallpaper** and **the night light** (on, by the clock or from sunset to sunrise).
 - **A settings UI** in the control centre, writing `config.toml` in place, and an Appearance page with themes.
 - **Extensible**: widgets declared in KDL without code, plugins in any language, a D-Bus interface, and shell
@@ -33,12 +32,11 @@ locker, idle daemon, polkit agent, clipboard manager, screenshot tools and wallp
 <!-- ![The bar and the control centre](docs/screenshots/control-centre.png) -->
 <!-- ![The calendar panel](docs/screenshots/calendar.png) -->
 <!-- ![The launcher](docs/screenshots/launcher.png) -->
-<!-- ![The overview](docs/screenshots/overview.png) -->
 
 ## Requirements
 
 ostrov is made for **Hyprland 0.53** or newer. It also speaks sway's IPC for the basics (workspaces, the keyboard
-layout, screens off), but the window switcher, the overview, the window's title, displays and the night light need
+layout, screens off), but the window's title, displays and the night light need
 Hyprland.
 
 Libraries:
@@ -117,8 +115,6 @@ and set `rules = false` and `binds = false` under `[hyprland]` in the config. Th
 | Super+D | `ostrov run`, the launcher |
 | Super+X | `ostrov panel`, the control centre |
 | Super+C | `ostrov calendar` |
-| Super+Tab, Super+\` | `ostrov windows`, `ostrov windows app` |
-| Super+Up | `ostrov overview` |
 | Super+Shift+V | `ostrov clip`, the clipboard's history |
 | Print, Super+Shift+S | `ostrov screenshot` |
 | Super+Shift+R | `ostrov record` |
@@ -126,7 +122,7 @@ and set `rules = false` and `binds = false` under `[hyprland]` in the config. Th
 | Super+B | `ostrov bar toggle` |
 | the XF86 volume, mic, brightness and media keys | `ostrov key ...` |
 
-`ostrov hyprland` also suggests touchpad gestures for workspaces and the overview, which ostrov never adds itself.
+`ostrov hyprland` also suggests touchpad gestures for workspaces, which ostrov never adds itself.
 A laptop's other Fn keys can be bound to `ostrov key touchpad-toggle`, `key profile` or `key camera` (the last two
 only show what the firmware or a vendor service did).
 
@@ -220,8 +216,6 @@ ostrov's own:
     ostrov theme remove ID             an installed theme removed
     ostrov run                         the launcher
     ostrov clip                        the clipboard's history
-    ostrov windows [app]               the window switcher (app: the focused app's windows)
-    ostrov overview [close]            the overview
     ostrov lock                        the lock screen
     ostrov awake                       Keep Awake on or off
     ostrov screenshot                  a region or the screen to the clipboard

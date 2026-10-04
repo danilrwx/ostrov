@@ -24,7 +24,6 @@ mod lock;
 mod modules;
 mod look;
 mod notes;
-mod overview;
 mod plugins;
 mod polkit;
 mod popup;
@@ -34,7 +33,6 @@ mod services;
 mod settings;
 mod shot;
 mod style;
-mod switcher;
 mod theme;
 mod ui;
 mod wallpaper;
@@ -60,7 +58,7 @@ thread_local! {
 /// ARGS).
 const FORMS: &[&str] = &[
     "panel", "menu NAME", "settings [SECTION]", "appearance", "calendar", "run", "clip",
-    "windows [app]", "overview [close]", "lock", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "record [--audio]",
+    "lock", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "record [--audio]",
     "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
     "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID",
     "theme list", "theme set ID", "theme install PATH|GIT-URL", "theme remove ID",
@@ -117,8 +115,6 @@ fn activate(app: &gtk4::Application) {
     let lock = lock::build(app);
     idle::start(&lock, &cfg.idle);
     let shot = shot::Shot::new(app);
-    let switcher = switcher::Switcher::new(app);
-    let overview = overview::Overview::new(app);
     record::init(app, &shot);
     let prompts = prompt::Prompts::new(app);
     polkit::start(&prompts);
@@ -156,11 +152,6 @@ fn activate(app: &gtk4::Application) {
                 ["screenshot"] => shot.take(),
                 ["awake"] => idle::set_awake(!idle::awake()),
                 ["capture", path] => shot::capture(path.to_string()),
-                ["windows"] => switcher.open(false),
-                ["windows", "app"] => switcher.open(true),
-                ["windows", "release"] => switcher.release(),
-                ["overview"] => overview.toggle(),
-                ["overview", "close"] => overview.close(),
                 ["record"] => record::toggle(false),
                 ["record", "--audio"] => record::toggle(true),
                 ["key", name] => keys.key(name)?,

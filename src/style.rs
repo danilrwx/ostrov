@@ -31,7 +31,7 @@ const CSS: &str = r#"
 @define-color recording #ff4040;                /* the mic or the camera taken (bar/privacy.rs) */
 @define-color lock #000000;                     /* the lock screen */
 @define-color ground #000000;                   /* under the wallpaper, and in its place with none */
-@define-color shade rgba(0, 0, 0, 0.4);         /* the screen under a question (polkit's, askpass's), the overview */
+@define-color shade rgba(0, 0, 0, 0.4);         /* the screen under a question (polkit's, askpass's) */
 
 /* the shapes: a surface rounded 10, what is on it 6 */
 * { font-size: 11pt; color: @fg; }
@@ -202,21 +202,6 @@ text.query { background: none; border: none; box-shadow: none; padding: 0; }
 .preview { padding: 10px; }
 .preview label { font-size: 10pt; }
 .preview picture { min-width: 0; min-height: 0; }
-
-/* the window switcher: its cards, the picked one on the accent */
-.switch.picked { background: @accent; border-color: @accent; }
-.switch.picked label { color: @ink; }
-
-/* the overview (overview.rs): the screen dimmed and blurred, in with a short fade and swell; the windows'
-   pictures, the hovered card lit, the picked one ringed */
-window.overview { background: @shade; }
-.overview-body { opacity: 0; transform: scale(0.97); transition: opacity 150ms ease-out, transform 150ms ease-out; }
-.overview-body.shown { opacity: 1; transform: none; }
-.ov-win { padding: 6px; border-radius: 6px; }
-.ov-win:hover { background: @hover; }
-.ov-frame { border-radius: 6px; }
-.ov-thumb { background: @card; }
-.ov-win.picked .ov-frame { outline: 2px solid @accent; outline-offset: 2px; }
 
 window.wallpaper { background: @ground; }
 window.prompt { background: @shade; }

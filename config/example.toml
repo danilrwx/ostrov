@@ -67,8 +67,8 @@ rules = true
 binds = true
 
 # A key moved: its name, then the combination as Hyprland writes it. The names and their defaults:
-#   run SUPER+D, panel SUPER+X, calendar SUPER+C, windows SUPER+Tab, windows-app SUPER+grave,
-#   windows-release SUPER+Super_L (release), overview SUPER+Up, clip SUPER SHIFT+V, screenshot SUPER SHIFT+S,
+#   run SUPER+D, panel SUPER+X, calendar SUPER+C,
+#   clip SUPER SHIFT+V, screenshot SUPER SHIFT+S,
 #   print Print, record SUPER SHIFT+R, lock SUPER SHIFT+X, bar SUPER+B, vol-up, vol-down, vol-mute, mic,
 #   bright-up, bright-down, play-pause, next, previous (the XF86 media keys)
 [hyprland.keys]

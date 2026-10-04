@@ -1,7 +1,7 @@
 # Russian: "English" = "Русский"
 
 # ostrov doctor
-"Hyprland: not running (the window switcher, the overview, the window's title, displays and the night light need it)" = "Hyprland не запущен (он нужен переключателю окон, обзору, заголовку окна, экранам и ночному свету)"
+"Hyprland: not running (the window's title, displays and the night light need it)" = "Hyprland не запущен (он нужен заголовку окна, экранам и ночному свету)"
 "blur is off in Hyprland (decoration:blur:enabled): the panels are see-through without it" = "размытие в Hyprland выключено (decoration:blur:enabled): без него панели прозрачны"
 "keys: [hyprland] binds = false, ostrov binds none (ostrov hyprland prints them)" = "клавиши: [hyprland] binds = false, ostrov ничего не назначает (их выводит ostrov hyprland)"
 "the plugin's key left unbound" = "клавиша плагина осталась не назначена"

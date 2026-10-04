@@ -25,7 +25,7 @@ pub fn build(cx: &Rc<Ctx>) -> Block {
             return;
         }
         p.set_visible(!class.is_empty() || !t.is_empty());
-        match crate::switcher::icon(class) {
+        match app_icon(class) {
             Some(g) => icon.set_from_gicon(&g),
             None => icon.set_icon_name(Some("application-x-executable-symbolic")),
         }
@@ -33,4 +33,18 @@ pub fn build(cx: &Rc<Ctx>) -> Block {
         p.set_tooltip_text(Some(t));
     });
     Block::new(&s)
+}
+
+/// A window's app icon: its class's desktop file ("<class>.desktop", as is or lowercased), else the app whose
+/// StartupWMClass is the class.
+fn app_icon(class: &str) -> Option<gio::Icon> {
+    let by_name = [class.to_string(), class.to_lowercase()]
+        .into_iter()
+        .find_map(|c| gio_unix::DesktopAppInfo::new(&format!("{c}.desktop")));
+    let app = by_name.or_else(|| {
+        gio::AppInfo::all().into_iter().filter_map(|a| a.downcast::<gio_unix::DesktopAppInfo>().ok()).find(|d| {
+            d.startup_wm_class().is_some_and(|w| w.eq_ignore_ascii_case(class))
+        })
+    })?;
+    app.icon()
 }

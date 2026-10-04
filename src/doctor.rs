@@ -39,7 +39,7 @@ async fn lines() -> Vec<Line> {
 fn compositor(out: &mut Vec<Line>) {
     let v: Value = serde_json::from_str(&hyprctl("j/version")).unwrap_or_default();
     let Some(tag) = v["tag"].as_str() else {
-        out.push(('!', t("Hyprland: not running (the window switcher, the overview, the window's title, displays and \
+        out.push(('!', t("Hyprland: not running (the window's title, displays and \
             the night light need it)").into()));
         return;
     };

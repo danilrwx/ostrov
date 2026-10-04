@@ -259,7 +259,7 @@ mod tests {
         let c = |w: &[&str]| complete(&k, w);
         let top = c(&[""]);
         assert!(["panel", "wifi", "status", "plugin", "complete"].iter().all(|w| words(&top).contains(w)), "{top:?}");
-        assert_eq!(words(&c(&["wi"])), ["windows", "wifi"]);
+        assert_eq!(words(&c(&["wi"])), ["wifi"]);
         assert!(top.iter().any(|(w, a)| w == "wifi" && a.contains("connect SSID")));
         assert_eq!(words(&c(&["wifi", ""])), ["on", "off", "scan", "disconnect", "connect", "forget"]);
         assert_eq!(c(&["wifi", "connect", ""]), [

@@ -28,7 +28,6 @@ The first release: the whole shell in one binary.
 - The clipboard's history through wlr-data-control, text and pictures, password managers' entries left out.
 - Screenshots of a region or the screen through wlr-screencopy; screen recording through GStreamer (VA-API or
   openh264, optional audio).
-- A window switcher held like Alt+Tab (all windows or the focused app's) and an overview of every window.
 - The wallpaper, picked from a directory, with a hook run on every change.
 - Games played in the performance power profile (`[games]`).
 - Settings and Appearance pages in the control centre, editing `config.toml` in place; themes (dark, light,
