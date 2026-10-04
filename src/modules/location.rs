@@ -1,4 +1,4 @@
-//! Where the computer is, for the night light's sunset and the weather: `ostrov location CITY|LAT LON`.
+//! Where the computer is, for the weather (and the night light plugin's sunset): `ostrov location CITY|LAT LON`.
 
 use super::{words, Fut, Module};
 use crate::services::{location, Ctx, Res};

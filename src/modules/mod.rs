@@ -24,7 +24,6 @@ pub mod hyprland;
 pub mod keymap;
 pub mod location;
 pub mod media;
-pub mod night;
 pub mod power;
 pub mod system;
 pub mod wallpaper;
@@ -113,7 +112,6 @@ pub const ALL: &[&Module] = &[
     &power::MODULE,
     &battery::MODULE,
     &brightness::MODULE,
-    &night::MODULE,
     &location::MODULE,
     &keymap::MODULE,
     &media::MODULE,

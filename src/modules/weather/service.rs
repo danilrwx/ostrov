@@ -6,7 +6,7 @@ use std::time::Duration;
 use serde_json::{json, Value};
 
 use crate::services::location::{self, Location};
-use crate::modules::night::service::{civil, hhmm, local, now_ns};
+use crate::services::time::{civil, hhmm, local, now_ns};
 use crate::i18n::t;
 use crate::services::Kick;
 

@@ -1,0 +1,44 @@
+# ostrov's night light: Hyprland's screen shader warmed, always, by the clock or from sunset to sunrise where
+# `ostrov location` puts the machine; its settings in ~/.local/state/ostrov/night.json, as the built-in one kept them
+id = "night"
+name = "Night Light"
+version = "0.1.0"
+api = 1
+exec = "ostrov-plugin-night"
+icon = "night-light-symbolic"
+description = "Warmer colours in the evening, through Hyprland's screen shader."
+permissions = []
+
+[[widgets]]
+id = "toggle"
+name = "Night Light"
+sizes = [[4, 1], [2, 1], [1, 1], [8, 1]]
+badge = true
+bar = "active"
+
+[[commands]]
+name = "on"
+help = "the night light always on"
+
+[[commands]]
+name = "off"
+help = "the night light off"
+
+[[commands]]
+name = "toggle"
+help = "the night light on, or off if the screen is warm now"
+
+[[commands]]
+name = "mode"
+usage = "mode off|on|time|sun"
+help = "off, always on, by the clock, or from sunset to sunrise"
+
+[[commands]]
+name = "time"
+usage = "time FROM TO"
+help = "the clock's hours, HH:MM"
+
+[[commands]]
+name = "warmth"
+usage = "warmth K"
+help = "the warmth in kelvin, 2500 to 6500"

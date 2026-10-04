@@ -271,7 +271,6 @@ mod tests {
         assert_eq!(words(&c(&["displays", "on", ""])), ["eDP-1"]);
         assert_eq!(words(&c(&["displays", "load", ""])), ["desk"]);
         assert_eq!(c(&["audio", "volume", ""]), [("116".into(), "Chromium".into())]);
-        assert_eq!(words(&c(&["night", "mode", ""])), ["off", "on", "time", "sun"]);
         assert_eq!(words(&c(&["menu", ""])), ["wifi", "ins"]);
         assert_eq!(words(&c(&["status", "menu", "w"])), ["wifi"]);
         assert_eq!(words(&c(&["settings", ""])), ["bar"]);

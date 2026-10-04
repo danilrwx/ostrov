@@ -15,17 +15,6 @@
 "Full" = "Полностью"
 "ostrov doctor tells how to allow it" = "Как разрешить — в ostrov doctor"
 
-# brightness, night light
-"Night Light" = "Ночной свет"
-"from" = "с"
-"to" = "до"
-"Warmth" = "Теплота"
-"no location" = "место неизвестно"
-"Off" = "Выкл."
-"Always on" = "Всегда"
-"Scheduled" = "По расписанию"
-"Sunset to sunrise" = "От заката до рассвета"
-
 # bluetooth
 "Bluetooth" = "Bluetooth"
 "Scanning…" = "Поиск…"

@@ -162,7 +162,6 @@ const ALIASES: &[(&str, &str)] = &[
     ("system", "session"),
     ("outs", "volume"),
     ("ins", "mic"),
-    ("night", "brightness"),
     ("theme", "wallpaper"),
 ];
 
@@ -1026,7 +1025,7 @@ fn fit_band(bx: &gtk4::Widget) {
     bx.set_visible(any);
 }
 
-/// A widget by the name its menu had in the panel before the grid (ostrov menu night), or by its own.
+/// A widget by the name its menu had in the panel before the grid (ostrov menu outs), or by its own.
 pub fn alias(name: &str) -> &str {
     ALIASES.iter().find(|(old, _)| *old == name).map_or(name, |(_, key)| key)
 }

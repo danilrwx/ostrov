@@ -485,6 +485,14 @@ Screen recording (was `ostrov record`): `ostrov plugin record toggle [--audio]`,
   or the widget is put in a panel. `[hyprland.keys] record` is gone with it; a bind of the user's on SUPER SHIFT+R
   wins over the plugin's.
 
+### night
+
+The night light, once built into ostrov (`plugins/night`): Hyprland's screen shader warmed always, by
+  the clock or from sunset to sunrise where `ostrov location` puts the machine; its tile `plugin.night.toggle`
+  (the modes, the hours, the warmth in its menu; a badge in the bar while warm), `ostrov plugin night
+  on|off|toggle | mode off|on|time|sun | time FROM TO | warmth K`. It keeps its settings where ostrov did,
+  `~/.local/state/ostrov/night.json`, so turning it on picks them up; it has no `[plugin.night]` keys of its own.
+
 ## D-Bus
 
 ostrov owns `dev.ostrov.Shell` on the session bus, object `/dev/ostrov/Shell`, interface `dev.ostrov.Shell`:

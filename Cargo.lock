@@ -1082,6 +1082,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ostrov-plugin-night"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "ostrov-plugin",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ostrov-plugin-record"
 version = "0.1.0"
 dependencies = [

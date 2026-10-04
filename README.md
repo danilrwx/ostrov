@@ -8,7 +8,7 @@ locker, idle daemon, polkit agent, clipboard manager, screenshot tools and wallp
   indicator (mic or camera in use), the faces of the panels, and any widget on its own
   (`widget.ID`: its badge in the bar, its menu on a click).
 - **Panels of widgets**, macOS-style: the control centre and the calendar are grids of widgets (Wi-Fi, Bluetooth,
-  volume and mic with per-app sliders and device ports, brightness, power profiles, battery, night light,
+  volume and mic with per-app sliders and device ports, brightness, power profiles, battery,
   displays, wallpaper, Keep Awake, the player, the month and its events from CalDAV or .ics, the weather,
   notifications' history with Do Not Disturb). Each panel is edited in place: drag, resize, remove, add from the
   gallery, choose which widgets show a badge in the bar. Make panels of your own.
@@ -23,7 +23,7 @@ locker, idle daemon, polkit agent, clipboard manager, screenshot tools and wallp
 - **The clipboard's history** (wlr-data-control), text and pictures, password managers' entries left out.
 - **Screenshots** of a region or the whole screen, and **screen recording** (the official plugin `record`, over
   wf-recorder, optionally with audio).
-- **The wallpaper** and **the night light** (on, by the clock or from sunset to sunrise).
+- **The wallpaper**, and **the night light** as an official plugin (on, by the clock or from sunset to sunrise).
 - **A settings UI** in the control centre, writing `config.toml` in place, and an Appearance page with themes.
 - **Extensible**: widgets declared in KDL without code, plugins in any language, a D-Bus interface, and shell
   completion for every command.
@@ -36,8 +36,8 @@ locker, idle daemon, polkit agent, clipboard manager, screenshot tools and wallp
 ## Requirements
 
 ostrov is made for **Hyprland 0.53** or newer. It also speaks sway's IPC for the basics (workspaces, the keyboard
-layout, screens off), but the window's title, displays and the night light need
-Hyprland.
+layout, screens off), but the window's title and displays need Hyprland
+(and so does the night light plugin).
 
 Libraries:
 
@@ -177,7 +177,8 @@ launcher modes into ostrov over JSON lines (the protocol is `wit/ostrov-plugin.w
 `sdk/python` and for Rust in `sdk/`, the crate `ostrov-plugin`). See [docs/plugins.md](docs/plugins.md),
 `examples/plugins/hello-python`, `plugins/hello`, and the launcher modes `examples/plugins/claude` (`?question`)
 and `examples/plugins/google` (`g words`). ostrov's official plugins come with it, off until `[plugin.ID] enabled =
-true`. The same document describes ostrov's D-Bus interface, `dev.ostrov.Shell`.
+true`: `night`, the night light (`ostrov plugin night on|off|toggle | mode off|on|time|sun | warmth K`).
+The same document describes ostrov's D-Bus interface, `dev.ostrov.Shell`.
 
 ## Languages
 
@@ -252,7 +253,6 @@ The modules':
     ostrov headset                     a Bluetooth headset between headphones (A2DP) and handsfree (with its mic)
     ostrov power set PROFILE
     ostrov brightness PERCENT
-    ostrov night mode off|on|time|sun | time FROM TO | temp K | preview K | apply
     ostrov location CITY... | LAT LON
     ostrov media play-pause|next|previous
     ostrov wallpaper on|off|random | set PATH

@@ -1,4 +1,4 @@
-//! Where the machine is, for the weather and the night light's sunset and sunrise: set once by `location CITY`
+//! Where the machine is, for the weather and the night light plugin's sunset and sunrise: set once by `location CITY`
 //! (open-meteo's geocoding) or `location LAT LON`, kept in ~/.local/state/ostrov/location.json.
 use std::time::Duration;
 

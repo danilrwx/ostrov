@@ -15,7 +15,7 @@ use gtk4::glib;
 use serde_json::{json, Value};
 
 use crate::backend::BoxFut;
-use crate::modules::night::service::{civil, days, local, now_ns};
+use crate::services::time::{civil, days, local, now_ns};
 use crate::services::{Kick, Res};
 use crate::config::Calendar;
 
@@ -48,7 +48,7 @@ struct When {
 }
 
 impl When {
-    /// The time on the local clock, in seconds as night's local gives them. A zone GLib does not know (a
+    /// The time on the local clock, in seconds as services::time's local gives them. A zone GLib does not know (a
     /// Windows name) is taken for the local one.
     fn local(&self) -> i64 {
         match &self.zone {

@@ -79,4 +79,7 @@ assets = [
     ["target/release/ostrov-plugin-record", "usr/bin/", "755"],
     ["plugins/record/manifest.toml", "usr/share/ostrov/plugins/record/", "644"],
     ["plugins/record/i18n/*", "usr/share/ostrov/plugins/record/i18n/", "644"],
+    ["target/release/ostrov-plugin-night", "usr/bin/", "755"],
+    ["plugins/night/manifest.toml", "usr/share/ostrov/plugins/night/", "644"],
+    ["plugins/night/i18n/*", "usr/share/ostrov/plugins/night/i18n/", "644"],
 ]

@@ -13,7 +13,7 @@ The first release: the whole shell in one binary.
   the bar always, while active or never, the bar alone, its settings); panels of your own (`[panels.ID]`).
 - Widgets: Wi-Fi (iwd) with its networks and passphrases, Bluetooth with pairing, volume and mic with per-app
   sliders and devices, outputs in a card's other profiles switched to, a Bluetooth headset's profile, brightness,
-  power profiles, battery, night light (on, by the clock or sunset to sunrise), displays (modes, scale, position,
+  power profiles, battery, displays (modes, scale, position,
   mirroring, saved profiles), wallpaper, Keep Awake, screenshot, lock and power off, the player (MPRIS), the
   clock, the month with CalDAV and .ics events, upcoming events, the weather (open-meteo), the notifications'
   history with Do Not Disturb.
@@ -42,4 +42,6 @@ The first release: the whole shell in one binary.
   enabled (`[plugin.ID] enabled = true`), following ostrov's events, binding keys where free, adding calendars,
   installed and removed while ostrov runs (`ostrov plugin install PATH|GIT-URL`, `remove ID`); a D-Bus interface
   (`dev.ostrov.Shell`).
+- The night light, an official plugin (`plugins/night`): Hyprland's screen shader warmed always, by the clock or
+  from sunset to sunrise, its warmth in kelvin; a tile with its menu, a badge in the bar while warm.
 - Shell completion for zsh, bash and fish, answered by the running ostrov.

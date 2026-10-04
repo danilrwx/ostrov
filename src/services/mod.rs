@@ -1,10 +1,10 @@
 //! The desktop's state and switches, run on a Tokio runtime of their own (start), off GTK's thread: each module's
 //! (modules/) state read, its commands run, its worker kept going. Here what they share: the buses, the state
 //! put together and sent on as it changes, the commands handed to their module; and the helpers more than one
-//! uses (D-Bus, rfkill, the location).
+//! uses (D-Bus, rfkill, the location, the local time).
 //!
 //! The state is JSON, a key a module, what draws it reading its own; the commands are the modules' words
-//! (wifi connect SSID, bt pair ADDR, night mode sun, ...).
+//! (wifi connect SSID, bt pair ADDR, power set balanced, ...).
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -16,6 +16,7 @@ use crate::modules::ALL;
 pub mod dbus;
 pub mod location;
 pub mod rfkill;
+pub mod time;
 
 /// What every service reaches the desktop through: the system bus and the session bus.
 pub struct Ctx {

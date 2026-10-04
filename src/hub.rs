@@ -87,7 +87,7 @@ thread_local! {
     static COMMANDS: RefCell<Option<async_channel::Sender<Request>>> = const { RefCell::new(None) };
 }
 
-/// A module's command (wifi connect SSID, night mode sun), input what it would read from its stdin, its
+/// A module's command (wifi connect SSID, power set balanced), input what it would read from its stdin, its
 /// outcome (Ok, or what went wrong) handed to done on GTK's thread.
 pub fn service_then(args: Vec<String>, input: Option<String>, done: impl Fn(crate::services::Res) + 'static) {
     let (tx, rx) = async_channel::bounded(1);

@@ -1,5 +1,4 @@
-//! The screen's brightness, through logind: its state, `ostrov brightness PERCENT`, its slider (the night light
-//! behind its arrow).
+//! The screen's brightness, through logind: its state, `ostrov brightness PERCENT`, its slider.
 
 pub mod service;
 mod widget;
