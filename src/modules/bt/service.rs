@@ -23,6 +23,9 @@ struct Device {
     icon: String,
     paired: bool,
     connected: bool,
+    /// its charge in percent, if it tells it (BlueZ's Battery1: a headset's, a mouse's)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    battery: Option<u8>,
 }
 
 /// The radio's state, the first device connected, whether a scan runs, the paired devices by name, then those a
@@ -57,6 +60,8 @@ async fn bluetooth(c: &Ctx) -> Result<Bluetooth, String> {
             icon: prop(Some(d), "Icon").unwrap_or_default(),
             paired: prop(Some(d), "Paired").unwrap_or_default(),
             connected: prop(Some(d), "Connected").unwrap_or_default(),
+            // 0 as good as untold: a headset's empty GATT battery service says it however charged it is
+            battery: prop::<u8>(ifaces.get("org.bluez.Battery1"), "Percentage").filter(|p| *p > 0),
         };
         // a device found but unnamed is but its address: left out
         if !dev.paired && !d.contains_key("Name") {

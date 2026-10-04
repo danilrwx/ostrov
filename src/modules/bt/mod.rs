@@ -4,7 +4,10 @@ mod service;
 mod widget;
 
 use super::{values, widget, words, Fut, Module, TOGGLE};
+use crate::cc::Show;
 use crate::services::{signals, Ctx, Kick, Res};
+
+const BATTERIES: &[(u8, u8)] = &[(4, 1), (4, 2), (8, 1), (8, 2)];
 
 pub const MODULE: Module = Module {
     id: "bt",
@@ -12,7 +15,11 @@ pub const MODULE: Module = Module {
     state: Some(state),
     run: Some(run),
     worker: Some(worker),
-    widgets: &[widget("bt", "Bluetooth", "bluetooth-active-symbolic", TOGGLE, widget::bluetooth)],
+    widgets: &[
+        widget("bt", "Bluetooth", "bluetooth-active-symbolic", TOGGLE, widget::bluetooth),
+        widget("bt-battery", "Device Batteries", "battery-good-symbolic", BATTERIES, widget::batteries)
+            .bar(Show::Active),
+    ],
     // ADDR: the devices paired or found, by name
     complete: Some(|st, _| values(&st["devices"], "address", |d| d["name"].as_str().unwrap_or("").into())),
 };

@@ -83,3 +83,62 @@ pub fn bluetooth(c: &Ctx) -> Widget {
         }
     })
 }
+
+/// The devices connected that tell their charge: each its icon, name and percent with a bar; its badge the first
+/// one's icon and percent, while one is connected.
+pub fn batteries(_: &Ctx) -> Widget {
+    let col = gtk4::Box::new(Orientation::Vertical, 6);
+    col.add_css_class("card");
+    col.set_valign(gtk4::Align::Center);
+    let badge = gtk4::Box::new(Orientation::Horizontal, 4);
+    let bicon = gtk4::Image::from_icon_name("audio-headphones-symbolic");
+    let bpct = gtk4::Label::new(None);
+    badge.append(&bicon);
+    badge.append(&bpct);
+    let face = crate::cc::Face::new(&badge);
+    let active = face.active.clone();
+    let memo = Memo::default();
+    Widget {
+        face: Some(face),
+        ..Widget::new(&col.clone(), None, move |st| {
+            let devs: Vec<&Value> = st["bt"]["devices"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|d| d["connected"] == true && d["battery"].is_u64())
+                .collect();
+            active.set(!devs.is_empty());
+            let icon = |d: &Value| {
+                let i = s(d, &["icon"]);
+                format!("{}-symbolic", if i.is_empty() { "bluetooth" } else { i })
+            };
+            if let Some(d) = devs.first() {
+                bicon.set_icon_name(Some(&icon(d)));
+                bpct.set_text(&format!("{}%", d["battery"]));
+                badge.set_tooltip_text(Some(s(d, &["name"])));
+            }
+            let key: String = devs.iter().map(|d| format!("{}{}", d["address"], d["battery"])).collect();
+            if !memo.changed("devs", key) {
+                return;
+            }
+            clear(&col);
+            if devs.is_empty() {
+                col.append(&label("No device tells its charge", "dim"));
+            }
+            for d in devs {
+                let line = gtk4::Box::new(Orientation::Horizontal, 8);
+                line.append(&gtk4::Image::from_icon_name(&icon(d)));
+                let name = label(s(d, &["name"]), "");
+                name.set_hexpand(true);
+                name.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+                line.append(&name);
+                line.append(&label(&format!("{}%", d["battery"]), "dim"));
+                col.append(&line);
+                let bar = gtk4::ProgressBar::new();
+                bar.add_css_class("progress");
+                bar.set_fraction(d["battery"].as_f64().unwrap_or(0.0) / 100.0);
+                col.append(&bar);
+            }
+        })
+    }
+}
