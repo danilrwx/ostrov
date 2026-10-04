@@ -1,5 +1,6 @@
 //! The backlight through sysfs and logind (backlight.go).
-use super::{Ctx, Res, USAGE};
+use super::USAGE;
+use crate::services::{Ctx, Res};
 
 /// The panel's backlight device under /sys/class/backlight, None without one.
 fn backlight() -> Option<std::path::PathBuf> {
@@ -43,7 +44,7 @@ pub async fn cmd(c: &Ctx, args: &[&str]) -> Res {
         )
         .await
         .map(drop)
-        .map_err(super::dbus::err)
+        .map_err(crate::services::dbus::err)
 }
 
 #[cfg(test)]
@@ -52,9 +53,9 @@ mod tests {
     #[tokio::test]
     async fn services_state() {
         let (system, session) = (zbus::Connection::system().await.unwrap(), zbus::Connection::session().await.unwrap());
-        let c = super::Ctx { system, session };
-        println!("{}", super::super::power::state(&c).await);
-        println!("{}", super::super::battery::state(&c).await);
+        let c = crate::services::Ctx { system, session };
+        println!("{}", crate::modules::power::service::state(&c).await);
+        println!("{}", crate::modules::battery::service::state(&c).await);
         println!("{}", super::brightness());
     }
 }

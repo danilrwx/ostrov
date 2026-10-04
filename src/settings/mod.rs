@@ -418,7 +418,7 @@ fn own() -> Vec<Entry> {
             Field::new("user", "User", Kind::String),
             Field::new("password", "App password", Kind::Secret)
                 .help("Kept in the keyring, never in the file.")
-                .action("Test", |_, done| off_thread(crate::services::calendar::test, move |r| done(r))),
+                .action("Test", |_, done| off_thread(crate::modules::calendar::service::test, move |r| done(r))),
             Field::new("password_command", "Password command", Kind::String)
                 .help("Prints the password when the keyring has none: secret-tool lookup service caldav"),
             Field::new("ics", "Shared calendars", Kind::List).help(".ics and webcal:// links."),

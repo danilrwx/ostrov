@@ -5,7 +5,9 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{Res, USAGE};
+use super::Res;
+
+pub const USAGE: &str = "location CITY|LAT LON";
 
 /// The place as it is named, and where it is.
 #[derive(Serialize, Deserialize, Default)]

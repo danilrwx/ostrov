@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use zbus::zvariant::{OwnedObjectPath, OwnedValue};
 
-use super::Ctx;
+use crate::services::Ctx;
 
 /// mihomo's state as bin/vless runs it: off, or tun (TUN) or proxy (the system proxy); the mode, rule or global;
 /// the profile picked in the PROXY group and the ones to pick from. From mihomo's API, which answers only while
@@ -129,7 +129,7 @@ mod tests {
     #[tokio::test]
     async fn vpn_state() {
         let (system, session) = (zbus::Connection::system().await.unwrap(), zbus::Connection::session().await.unwrap());
-        let c = super::Ctx { system, session };
+        let c = crate::services::Ctx { system, session };
         println!("vless {}", super::vless_state().await);
         println!("openvpn {}", super::openvpn_state(&c).await);
     }

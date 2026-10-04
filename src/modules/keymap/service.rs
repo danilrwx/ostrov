@@ -6,7 +6,7 @@ use std::os::unix::net::UnixStream;
 use serde_json::Value;
 use tokio::io::AsyncBufReadExt;
 
-use super::Kick;
+use crate::services::Kick;
 use crate::wm::{hypr_socket, hyprctl};
 
 fn under_sway() -> bool {

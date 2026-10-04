@@ -8,7 +8,8 @@ use serde::Serialize;
 use serde_json::Value;
 use zbus::zvariant::{self, OwnedValue};
 
-use super::{Ctx, Kick, Res, USAGE};
+use super::USAGE;
+use crate::services::{Ctx, Kick, Res};
 
 const MPRIS: &str = "org.mpris.MediaPlayer2";
 const PATH: &str = "/org/mpris/MediaPlayer2";
@@ -157,7 +158,7 @@ mod tests {
     #[tokio::test]
     async fn media_state() {
         let (system, session) = (zbus::Connection::system().await.unwrap(), zbus::Connection::session().await.unwrap());
-        let c = super::Ctx { system, session };
+        let c = crate::services::Ctx { system, session };
         println!("media {}", super::state(&c).await);
     }
 }

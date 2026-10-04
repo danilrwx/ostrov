@@ -7,7 +7,8 @@ use std::io::{BufRead, BufReader};
 use std::os::unix::net::UnixStream;
 use std::sync::Arc;
 
-use super::{power, Ctx};
+use crate::modules::power::service as power;
+use crate::services::Ctx;
 use crate::wm::hypr_socket;
 
 /// A window's class one of the games: equal, or a prefix before a trailing *.

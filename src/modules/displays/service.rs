@@ -14,7 +14,8 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use super::{Kick, Res, USAGE};
+use super::USAGE;
+use crate::services::{Kick, Res};
 use crate::wm::{hypr_socket, hyprctl};
 
 /// A monitor as Hyprland tells it.

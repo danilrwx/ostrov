@@ -5,7 +5,7 @@ use serde::{Serialize, Serializer};
 use serde_json::Value;
 use zbus::zvariant::OwnedValue;
 
-use super::Ctx;
+use crate::services::Ctx;
 
 const UPOWER: &str = "org.freedesktop.UPower";
 
@@ -33,7 +33,7 @@ pub async fn state(c: &Ctx) -> Value {
     let b = match read(c).await {
         Ok(b) => b,
         Err(e) => {
-            eprintln!("ostrov: battery: {}", super::dbus::err(e));
+            eprintln!("ostrov: battery: {}", crate::services::dbus::err(e));
             Battery::default()
         }
     };

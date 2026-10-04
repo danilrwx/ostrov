@@ -5,9 +5,9 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 
-use super::location::{self, Location};
-use super::night::{civil, hhmm, local, now_ns};
-use super::Kick;
+use crate::services::location::{self, Location};
+use crate::modules::night::service::{civil, hhmm, local, now_ns};
+use crate::services::Kick;
 
 /// The last weather fetched, wmd's Weather (null before the first), refreshed every 15 min by run.
 static LAST: Mutex<Value> = Mutex::new(Value::Null);
@@ -117,7 +117,7 @@ mod tests {
     #[test]
     #[ignore]
     fn weather_once() {
-        let l = super::location::load().expect("no location");
+        let l = crate::services::location::load().expect("no location");
         println!("{}", super::fetch(&l).expect("fetch"));
     }
 }

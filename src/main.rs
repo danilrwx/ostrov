@@ -18,6 +18,7 @@ mod idle;
 mod keys;
 mod launcher;
 mod lock;
+mod modules;
 mod look;
 mod notes;
 mod overview;
@@ -50,7 +51,7 @@ thread_local! {
 }
 
 const USAGE: &str = "usage: ostrov [panel | menu NAME | settings [SECTION] | appearance | calendar | run | ask QUESTION | clip | windows [app] | overview [close] | lock | key NAME | awake | screenshot | \
-capture FILE | record [--audio] | bar toggle|peek|unpeek | state | dump | toast TITLE [BODY] | dialog JSON | plugins | plugin [ID [ARGS]] | help | BLOCK ARGS | SERVICE ARGS]";
+capture FILE | record [--audio] | bar toggle|peek|unpeek | state | dump | toast TITLE [BODY] | dialog JSON | plugins | plugin [ID [ARGS]] | help | BLOCK ARGS | MODULE ARGS]";
 
 fn activate(app: &gtk4::Application) {
     // the bar's window, the popups laid over it (popup.rs); the bar and the launcher over it its strip
@@ -158,7 +159,9 @@ fn activate(app: &gtk4::Application) {
                     notes.post("dialog-information-symbolic", title, &body.join(" "), false)
                 }
                 ["plugins"] => return Ok(plugins::list()),
-                ["help"] => return Ok(format!("{USAGE}\n\nthe plugins' commands:\n{}", plugins::help())),
+                ["help"] => {
+                    return Ok(format!("{USAGE}\n\nthe modules' commands:\n{}\n\nthe plugins' commands:\n{}", services::usage(), plugins::help()));
+                }
                 // what is open, and the bar's mode: for a script, a test
                 ["state"] => {
                     let mut words: Vec<&str> = bar.open().into_iter().collect();
@@ -175,11 +178,8 @@ fn activate(app: &gtk4::Application) {
                     return bar.command(block, rest).unwrap_or(Ok(String::new()));
                 }
                 // the services' commands, wmd's words: their outcome said by the running ostrov
-                ["wifi" | "bt" | "headset" | "audio" | "power" | "brightness" | "night" | "location" | "media" | "displays"
-                | "calendar", ..] => {
-                    hub::service(&args)
-                }
-                _ => return Err(USAGE.into()),
+                [first, ..] if services::is_command(first) => hub::service(&args),
+                _ => return Err(format!("{USAGE}\n{}", services::usage())),
             }
             Ok(String::new())
         }))

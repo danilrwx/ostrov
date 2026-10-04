@@ -25,9 +25,7 @@ use crate::popup::{Popup, Side};
 use crate::style::{clear, label};
 
 mod appearance;
-mod displays;
 pub mod grid;
-mod widgets;
 
 use grid::{Item, COLS};
 
@@ -581,7 +579,11 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
     pages.add_named(&appearance::page(move || pg.set_visible_child_name("grid")), Some("appearance"));
 
     let popup = Popup::new(host, tab, Side::Right, 390, &col);
-    let mut reg = widgets::all();
+    let mut reg: Vec<Meta> = crate::modules::ALL
+        .iter()
+        .flat_map(|m| m.widgets)
+        .map(|d| Meta { id: d.id, name: d.name, icon: d.icon, sizes: d.sizes, make: Rc::new(d.make), settings: d.settings })
+        .collect();
     reg.extend(crate::plugins::metas());
     for m in &reg {
         if let Some(schema) = m.settings {

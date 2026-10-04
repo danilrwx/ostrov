@@ -8,7 +8,7 @@ use std::io::BufReader;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::{Kick, Res};
+use crate::services::{Kick, Res};
 
 /// A PipeWire sink or source: its node id (for wpctl set-default), its name, whether it is the default.
 #[derive(Serialize)]

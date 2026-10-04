@@ -8,13 +8,14 @@ use gtk4::prelude::*;
 use gtk4::Orientation;
 use serde_json::Value;
 
-use crate::ui::{chips, row, Toggle};
+use crate::cc::{Ctx, Widget};
+use crate::ui::{chips, menu, row, Memo, Toggle};
 use crate::hub::{s, service, service_then};
 use crate::style::{clear, label};
 
 const SCALES: [f64; 5] = [1.0, 1.25, 1.5, 1.75, 2.0];
 
-pub(super) fn draw(d: &Value, toggle: &Toggle, items: &gtk4::Box, changed: bool) {
+fn draw(d: &Value, toggle: &Toggle, items: &gtk4::Box, changed: bool) {
     let mons: Vec<Value> = d["monitors"].as_array().cloned().unwrap_or_default();
     toggle.root.set_visible(!mons.is_empty());
     let on = mons.iter().filter(|m| m["enabled"] == true).count();
@@ -123,4 +124,18 @@ pub(super) fn draw(d: &Value, toggle: &Toggle, items: &gtk4::Box, changed: bool)
     });
     items.append(&save);
     items.append(&note);
+}
+
+pub fn displays(c: &Ctx) -> Widget {
+    let t = Toggle::new("video-display-symbolic", "Displays", {
+        let flip = c.flip.clone();
+        move || flip()
+    }, Some(c.flip.clone()));
+    let (card, items) = menu("video-display-symbolic", "Displays");
+    let memo = Memo::default();
+    let t2 = t.clone();
+    Widget::toggle(&t, Some(&card), move |st| {
+        let d = &st["displays"];
+        draw(d, &t2, &items, memo.changed("displays", d.to_string()));
+    })
 }

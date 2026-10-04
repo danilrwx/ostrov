@@ -6,9 +6,10 @@ use serde::Serialize;
 use serde_json::Value;
 use zbus::zvariant::ObjectPath;
 
-use super::rfkill;
-use super::dbus::{call, err, managed, prop, set_property};
-use super::{Ctx, Res, USAGE};
+use crate::services::rfkill;
+use crate::services::dbus::{call, err, managed, prop, set_property};
+use super::USAGE;
+use crate::services::{Ctx, Res};
 
 const BLUEZ: &str = "org.bluez";
 
@@ -190,7 +191,7 @@ async fn paired(c: &Ctx, path: &str) -> Res {
 mod tests {
     #[tokio::test]
     async fn bt_state() {
-        let c = super::Ctx {
+        let c = crate::services::Ctx {
             system: zbus::Connection::system().await.unwrap(),
             session: zbus::Connection::session().await.unwrap(),
         };

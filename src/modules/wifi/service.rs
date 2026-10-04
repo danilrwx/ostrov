@@ -4,9 +4,10 @@ use serde::Serialize;
 use serde_json::Value;
 use zbus::zvariant::{self, OwnedObjectPath, OwnedValue};
 
-use super::dbus::{call, err, managed, prop, Objects};
-use super::rfkill;
-use super::{Ctx, Res, USAGE};
+use crate::services::dbus::{call, err, managed, prop, Objects};
+use crate::services::rfkill;
+use super::USAGE;
+use crate::services::{Ctx, Res};
 
 const IWD: &str = "net.connman.iwd";
 
@@ -153,7 +154,7 @@ async fn connect(c: &Ctx, path: &str) -> Res {
 mod tests {
     #[tokio::test]
     async fn wifi_state() {
-        let c = super::Ctx {
+        let c = crate::services::Ctx {
             system: zbus::Connection::system().await.unwrap(),
             session: zbus::Connection::session().await.unwrap(),
         };

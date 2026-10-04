@@ -3,7 +3,8 @@ use serde::Serialize;
 use serde_json::Value;
 use zbus::zvariant::{self, OwnedValue};
 
-use super::{Ctx, Res, USAGE};
+use super::USAGE;
+use crate::services::{Ctx, Res};
 
 /// power-profiles-daemon, by its old name, which every version still answers to.
 const PPD: &str = "net.hadess.PowerProfiles";
@@ -21,7 +22,7 @@ struct Power {
 pub async fn state(c: &Ctx) -> Value {
     let mut p = Power::default();
     if let Err(e) = read(c, &mut p).await {
-        eprintln!("ostrov: power: {}", super::dbus::err(e));
+        eprintln!("ostrov: power: {}", crate::services::dbus::err(e));
     }
     serde_json::to_value(p).unwrap_or_default()
 }
@@ -42,5 +43,5 @@ async fn get(c: &Ctx, prop: &str) -> zbus::Result<OwnedValue> {
 pub async fn cmd(c: &Ctx, args: &[&str]) -> Res {
     let ["set", profile] = args else { return Err(USAGE.into()) };
     let body = (PPD, "ActiveProfile", zvariant::Value::from(*profile));
-    c.system.call_method(Some(PPD), PATH, Some(PROPS), "Set", &body).await.map(drop).map_err(super::dbus::err)
+    c.system.call_method(Some(PPD), PATH, Some(PROPS), "Set", &body).await.map(drop).map_err(crate::services::dbus::err)
 }

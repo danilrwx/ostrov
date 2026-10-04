@@ -12,7 +12,7 @@ use gtk4::{gio, glib};
 
 use crate::hub::Hub;
 use crate::notes::Notes;
-use crate::services::{audio, backlight};
+use crate::modules::{audio::service as audio, brightness::service as backlight};
 
 /// A level's step, in percent, as the script's.
 const STEP: i64 = 2;

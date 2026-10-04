@@ -13,8 +13,9 @@ use std::time::Duration;
 use gtk4::glib;
 use serde_json::{json, Value};
 
-use super::night::{civil, days, local, now_ns};
-use super::{Kick, Res, USAGE};
+use crate::modules::night::service::{civil, days, local, now_ns};
+use super::USAGE;
+use crate::services::{Kick, Res};
 use crate::config::Calendar;
 
 /// The events last fetched, null while no calendar is set.
