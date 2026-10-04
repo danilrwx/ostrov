@@ -65,7 +65,15 @@ pub fn build(cx: &Rc<Ctx>) -> Block {
                 p.open_menu(name);
                 Ok(String::new())
             }
-            _ => Err("usage: ostrov status menu NAME".into()),
+            ["settings", entry @ ..] => {
+                p.open_page("settings", entry.first().copied());
+                Ok(String::new())
+            }
+            ["appearance"] => {
+                p.open_page("appearance", None);
+                Ok(String::new())
+            }
+            _ => Err("usage: ostrov status menu NAME | settings [SECTION] | appearance".into()),
         })),
         ..Block::new(&s)
     }

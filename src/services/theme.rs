@@ -10,7 +10,7 @@ fn read(path: &Path) -> String {
 }
 
 /// bin/theme's pick, as it keeps it in ~/.cache/theme: dark or dark-wall, the wallpaper, and the wallpapers to
-/// pick from in ~/Pictures/wallpapers. bin/theme itself does the switching.
+/// pick from in ~/Pictures/wallpapers (or [widget.wallpaper]'s dir). bin/theme itself does the switching.
 pub fn state() -> Value {
     let home = PathBuf::from(std::env::var("HOME").unwrap_or_default());
     let state = match std::env::var("XDG_CACHE_HOME") {
@@ -21,7 +21,12 @@ pub fn state() -> Value {
     if mode.is_empty() {
         mode = "dark".into();
     }
-    let dir = home.join("Pictures/wallpapers");
+    // the wallpaper widget's directory (cc/widgets.rs's schema), ~ the home
+    let own = crate::config::load().widget.get("wallpaper").and_then(|t| t.get("dir")?.as_str().map(String::from));
+    let dir = match own {
+        Some(d) if !d.is_empty() => crate::settings::expand(&d),
+        _ => home.join("Pictures/wallpapers"),
+    };
     let mut wallpapers: Vec<String> = std::fs::read_dir(&dir)
         .into_iter()
         .flatten()

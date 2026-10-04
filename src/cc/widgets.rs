@@ -15,6 +15,7 @@ use serde_json::Value;
 
 use super::{Ctx, Meta, Widget};
 use crate::hub::{bin, run, s, service, service_then};
+use crate::settings::{Field, Kind, Schema, Section};
 use crate::style::{clear, label};
 use crate::ui::{app_icon, arrow, battery_time, level_icon, menu, on_right_click, round, row, Memo, Slider, Toggle};
 
@@ -23,7 +24,7 @@ const BUTTON: &[(u8, u8)] = &[(1, 1), (2, 1)];
 const SLIDER: &[(u8, u8)] = &[(8, 1)];
 
 pub fn all() -> Vec<Meta> {
-    let m = |id, name, icon, sizes, make| Meta { id, name, icon, sizes, make };
+    let m = |id, name, icon, sizes, make| Meta { id, name, icon, sizes, make, settings: None };
     vec![
         m("battery", "Battery", "battery-good-symbolic", &[(5, 1), (2, 1), (3, 1), (4, 1), (8, 1)], battery),
         m("screenshot", "Screenshot", "applets-screenshooter-symbolic", BUTTON, screenshot),
@@ -35,7 +36,10 @@ pub fn all() -> Vec<Meta> {
         m("wifi", "Wi-Fi", "network-wireless-symbolic", TOGGLE, wifi),
         m("bt", "Bluetooth", "bluetooth-active-symbolic", TOGGLE, bluetooth),
         m("power", "Power Mode", "power-profile-balanced-symbolic", TOGGLE, power),
-        m("wallpaper", "Wallpaper", "preferences-desktop-wallpaper-symbolic", TOGGLE, wallpaper),
+        Meta {
+            settings: Some(wallpaper_settings),
+            ..m("wallpaper", "Wallpaper", "preferences-desktop-wallpaper-symbolic", TOGGLE, wallpaper)
+        },
         m("openvpn", "OpenVPN", "network-vpn-symbolic", TOGGLE, openvpn),
         m("vless", "VLESS", "network-vpn-symbolic", TOGGLE, vless),
         m("awake", "Keep Awake", "weather-clear-symbolic", TOGGLE, awake),
@@ -526,6 +530,14 @@ fn wallpaper(c: &Ctx) -> Widget {
             items.append(&row("", &name, "", on, move || run(&[&bin("theme"), "dark-wall", &w])));
         }
     })
+}
+
+/// [widget.wallpaper]: where the wallpapers are (services/theme.rs lists them).
+fn wallpaper_settings() -> Schema {
+    let dir = Field::new("dir", "Wallpapers", Kind::Path)
+        .default("~/Pictures/wallpapers")
+        .help("The directory whose JPEG and PNG pictures the menu lists.");
+    Schema { sections: vec![Section::new("", "Wallpaper", vec![dir])] }
 }
 
 fn openvpn(c: &Ctx) -> Widget {

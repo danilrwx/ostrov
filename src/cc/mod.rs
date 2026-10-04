@@ -6,6 +6,10 @@
 //! "Edit" turns the grid to its editing: a widget dragged goes where it is dropped, the ones in its way pushed
 //! down; dragged by its corner it takes the size nearest the pointer of those it allows; its minus takes it off;
 //! the gallery under the grid puts back any widget not on it. The layout is kept in ~/.config/ostrov/panel.toml.
+//!
+//! Under the grid, beside Edit, a gear and a palette: the Settings page (settings/: a form for each of ostrov's
+//! sections, each widget with a schema, each plugin's) and the Appearance page (appearance.rs), each sliding in
+//! over the grid in the same popup, its arrow back at its top. The rows are as tall as [appearance]'s density.
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -20,15 +24,12 @@ use crate::hub::Hub;
 use crate::popup::{Popup, Side};
 use crate::style::{clear, label};
 
+mod appearance;
 mod displays;
 pub mod grid;
 mod widgets;
 
 use grid::{Item, COLS};
-
-/// A row's height and the gap between cells, in pixels.
-const ROW: i32 = 48;
-const GAP: i32 = 8;
 
 /// A widget made: its tile, its menu's card, how it draws the state and fits a size.
 pub struct Widget {
@@ -73,6 +74,8 @@ pub struct Meta {
     pub icon: &'static str,
     pub sizes: &'static [(u8, u8)],
     pub make: fn(&Ctx) -> Widget,
+    /// its settings' schema, kept in [widget.ID], a page of the Settings
+    pub settings: Option<fn() -> crate::settings::Schema>,
 }
 
 /// A widget placed on the grid, as panel.toml keeps it.
@@ -173,6 +176,11 @@ type Dragged = (Item, bool, Vec<Item>, (u8, u8, u8, u8));
 pub struct Panel {
     pub popup: Rc<Popup>,
     reg: Vec<Meta>,
+    /// the grid's page, the Settings', the Appearance's
+    pages: gtk4::Stack,
+    settings: Rc<crate::settings::form::Page>,
+    /// a row's height and the gap between cells, in pixels, as the density says
+    dims: Cell<(i32, i32)>,
     grid: gtk4::Grid,
     gallery: gtk4::Box,
     edit_button: gtk4::Button,
@@ -204,6 +212,29 @@ impl Panel {
             n => n,
         };
         self.set_open(key);
+    }
+
+    /// Open at a page: "settings" (at an entry's form, if given), "appearance", "grid".
+    pub fn open_page(&self, page: &str, entry: Option<&str>) {
+        if !self.popup.is_open() {
+            self.popup.open();
+        }
+        if page == "settings" {
+            self.settings.show(entry);
+        }
+        if !(page == "settings" && entry == Some("appearance")) {
+            self.pages.set_visible_child_full(page, gtk4::StackTransitionType::None);
+        }
+    }
+
+    /// The rows as the density in the config says, laid out again if that changed.
+    fn fit_density(&self) {
+        let (row, gap) = crate::look::density(&crate::config::load().appearance.density);
+        if self.dims.replace((row, gap)) != (row, gap) {
+            self.grid.set_column_spacing(gap as u32);
+            self.grid.set_row_spacing(gap as u32);
+            self.layout();
+        }
     }
 
     /// The widget key made, in its tile.
@@ -286,6 +317,7 @@ impl Panel {
         }
         let items = self.items.borrow();
         let tiles = self.tiles.borrow();
+        let (row, gap) = self.dims.get();
         let mut bands: Vec<(u8, gtk4::Box)> = Vec::new();
         for it in items.iter() {
             let Some(r) = tiles.get(&it.key).and_then(|t| t.menu.as_ref()) else { continue };
@@ -306,7 +338,7 @@ impl Panel {
         let above = |row: u8, or_at: bool| bands.iter().filter(|(b, _)| *b < row || or_at && *b == row).count() as i32;
         for it in items.iter() {
             if let Some(t) = tiles.get(&it.key) {
-                t.wrap.set_size_request(-1, it.h as i32 * ROW + (it.h as i32 - 1) * GAP);
+                t.wrap.set_size_request(-1, it.h as i32 * row + (it.h as i32 - 1) * gap);
                 self.grid.attach(&t.wrap, it.x as i32, it.y as i32 + above(it.y, true), it.w as i32, it.h as i32);
                 (t.widget.size)(it.w, it.h);
             }
@@ -452,8 +484,9 @@ impl Panel {
             let mut a = a.borrow_mut();
             let Some((it, corner, start, last)) = a.as_mut() else { return };
             let Some(m) = p.reg.iter().find(|m| m.id == it.key) else { return };
-            let cw = (p.grid.width() + GAP) as f64 / COLS as f64;
-            let (cx, cy) = ((dx / cw).round() as i32, (dy / (ROW + GAP) as f64).round() as i32);
+            let (row, gap) = p.dims.get();
+            let cw = (p.grid.width() + gap) as f64 / COLS as f64;
+            let (cx, cy) = ((dx / cw).round() as i32, (dy / (row + gap) as f64).round() as i32);
             let next = if *corner {
                 let (w, h) = nearest(m.sizes, it.w as i32 + cx, it.h as i32 + cy);
                 (it.x, it.y, w, h)
@@ -493,31 +526,74 @@ fn fit_band(bx: &gtk4::Widget) {
 }
 
 pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> Rc<Panel> {
-    let col = gtk4::Box::new(Orientation::Vertical, 10);
+    let col = gtk4::Box::new(Orientation::Vertical, 0);
     col.add_css_class("surface");
+    let pages = gtk4::Stack::new();
+    pages.set_transition_type(gtk4::StackTransitionType::SlideLeftRight);
+    pages.set_transition_duration(120);
+    pages.set_vhomogeneous(false);
+    pages.set_interpolate_size(true);
+    col.append(&pages);
+
+    let page = gtk4::Box::new(Orientation::Vertical, 10);
+    let dims = crate::look::density(&crate::config::load().appearance.density);
     let grid = gtk4::Grid::new();
     grid.add_css_class("cc");
     grid.set_column_homogeneous(true);
-    grid.set_column_spacing(GAP as u32);
-    grid.set_row_spacing(GAP as u32);
-    col.append(&grid);
+    grid.set_column_spacing(dims.1 as u32);
+    grid.set_row_spacing(dims.1 as u32);
+    page.append(&grid);
 
     let gallery = gtk4::Box::new(Orientation::Vertical, 2);
     gallery.add_css_class("menu");
     gallery.set_visible(false);
-    col.append(&gallery);
+    page.append(&gallery);
 
+    // the footer: the gear to the Settings, the palette to the Appearance, Edit
+    let foot = gtk4::Box::new(Orientation::Horizontal, 4);
+    for (icon, tip, to) in [
+        ("emblem-system-symbolic", "Settings", "settings"),
+        ("preferences-desktop-appearance-symbolic", "Appearance", "appearance"),
+    ] {
+        let b = gtk4::Button::from_icon_name(icon);
+        b.add_css_class("flat-round");
+        b.set_tooltip_text(Some(tip));
+        let pg = pages.clone();
+        b.connect_clicked(move |_| pg.set_visible_child_name(to));
+        foot.append(&b);
+    }
     let edit_button = gtk4::Button::with_label("Edit");
     edit_button.add_css_class("chip");
+    edit_button.set_hexpand(true);
     edit_button.set_halign(Align::End);
-    col.append(&edit_button);
+    edit_button.set_valign(Align::Center);
+    foot.append(&edit_button);
+    page.append(&foot);
+    pages.add_named(&page, Some("grid"));
+
+    let (pg, pg2) = (pages.clone(), pages.clone());
+    let settings = crate::settings::form::Page::new(
+        move || pg.set_visible_child_name("grid"),
+        move |id| id == "appearance" && { pg2.set_visible_child_name("appearance"); true },
+    );
+    pages.add_named(&settings.root, Some("settings"));
+    let pg = pages.clone();
+    pages.add_named(&appearance::page(move || pg.set_visible_child_name("grid")), Some("appearance"));
 
     let popup = Popup::new(host, tab, Side::Right, 390, &col);
     let reg = widgets::all();
+    for m in &reg {
+        if let Some(schema) = m.settings {
+            crate::settings::register(&format!("widget.{}", m.id), m.name, m.icon, schema());
+        }
+    }
     let items = load(&reg);
     let p = Rc::new(Panel {
         popup: popup.clone(),
         reg,
+        pages,
+        settings,
+        dims: Cell::new(dims),
         grid,
         gallery,
         edit_button: edit_button.clone(),
@@ -542,11 +618,13 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
             p.set_editing(!p.editing.get());
         }
     });
-    // every opening with the menus folded, out of the editing (saved as it was left), drawn as things are now:
-    // Keep Awake flips from outside the state too
+    // every opening at the grid, the menus folded, out of the editing (saved as it was left), drawn as things
+    // are now: Keep Awake flips from outside the state too
     let me = Rc::downgrade(&p);
     popup.on_open(move || {
         if let Some(p) = me.upgrade() {
+            p.pages.set_visible_child_full("grid", gtk4::StackTransitionType::None);
+            p.settings.show(None);
             p.set_editing(false);
             p.draw();
         }
@@ -556,6 +634,12 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &gtk4::Box) -> R
         if let Some(p) = me.upgrade() {
             *p.state.borrow_mut() = v.clone();
             p.draw();
+        }
+    });
+    let me = Rc::downgrade(&p);
+    crate::style::on_config(move || {
+        if let Some(p) = me.upgrade() {
+            p.fit_density();
         }
     });
     p

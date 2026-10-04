@@ -1,6 +1,7 @@
 //! ostrov's kit of things on a surface, what the control centre's widgets are made of (and plugins', declared):
-//! a toggle, a slider, a round button, a menu's card and its rows, chips. Each looks the same wherever it goes;
-//! the toggle and the round button fit the size of the cell they are put in.
+//! a toggle, a slider, a round button, a menu's card and its rows, chips; and what the Settings' forms are made
+//! of: a page's header, a setting's title and help beside its control, options as chips. Each looks the same
+//! wherever it goes; the toggle and the round button fit the size of the cell they are put in.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -54,6 +55,81 @@ pub fn chips(names: &[&str], on: Option<usize>, pick: impl Fn(usize) + Clone + '
         bx.append(&b);
     }
     bx
+}
+
+/// A choice of options as chips wrapping onto more lines as they need: one of them at a time, or any of them
+/// (multi); pick runs with an option's index and whether it is on now.
+pub fn options(
+    names: &[&str],
+    on: &[bool],
+    multi: bool,
+    pick: impl Fn(usize, bool) + Clone + 'static,
+) -> gtk4::FlowBox {
+    let fb = gtk4::FlowBox::new();
+    fb.set_selection_mode(gtk4::SelectionMode::None);
+    fb.set_column_spacing(4);
+    fb.set_row_spacing(4);
+    let mut first: Option<gtk4::ToggleButton> = None;
+    for (i, n) in names.iter().enumerate() {
+        let b = gtk4::ToggleButton::with_label(n);
+        b.add_css_class("chip");
+        if !multi {
+            match &first {
+                Some(f) => b.set_group(Some(f)),
+                None => first = Some(b.clone()),
+            }
+        }
+        b.set_active(on.get(i) == Some(&true));
+        let p = pick.clone();
+        // one at a time: the one turned on alone tells, not the one its group turned off
+        b.connect_toggled(move |b| {
+            if multi || b.is_active() {
+                p(i, b.is_active())
+            }
+        });
+        fb.insert(&b, -1);
+    }
+    fb
+}
+
+/// A page's header (the control centre's Appearance, Settings): the arrow back, its title.
+pub fn header(title: &str, back: impl Fn() + 'static) -> (gtk4::Box, gtk4::Label) {
+    let bx = gtk4::Box::new(Orientation::Horizontal, 6);
+    let b = gtk4::Button::from_icon_name("go-previous-symbolic");
+    b.add_css_class("flat-round");
+    b.set_tooltip_text(Some("Back"));
+    b.connect_clicked(move |_| back());
+    let t = label(title, "page-title");
+    t.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+    bx.append(&b);
+    bx.append(&t);
+    (bx, t)
+}
+
+/// A setting: its title, its help under it, its control beside them, or under them across the width (wide).
+pub fn setting(title: &str, help: &str, control: &impl IsA<gtk4::Widget>, wide: bool) -> gtk4::Box {
+    let root = gtk4::Box::new(Orientation::Vertical, 6);
+    root.add_css_class("field");
+    let line = gtk4::Box::new(Orientation::Horizontal, 10);
+    let words = gtk4::Box::new(Orientation::Vertical, 2);
+    words.set_hexpand(true);
+    words.set_valign(Align::Center);
+    words.append(&label(title, ""));
+    if !help.is_empty() {
+        let h = label(help, "field-help");
+        h.set_wrap(true);
+        h.set_wrap_mode(gtk4::pango::WrapMode::WordChar);
+        words.append(&h);
+    }
+    line.append(&words);
+    root.append(&line);
+    if wide {
+        root.append(control);
+    } else {
+        control.set_valign(Align::Center);
+        line.append(control);
+    }
+    root
 }
 
 /// A right click on a widget runs f.
