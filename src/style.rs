@@ -1,6 +1,6 @@
 //! How ostrov looks, all in one place: the palette (every colour a name, set here alone), the shapes, the CSS
-//! every part draws with, and the few widget helpers they share. The bar's black is solid over no wallpaper, as
-//! see-through as [widget.wallpaper]'s bar says over one, reloaded as the wallpaper's pick changes.
+//! every part draws with, and the few widget helpers they share. The bar as solid as [appearance]'s bar_opacity
+//! says, else see-through over a wallpaper and solid over none, reloaded as the wallpaper's pick changes.
 
 use gtk4::prelude::*;
 use gtk4::gio;

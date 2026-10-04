@@ -155,6 +155,9 @@ pub struct Appearance {
     pub bar_height: u32,
     pub bar_padding: u32,
     pub bar_spacing: u32,
+    /// the bar's colour ("" the theme's) and how solid it is (unset: 0.65 over a wallpaper, solid over none)
+    pub bar_color: String,
+    pub bar_opacity: Option<f64>,
 }
 
 impl Default for Appearance {
@@ -177,6 +180,8 @@ impl Default for Appearance {
             bar_height: 25,
             bar_padding: 10,
             bar_spacing: 7,
+            bar_color: String::new(),
+            bar_opacity: None,
         }
     }
 }

@@ -471,6 +471,10 @@ pub fn appearance() -> Vec<Section> {
             .default("")
             .help("Under everything that opens; empty: the theme's."),
         Field::new("opacity", "Surface opacity", slider(0.3, 1.0, 0.05)).default(0.75),
+        Field::new("bar_color", "Bar colour", Kind::Color).default("").help("Empty: the theme's."),
+        Field::new("bar_opacity", "Bar opacity", slider(0.0, 1.0, 0.05))
+            .default(crate::modules::wallpaper::service::bar_alpha())
+            .help("Unset, 0.65 over a wallpaper and solid over none."),
         Field::new("radius", "Corner radius", slider(0.0, 20.0, 1.0))
             .default(theme.radius.unwrap_or(10))
             .help("A surface's; what is on it 4 less."),

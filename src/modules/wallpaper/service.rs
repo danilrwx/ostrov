@@ -47,13 +47,13 @@ fn pictures() -> Vec<String> {
     all
 }
 
-/// How solid the bar's black is: 1 over no picture, [widget.wallpaper]'s bar (0.65 unsaid) over one.
+/// How solid the bar is: [appearance]'s bar_opacity, else 0.65 over a picture and solid over none.
 pub fn bar_alpha() -> f64 {
-    if !pick().on {
-        return 1.0;
+    match crate::config::load().appearance.bar_opacity {
+        Some(o) => o.clamp(0.0, 1.0),
+        None if pick().on => 0.65,
+        None => 1.0,
     }
-    let cfg = crate::config::load();
-    cfg.widget.get("wallpaper").and_then(|t| t.get("bar")?.as_float().or_else(|| t.get("bar")?.as_integer().map(|i| i as f64))).unwrap_or(0.65)
 }
 
 pub fn state() -> Value {

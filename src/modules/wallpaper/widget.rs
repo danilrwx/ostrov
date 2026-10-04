@@ -37,15 +37,12 @@ pub fn wallpaper(c: &Ctx) -> Widget {
     })
 }
 
-/// [widget.wallpaper]: where the pictures are, how see-through the bar is over one, what follows a pick.
+/// [widget.wallpaper]: where the pictures are, what follows a pick.
 pub fn wallpaper_settings() -> Schema {
     let dir = Field::new("dir", "Pictures", Kind::Path)
         .default("~/Pictures/wallpapers")
         .help("The directory whose JPEG, PNG and WebP pictures the menu lists.");
-    let bar = Field::new("bar", "Bar over a picture", Kind::Number { min: 0.0, max: 1.0, step: 0.05, slider: true })
-        .default(0.65)
-        .help("How solid the bar's black is over the wallpaper: 1 solid, 0 clear. Over no picture it is solid.");
     let hook = Field::new("on_change", "On a change, run", Kind::String)
         .help("A command run after every pick, the picture in $OSTROV_WALLPAPER (empty: none), for what else follows it.");
-    Schema { sections: vec![Section::new("", "Wallpaper", vec![dir, bar, hook])] }
+    Schema { sections: vec![Section::new("", "Wallpaper", vec![dir, hook])] }
 }

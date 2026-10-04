@@ -20,13 +20,17 @@ fn rgb(c: &str) -> Option<(u8, u8, u8)> {
 }
 
 /// The palette's colours over style.rs's, later over earlier: the theme's, its surface's colour (or the
-/// appearance's) under the appearance's opacity, the appearance's accent, then the config's [colors].
+/// appearance's) under the appearance's opacity, the bar's colour if the appearance has one (its opacity, ALPHA,
+/// the wallpaper's: bar_alpha), the appearance's accent, then the config's [colors].
 pub fn palette(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) -> String {
     let def = |k: &str, v: &str| format!("@define-color {k} {v};\n");
     let mut out: String = t.colors.iter().filter(|(k, _)| *k != "surface").map(|(k, v)| def(k, v)).collect();
     let theirs = t.colors.get("surface").and_then(|s| rgb(s));
     let (r, g, b) = rgb(&a.surface).or(theirs).unwrap_or((0, 0, 0));
     out += &def("surface", &format!("rgba({r}, {g}, {b}, {:.2})", a.opacity.clamp(0.0, 1.0)));
+    if let Some((r, g, b)) = rgb(&a.bar_color) {
+        out += &def("bar", &format!("rgba({r}, {g}, {b}, ALPHA)"));
+    }
     if let Some((r, g, b)) = rgb(&a.accent) {
         // what goes on the accent black or white, as the accent is light or dark
         let light = 0.2126 * r as f64 + 0.7152 * g as f64 + 0.0722 * b as f64 > 150.0;
