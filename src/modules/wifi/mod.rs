@@ -1,5 +1,6 @@
-//! Wi-Fi, through iwd: its state, `ostrov wifi ...`, its toggle with the networks.
+//! Wi-Fi, through iwd or NetworkManager: its state, `ostrov wifi ...`, its toggle with the networks.
 
+mod nm;
 mod service;
 mod widget;
 
@@ -39,6 +40,8 @@ fn run(c: &Ctx, args: Vec<String>, input: Option<String>) -> Fut<'_, Res> {
 }
 
 fn worker(c: std::sync::Arc<Ctx>, kick: Kick) -> Fut<'static, ()> {
-    Box::pin(signals(c, "net.connman.iwd", kick))
+    Box::pin(async move {
+        tokio::join!(signals(c.clone(), service::IWD, kick.clone()), signals(c, nm::NM, kick));
+    })
 }
 
