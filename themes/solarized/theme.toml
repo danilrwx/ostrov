@@ -4,8 +4,8 @@ version = "1"
 dark = true
 
 [colors]
-surface = "#002b36"
-bar = "rgba(0, 43, 54, ALPHA)"
+surface = "#073642"
+bar = "rgba(0, 34, 43, ALPHA)"
 fg = "#eee8d5"
 dim = "#839496"
 ink = "#002b36"

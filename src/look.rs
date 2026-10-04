@@ -252,7 +252,7 @@ mod tests {
     fn previews_per_theme() {
         let nord = crate::theme::parse(include_str!("../themes/nord/theme.toml"), "nord", String::new());
         let css = previews(&[nord.expect("nord")]);
-        assert!(css.contains("button.theme-nord { background: rgb(46, 52, 64); }"), "{css}");
+        assert!(css.contains("button.theme-nord { background: rgb(53, 60, 74); }"), "{css}");
         assert!(css.contains("button.theme-nord .theme-dot { background: #88c0d0; }"));
     }
 }
