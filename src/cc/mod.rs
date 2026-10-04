@@ -502,6 +502,10 @@ impl Panel {
             }
         }
         wrap.set_child(Some(&clip));
+        // its widget's stretch kept within the tile: let up to the grid it would hand the grid's spare height to
+        // its rows, making them taller than a cell
+        wrap.set_vexpand(false);
+        wrap.set_hexpand(false);
         let remove = gtk4::Button::from_icon_name("list-remove-symbolic");
         remove.add_css_class("tile-remove");
         remove.set_halign(Align::Start);
@@ -571,7 +575,11 @@ impl Panel {
         }
         // a row's place in the grid: past the bands above it
         let above = |row: u8, or_at: bool| bands.iter().filter(|(b, _)| *b < row || or_at && *b == row).count() as i32;
-        for it in items.iter() {
+        // the shorter tiles attached first: GtkGrid shares a tall tile's height out over its rows in the order
+        // its children came, and a tall one first would hand rows a shorter one fills later more than a cell
+        let mut order: Vec<&Item> = items.iter().collect();
+        order.sort_by_key(|i| (i.h, i.y, i.x));
+        for it in order {
             if let Some(t) = tiles.get(&it.key) {
                 t.wrap.set_size_request(-1, it.h as i32 * row + (it.h as i32 - 1) * gap);
                 self.grid.attach(&t.wrap, it.x as i32, it.y as i32 + above(it.y, true), it.w as i32, it.h as i32);
