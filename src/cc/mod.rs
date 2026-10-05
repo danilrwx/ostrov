@@ -924,6 +924,14 @@ impl Panel {
         self.inspect();
     }
 
+    /// The inspector and the scroller it is in (an empty one would leave its gap above the footer).
+    fn show_inspector(&self, on: bool) {
+        self.inspector.set_visible(on);
+        if let Some(s) = self.inspector.ancestor(gtk4::ScrolledWindow::static_type()) {
+            s.set_visible(on);
+        }
+    }
+
     /// The picked tile's inspector: its sizes, when its badge is in the bar, the bar alone, its settings, off.
     fn inspect(self: &Rc<Self>) {
         clear(&self.inspector);
@@ -932,9 +940,9 @@ impl Panel {
         let off = on.is_none();
         let it = on.or_else(|| self.hidden.borrow().iter().find(|i| i.key == key).cloned());
         let (Some(it), Some(m)) = (it, self.reg.iter().find(|m| m.id == key)) else {
-            return self.inspector.set_visible(false);
+            return self.show_inspector(false);
         };
-        self.inspector.set_visible(true);
+        self.show_inspector(true);
         let head = gtk4::Box::new(Orientation::Horizontal, 10);
         let badge = gtk4::Image::from_icon_name(m.icon);
         badge.add_css_class("badge");
@@ -1322,7 +1330,8 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     pages.set_interpolate_size(true);
     col.append(&pages);
 
-    let page = gtk4::Box::new(Orientation::Vertical, 10);
+    // the footer as far from the grid as the grid from the surface's edge (its padding)
+    let page = gtk4::Box::new(Orientation::Vertical, 14);
     let dims = crate::look::density(&crate::config::load().appearance);
     let grid = gtk4::Grid::new();
     grid.add_css_class("cc");
@@ -1356,6 +1365,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     fit.set_policy(gtk4::PolicyType::External, gtk4::PolicyType::Never);
     fit.set_propagate_natural_height(true);
     fit.set_child(Some(&inspector));
+    fit.set_visible(false);
     body.append(&fit);
     body.append(&gallery);
 

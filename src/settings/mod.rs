@@ -492,7 +492,7 @@ pub fn appearance() -> Vec<Section> {
             .visible_if("blur", true),
         Field::new("font", "Font", Kind::String).default("").help("A family (Inter, Iosevka…); empty: GTK's own."),
         Field::new("font_size", "Text size", slider(8.0, 16.0, 1.0))
-            .default(11.0)
+            .default(10.0)
             .help("In points; the rest sized from it."),
         Field::new("icon_size", "Icon size", slider(10.0, 32.0, 1.0)).default(16),
     ])]

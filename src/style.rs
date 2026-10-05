@@ -59,9 +59,9 @@ separator { background: @rule; margin: 4px; min-height: 1px; min-width: 1px; }
 .osd { padding: 12px 16px; }
 
 /* words */
-.bold { font-weight: bold; }
-.title { font-weight: bold; font-size: 11pt; }
-.date { font-size: 14pt; font-weight: bold; }
+.bold { font-weight: 600; }
+.title { font-weight: 600; font-size: 11pt; }
+.date { font-size: 14pt; font-weight: 600; }
 .dim { color: @dim; }
 .error { color: @urgent; }
 
@@ -95,7 +95,7 @@ button.chip:checked label, button.chip:checked image, button.chip.picked label, 
 button.arrow image { transition: -gtk-icon-transform 100ms; }
 button.item { padding: 0 10px; min-height: 34px; border-radius: 6px; }
 button.connect { background: @accent; padding: 0 10px; border-radius: 6px; min-height: 30px; }
-button.connect label { color: @ink; font-weight: bold; }
+button.connect label { color: @ink; font-weight: 600; }
 /* a message's send: a square on the accent, as tall as the entry beside it */
 button.send { background: @accent; border-radius: 6px; min-width: 32px; min-height: 32px; }
 button.send:hover { background: @accent-pressed; }
@@ -108,8 +108,8 @@ button.chip, togglebutton.chip { background: @raised; border: 1px solid @rule; b
 .toggle.on .toggle-sub { color: alpha(@ink, 0.72); }
 .toggle-main { padding: 0 6px 0 14px; border-radius: 6px; }
 .toggle-main:hover { background: @raised; }
-.toggle-title { font-weight: bold; }
-.toggle-glyph { font-weight: bold; min-width: 16px; }
+.toggle-title { font-weight: 600; }
+.toggle-glyph { font-weight: 600; min-width: 16px; }
 .toggle-sub { color: @dim; font-size: 8.5pt; }
 button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radius: 0 6px 6px 0; }
 .toggle.on button.toggle-side { border-left-color: alpha(@ink, 0.22); }
@@ -136,7 +136,7 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 .gallery-line { padding: 0 10px; min-height: 34px; }
 /* a hover in an open popup, drawn in the bar's window (popup.rs), as GTK's tooltips look */
 .bubble { background: @surface-solid; color: @fg; border: 1px solid @rule; border-radius: 6px; padding: 2px 8px;
-          font-weight: bold; }
+          font-weight: 600; }
 /* the dots on a slider's steps, over its track */
 .slider-dots { color: alpha(@fg, 0.55); }
 .slider-dots.filled { color: alpha(@ink, 0.6); }
@@ -148,13 +148,13 @@ button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }
 .tile.picked > :first-child { box-shadow: 0 0 0 2px @accent; border-radius: 6px; }
 .tile-grip { background: @handle; color: @on-scrim; border-radius: 10px; min-width: 20px; min-height: 20px; margin: -5px; -gtk-icon-size: 12px; }
 .clock { padding: 0 14px; }
-.surface label.clock-time { font-size: 20pt; font-weight: bold; }
+.surface label.clock-time { font-size: 20pt; font-weight: 600; }
 /* the tiles as tall as the density's rows (look.rs), not their own */
 .cc .toggle, .cc button.round { min-height: 0; }
 
 /* the control centre's pages (Appearance, Settings): a header with its back arrow; a form's fields, the title
    over its help, the control beside or under them; the themes' cards, the accents' swatches */
-.page-title { font-weight: bold; font-size: 12pt; }
+.page-title { font-weight: 600; font-size: 12pt; }
 .form-section { margin-top: 10px; }
 .field { padding: 6px 0; }
 .field-help { color: @dim; font-size: 8.5pt; }
@@ -197,10 +197,10 @@ entry:focus-within, passwordentry:focus-within { border-color: @accent; }
 calendar { background: @card; border: 1px solid @rule; border-radius: 6px; padding: 6px; }
 calendar > header { border: none; }
 calendar > header > button { min-width: 28px; min-height: 28px; border-radius: 6px; }
-calendar > grid > label.day-name { color: @dim; font-weight: bold; font-size: 8.5pt; }
+calendar > grid > label.day-name { color: @dim; font-weight: 600; font-size: 8.5pt; }
 calendar > grid > label.day-number { padding: 6px; border-radius: 6px; }
 calendar > grid > label.day-number.other-month { color: @dim; }
-calendar > grid > label.day-number:selected { background: @accent; color: @ink; font-weight: bold; }
+calendar > grid > label.day-number:selected { background: @accent; color: @ink; font-weight: 600; }
 
 /* the tray's menus: a surface of items, a line between groups */
 .tray-menu { padding: 6px; }

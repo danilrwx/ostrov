@@ -185,7 +185,7 @@ impl Default for Appearance {
             blur_size: None,
             blur_passes: None,
             font: String::new(),
-            font_size: 11.0,
+            font_size: 10.0,
             icon_size: 16,
             bar_icon_size: 14,
             bar_height: 25,

@@ -32,6 +32,9 @@ if [ "${1-}" != inside ]; then
 theme = "dark"
 accent = "#8b7cf6"
 
+[panels.control]
+cols = 8
+
 [polkit]
 agent = false
 
@@ -94,6 +97,9 @@ cursor {
 }
 misc {
     disable_hyprland_logo = true
+    # its own warnings (no start-hyprland, no guiutils) not over the shots
+    disable_watchdog_warning = true
+    disable_hyprland_guiutils_check = true
     disable_splash_rendering = true
 }
 exec-once = sh -c 'hyprctl output create headless SHOT; sleep 1; hyprctl keyword monitor WAYLAND-1,disable; hyprctl dispatch focusmonitor SHOT; exec "$here/make.sh" inside'
