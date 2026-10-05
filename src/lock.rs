@@ -34,10 +34,20 @@ fn marker() -> std::path::PathBuf {
 pub fn build(app: &gtk4::Application) -> Rc<Lock> {
     let inst = Instance::new();
     let app = app.clone();
+    opaque();
     inst.connect_monitor(move |inst, monitor| {
         let win = gtk4::ApplicationWindow::new(&app);
         win.add_css_class("lock");
-        win.set_child(Some(&face(inst)));
+        // the lock's face on a solid ground of its own: nothing of the desktop under it shows, whatever the theme,
+        // the palette or a style that does not read
+        let ground = gtk4::Box::new(Orientation::Vertical, 0);
+        ground.add_css_class("lock-ground");
+        ground.set_hexpand(true);
+        ground.set_vexpand(true);
+        let f = face(inst);
+        f.set_vexpand(true);
+        ground.append(&f);
+        win.set_child(Some(&ground));
         inst.assign_window_to_monitor(&win, monitor);
         win.present();
     });
@@ -49,6 +59,15 @@ pub fn build(app: &gtk4::Application) -> Rc<Lock> {
 }
 
 /// A monitor's lock surface: the time, the date, the password.
+/// The lock's ground made solid black by a style of its own, above every other (the palette's, a theme's, the
+/// user's): no colour name in it that might not be defined, so it reads whatever else does not.
+fn opaque() {
+    let Some(display) = gtk4::gdk::Display::default() else { return };
+    let css = gtk4::CssProvider::new();
+    css.load_from_string("window.lock, .lock-ground { background-color: #000000; background-image: none; opacity: 1; }");
+    gtk4::style_context_add_provider_for_display(&display, &css, gtk4::STYLE_PROVIDER_PRIORITY_USER + 100);
+}
+
 fn face(inst: &Instance) -> gtk4::Box {
     let col = gtk4::Box::new(Orientation::Vertical, 14);
     col.set_halign(Align::Center);
