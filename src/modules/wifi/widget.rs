@@ -22,6 +22,8 @@ pub fn wifi(c: &Ctx) -> Widget {
     // the network whose passphrase is asked for, and what went wrong joining it, kept across redraws
     let asking: Rc<RefCell<String>> = Rc::default();
     let error: Rc<RefCell<String>> = Rc::default();
+    // a known network that would not join, and why: forgotten and its passphrase asked for again from there
+    let failed: Rc<RefCell<(String, String)>> = Rc::default();
     let memo = Memo::default();
     let again = c.again.clone();
     let t2 = tg.clone();
@@ -47,7 +49,11 @@ pub fn wifi(c: &Ctx) -> Widget {
             error.borrow_mut().clear();
         }
         // while a passphrase is typed the list holds still, a redraw would drop what is typed
-        let key = if asking.borrow().is_empty() { w["networks"].to_string() } else { format!("{}{}", asking.borrow(), error.borrow()) };
+        let key = if asking.borrow().is_empty() {
+            format!("{}{:?}", w["networks"], failed.borrow())
+        } else {
+            format!("{}{}", asking.borrow(), error.borrow())
+        };
         if !memo.changed("wifi", key) {
             return;
         }
@@ -56,10 +62,17 @@ pub fn wifi(c: &Ctx) -> Widget {
             let ssid = s(net, &["ssid"]).to_string();
             let known = net["known"].as_bool().unwrap_or(false) || s(net, &["security"]) == "open";
             let icon = format!("network-wireless-signal-{}-symbolic", BARS[net["signal"].as_u64().unwrap_or(0).min(4) as usize]);
-            let (ask, err, again2, ssid2) = (asking.clone(), error.clone(), again.clone(), ssid.clone());
+            let (ask, err, again2, ssid2, fail) = (asking.clone(), error.clone(), again.clone(), ssid.clone(), failed.clone());
             let r = row(&icon, &ssid, if known { "" } else { "🔒" }, net["connected"].as_bool().unwrap_or(false), move || {
                 if known {
-                    service(&["wifi", "connect", &ssid2]);
+                    fail.borrow_mut().0.clear();
+                    let (fail, again, ssid) = (fail.clone(), again2.clone(), ssid2.clone());
+                    service_then(vec!["wifi".into(), "connect".into(), ssid2.clone()], None, move |r| {
+                        if let Err(e) = r {
+                            *fail.borrow_mut() = (ssid.clone(), e);
+                            again();
+                        }
+                    });
                 } else {
                     let now = if *ask.borrow() == ssid2 { String::new() } else { ssid2.clone() };
                     *ask.borrow_mut() = now;
@@ -72,6 +85,9 @@ pub fn wifi(c: &Ctx) -> Widget {
                 on_right_click(&r, move || service(&["wifi", "forget", &ssid3]));
             }
             items.append(&r);
+            if failed.borrow().0 == ssid && asking.borrow().is_empty() {
+                rejoin(&items, &ssid, &failed.borrow().1, &asking, &failed, &again);
+            }
             if *asking.borrow() == ssid {
                 passphrase(&items, &ssid, &asking, &error, &again);
             }
@@ -79,6 +95,37 @@ pub fn wifi(c: &Ctx) -> Widget {
         items.append(&gtk4::Separator::new(Orientation::Horizontal));
         items.append(&row("", t("Scan"), "", false, || service(&["wifi", "scan"])));
     })
+}
+
+/// Under a known network that would not join: why, and its passphrase entered anew (it forgotten first). A
+/// network's saved state can stop it joining (WPA3's, after the router's changed) where a new one goes through.
+fn rejoin(items: &gtk4::Box, ssid: &str, why: &str, asking: &Rc<RefCell<String>>, failed: &Rc<RefCell<(String, String)>>, again: &Rc<dyn Fn()>) {
+    // iwd's words without its error's name (net.connman.iwd.Failed: Operation failed)
+    let why = why.rsplit(": ").next().unwrap_or(why);
+    let note = label(&format!("{} {why}", t("Could not join.")), "error");
+    note.set_wrap(true);
+    note.set_margin_start(36);
+    note.set_margin_end(10);
+    items.append(&note);
+    let b = crate::ui::chip(t("Forget and Enter the Passphrase"));
+    b.set_halign(gtk4::Align::Start);
+    b.set_margin_start(36);
+    b.set_margin_bottom(4);
+    let (ssid, ask, fail, again) = (ssid.to_string(), asking.clone(), failed.clone(), again.clone());
+    b.connect_clicked(move |_| {
+        let (ssid2, ask, fail, again) = (ssid.clone(), ask.clone(), fail.clone(), again.clone());
+        service_then(vec!["wifi".into(), "forget".into(), ssid.clone()], None, move |r| {
+            match r {
+                Ok(()) => {
+                    *ask.borrow_mut() = ssid2.clone();
+                    fail.borrow_mut().0.clear();
+                }
+                Err(e) => fail.borrow_mut().1 = e,
+            }
+            again();
+        });
+    });
+    items.append(&b);
 }
 
 /// The passphrase right under the network asked for: Enter or Connect joins.

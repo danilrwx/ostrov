@@ -14,6 +14,7 @@
 | NET-5 | Airplane Mode SHALL turn every radio off (2026-10-04, GNOME comparison) | ✅ | `src/modules/airplane/`, `src/services/rfkill.rs` |
 | NET-6 | VPNs (the owner's VLESS and OpenVPN) SHALL be toggles with their status, named by what they are ("VLESS", not "VPN") (2026-10-01, 2026-10-02) | ✅ | KDL widgets in the owner's dotfiles (`examples/widgets/vpn.kdl` the pattern); not in ostrov's core |
 | NET-7 | NetworkManager's VPN connections SHALL be toggles (GNOME comparison) | ❌ | gap: offered as a plugin or widget over `nmcli`, not done |
+| NET-8 | A known network that will not join SHALL say why and offer to forget it and take its passphrase again (2026-10-06: WPA3 failing until the profile was made anew) | ✅ | `wifi::widget::rejoin` |
 | BT-1 | Bluetooth SHALL power, pair, connect, show connected devices' batteries (2026-10-03) | ✅ | `src/modules/bt/` |
 | PWR-1 | Power profiles SHALL be switchable (power-profiles-daemon) (2026-10-03) | ✅ | `src/modules/power/` |
 | BAT-1 | The battery widget SHALL show the charge, its state and the time left (2026-10-03) | ✅ | `src/modules/battery/` |
