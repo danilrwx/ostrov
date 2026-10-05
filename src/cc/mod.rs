@@ -451,7 +451,7 @@ pub struct Panel {
     aligns: RefCell<HashMap<String, String>>,
     /// the widgets on it only while active, and those of them shown as last laid out
     lively: RefCell<std::collections::HashSet<String>>,
-    lively_shown: RefCell<Vec<String>>,
+    shown_keys: RefCell<Vec<String>>,
     /// the grid's page, the Settings', the Appearance's
     pages: gtk4::Stack,
     settings: Option<Rc<crate::settings::form::Page>>,
@@ -682,17 +682,23 @@ impl Panel {
 
     /// The grid laid out anew from the items: each tile at its cells, and under each band of rows whose widgets
     /// have menus a row of their own for those menus, shown only while one of them is unfolded.
-    /// The tiles on the grid now: all of them while it is edited; else those not on it only while active, and
-    /// those whose widgets are, the others closing up their places.
+    /// The tiles on the grid now: all of them while it is edited; else those showing something (the headset's
+    /// with one on) and, of those on it only while active, the active ones, the others closing up their places.
     fn shown(&self) -> Vec<Item> {
-        let lively = self.lively.borrow();
-        if self.editing.get() || lively.is_empty() {
+        if self.editing.get() {
             return self.items.borrow().clone();
         }
+        let lively = self.lively.borrow();
         let tiles = self.tiles.borrow();
         let active = |k: &str| tiles.get(k).and_then(|t| t.widget.face.as_ref()).is_none_or(|f| f.active.get());
-        let mut items: Vec<Item> =
-            self.items.borrow().iter().filter(|i| !lively.contains(&i.key) || active(&i.key)).cloned().collect();
+        let showing = |k: &str| tiles.get(k).is_none_or(|t| t.widget.root.is_visible());
+        let mut items: Vec<Item> = self
+            .items
+            .borrow()
+            .iter()
+            .filter(|i| showing(&i.key) && (!lively.contains(&i.key) || active(&i.key)))
+            .cloned()
+            .collect();
         grid::compact(&mut items, self.cols.get());
         items
     }
@@ -702,8 +708,7 @@ impl Panel {
             self.grid.remove(&c);
         }
         let items = self.shown();
-        *self.lively_shown.borrow_mut() =
-            items.iter().filter(|i| self.lively.borrow().contains(&i.key)).map(|i| i.key.clone()).collect();
+        *self.shown_keys.borrow_mut() = items.iter().map(|i| i.key.clone()).collect();
         let tiles = self.tiles.borrow();
         let (row, gap) = self.dims.get();
         let mut bands: Vec<(u8, gtk4::Box)> = Vec::new();
@@ -819,9 +824,10 @@ impl Panel {
 
     /// Each badge shown or not, as when it shows says and its widget's activity; the icon while none is.
     fn fit_faces(&self) {
-        // a tile on the panel only while active come or gone: the grid laid out again
-        let lively: Vec<String> = self.shown().into_iter().filter(|i| self.lively.borrow().contains(&i.key)).map(|i| i.key).collect();
-        if lively != *self.lively_shown.borrow() {
+        // a tile come or gone (on the panel only while active, or its widget showing something or nothing): the
+        // grid laid out again
+        let now: Vec<String> = self.shown().into_iter().map(|i| i.key).collect();
+        if now != *self.shown_keys.borrow() {
             self.layout();
         }
         let mut any = false;
@@ -1464,7 +1470,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         shows: RefCell::new(shows),
         aligns: RefCell::new(aligns_of(&spec_id)),
         lively: RefCell::new(while_active_of(&spec_id)),
-        lively_shown: RefCell::default(),
+        shown_keys: RefCell::default(),
         pages,
         settings,
         dims: Cell::new(dims),

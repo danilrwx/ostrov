@@ -29,6 +29,7 @@ if [ "${1-}" != inside ]; then
     done
     cat >"$sb/home/.config/ostrov/config.toml" <<'EOF'
 [appearance]
+sliders = "thin"
 theme = "dark"
 accent = "#8b7cf6"
 
