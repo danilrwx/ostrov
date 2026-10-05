@@ -196,9 +196,9 @@ impl Bar {
                 }
         });
         cx.host.win.add_controller(click);
-        // a right click on the bar beside its blocks: its editor
+        // a middle click on the bar beside its blocks: its editor (a right one too easily made)
         let right = gtk4::GestureClick::new();
-        right.set_button(3);
+        right.set_button(2);
         let b = Rc::downgrade(&bar);
         right.connect_released(move |g, _, x, y| {
             let (Some(b), Some(w)) = (b.upgrade(), g.widget().filter(|_| y < crate::popup::bar() as f64)) else { return };

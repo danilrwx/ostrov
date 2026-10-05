@@ -27,3 +27,4 @@ The owner's words (2026-10-04): «модульность, как в макоси
 | PNL-19 | A tile SHALL be aligned across its cells: fill, left, centre, right (2026-10-05) | ✅ | inspector's Align, panel.toml `align` |
 | PNL-20 | A tile SHALL be on the panel always or only while its widget is active (Drives while a drive is plugged in), the others closing up its place; in Edit every tile shows (2026-10-05) | ✅ | inspector's On the panel, panel.toml `while_active`, `Panel::shown` |
 | PNL-21 | Every widget with settings SHALL have a gear in its menu's head to them; a panel's Edit SHALL show its own settings (name, icon) and a tile's in its inspector; a width set in a form SHALL take at once (2026-10-05) | ✅ | `src/cc/mod.rs` tile, fill_gallery, the on_config hook |
+| PNL-22 | Buttons for the panels SHALL open the bar's editor and restart ostrov (2026-10-05) | ✅ | `system` module's `edit-bar`, `restart` |

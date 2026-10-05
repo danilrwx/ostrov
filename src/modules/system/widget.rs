@@ -19,6 +19,26 @@ pub fn screenshot(c: &Ctx) -> Widget {
     Widget::new(&b, None, |_| ())
 }
 
+/// The bar's editor, the panel rolled up first.
+pub fn edit_bar(c: &Ctx) -> Widget {
+    let close = c.close.clone();
+    let b = round("document-edit-symbolic", move || {
+        close();
+        if let Err(e) = crate::bar::edit::start() {
+            eprintln!("ostrov: bar: {e}");
+        }
+    });
+    b.set_tooltip_text(Some(t("Edit the Bar")));
+    Widget::new(&b, None, |_| ())
+}
+
+/// ostrov started again (`ostrov restart`): its config and a new build taken, the windows untouched.
+pub fn restart(_: &Ctx) -> Widget {
+    let b = round("view-refresh-symbolic", crate::restart);
+    b.set_tooltip_text(Some(t("Restart ostrov")));
+    Widget::new(&b, None, |_| ())
+}
+
 pub fn lock(c: &Ctx) -> Widget {
     let close = c.close.clone();
     let b = round("system-lock-screen-symbolic", move || {

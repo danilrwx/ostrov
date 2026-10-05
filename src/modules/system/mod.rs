@@ -10,6 +10,8 @@ pub const MODULE: Module = Module {
     widgets: &[
         widget("screenshot", "Screenshot", "applets-screenshooter-symbolic", BUTTON, widget::screenshot),
         widget("lock", "Lock", "system-lock-screen-symbolic", BUTTON, widget::lock),
+        widget("edit-bar", "Edit the Bar", "document-edit-symbolic", BUTTON, widget::edit_bar),
+        widget("restart", "Restart ostrov", "view-refresh-symbolic", BUTTON, widget::restart),
         widget("session", "Power Off", "system-shutdown-symbolic", BUTTON, widget::session),
         widget("awake", "Keep Awake", "weather-clear-symbolic", TOGGLE, widget::awake).bar(Show::Active),
         widget("notifications", "Notifications", "preferences-system-notifications-symbolic", &[(4, 6), (4, 3), (4, 4), (4, 5), (4, 7), (4, 8), (8, 3), (8, 4), (8, 6)], widget::notifications)

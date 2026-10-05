@@ -110,6 +110,8 @@ on|off|random`, `set PATH`; its toggle `wallpaper`, its menu the pictures of `[w
 |---|---|
 | `screenshot` | a region into the clipboard (`ostrov screenshot`) |
 | `lock` | the lock (`loginctl lock-session`) |
+| `edit-bar` | the bar's editor (`ostrov bar edit`) |
+| `restart` | ostrov started again (`ostrov restart`), the windows untouched |
 | `session` | the power menu: suspend; restart, power off and log out asked first |
 | `awake` | Keep Awake: idle neither locks nor turns the screens off |
 | `notifications` | the history, Do Not Disturb, Clear |
@@ -139,7 +141,7 @@ where free unless `[hyprland] rules`/`binds` say no; `[hyprland.keys]` moves one
 
 ## Outside the modules
 
-- **The bar's editor** (`ostrov bar edit`, a right click on the bar beside its blocks, or Bar in Settings): the
+- **The bar's editor** (`ostrov bar edit`, a middle click on the bar beside its blocks, the Edit the Bar button, or Bar in Settings): the
   bar's parts outlined and a gallery of the blocks not in it under the bar, the bar's own settings folded above it
   (height, padding, icon gap and size, colour, opacity, monitors); drag a block into a part, along it or off the
   bar, Tab, Shift+arrows and Delete from the keyboard. A click on a block (or `ostrov bar edit BLOCK`) shows its
