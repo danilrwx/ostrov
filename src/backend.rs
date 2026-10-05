@@ -1,5 +1,6 @@
-//! What a part of the desktop does off GTK's thread, whatever it is made of (a plugin's process): its state as JSON, its commands, its worker running for as
-//! long as it does and kicking whenever its state is to be read again. GTK's side holds it as Arc<dyn Backend>.
+//! What a part of the desktop does off GTK's thread (a plugin's process): its state as JSON, its commands, its
+//! worker running for as long as it does and kicking whenever its state is to be read again. GTK's side holds it
+//! as Arc<dyn Backend>.
 
 use std::future::Future;
 use std::pin::Pin;

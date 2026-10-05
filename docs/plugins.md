@@ -171,7 +171,7 @@ Two systematic differences from the WIT:
 A plugin may be pulled: it calls `kick()` when something changed, and ostrov calls `state()` and
 `render(widget)` for each of its widgets. Or it pushes unasked:
 
-| push (process only)                                   | is the same as                       |
+| push                                                  | is the same as                       |
 |-------------------------------------------------------|--------------------------------------|
 | `{"type":"render","widget":"counter","tree":NODE}`    | `render("counter")` returning NODE   |
 | `{"type":"state","json":{...}}`                       | `state()` returning it               |
