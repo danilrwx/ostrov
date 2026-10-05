@@ -302,7 +302,8 @@ take their defaults (empty, false, 0).
 | `entry`     | `placeholder`                                       | `change` (its text, on Enter)               |
 | `separator` |                                                     | –                                           |
 
-The widget's root is normally a `toggle`; its `menu` unfolds under the grid's rows when its arrow is clicked, in a
+A widget's tree, and its badge's, may say at its top `"tooltip": "..."`: what hovering it shows (a badge without
+one shows its widget's). The widget's root is normally a `toggle`; its `menu` unfolds under the grid's rows when its arrow is clicked, in a
 card titled with the widget's name. A root other than a toggle, a slider or a round button sits on a card.
 A toggle narrower than four cells is its icon alone.
 

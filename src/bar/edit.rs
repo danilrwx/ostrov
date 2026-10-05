@@ -538,9 +538,8 @@ impl Edit {
             return self.inspect(&name);
         }
         // the bar's own settings, folded
-        let look = gtk4::Expander::new(Some(t("Bar Settings")));
-        look.set_child(Some(&crate::settings::form::form(&crate::settings::bar_look())));
-        self.shelf.append(&look);
+        self.shelf.append(&label(t("Bar"), "dim"));
+        self.shelf.append(&crate::ui::fold(t("Look and Monitors"), &crate::settings::form::form(&crate::settings::bar_look())));
         let placed = |id: &str| layout.iter().flatten().any(|p| p == id || named(p).0 == named(id).0);
         for (title, ids) in every() {
             let ids: Vec<String> = ids.into_iter().filter(|id| !placed(id)).collect();

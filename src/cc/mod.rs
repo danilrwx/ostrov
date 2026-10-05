@@ -761,6 +761,13 @@ impl Panel {
         let st = self.state.borrow().clone();
         for t in self.tiles.borrow().values() {
             (t.widget.draw)(&st);
+            // its hover its badge's: the battery's time left, a toggle's state, a slider's level
+            if let Some(f) = &t.widget.face {
+                let tip = f.root.tooltip_text();
+                if t.widget.root.tooltip_text() != tip {
+                    t.widget.root.set_tooltip_text(tip.as_deref());
+                }
+            }
         }
         self.fit_faces();
     }
@@ -1117,9 +1124,11 @@ impl Panel {
         clear(&self.gallery);
         let hidden: Vec<String> = self.hidden.borrow().iter().map(|i| i.key.clone()).collect();
         self.fill_shelf();
-        // the panel's width, in cells
+        // the panel's own: its width in cells, its name and icon folded
+        self.gallery.append(&label(t("Panel"), "title"));
         let width = gtk4::Box::new(Orientation::Horizontal, 6);
-        let name = label(t("Width"), "title");
+        width.add_css_class("gallery-line");
+        let name = label(t("Width"), "");
         name.set_hexpand(true);
         width.append(&name);
         for (icon, by) in [("list-remove-symbolic", -1i8), ("list-add-symbolic", 1)] {
@@ -1141,11 +1150,9 @@ impl Panel {
             }
         }
         self.gallery.append(&width);
-        // its name and icon
-        let own = gtk4::Expander::new(Some(t("Panel Settings")));
         let schema = crate::settings::panel_schema(&self.spec.id, &self.spec.name, &self.spec.icon, None);
-        own.set_child(Some(&crate::settings::form::form(&schema)));
-        self.gallery.append(&own);
+        self.gallery.append(&crate::ui::fold(t("Name and Icon"), &crate::settings::form::form(&schema)));
+        self.gallery.append(&gtk4::Separator::new(Orientation::Horizontal));
         self.gallery.append(&label(t("Add Widgets"), "title"));
         let mut on: Vec<String> = self.items.borrow().iter().map(|i| i.key.clone()).collect();
         on.extend(hidden);

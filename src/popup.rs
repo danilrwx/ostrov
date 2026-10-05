@@ -106,6 +106,7 @@ impl Host {
             glib::Propagation::Proceed
         });
         win.add_controller(keys);
+        hover_tips(&host);
         let click = gtk4::GestureClick::new();
         let h = Rc::downgrade(&host);
         click.connect_released(move |_, _, _, y| {
@@ -236,6 +237,71 @@ impl Host {
         self.apply();
         crate::wm::nudge();
     }
+}
+
+/// Hovers drawn in the bar's window itself while a popup is open: GTK's tooltips are surfaces of their own, which
+/// Hyprland's focus grab on the popup leaves unshown. What the pointer rests on 400 ms (or the nearest of its
+/// parents with a tooltip) has its tooltip shown under the pointer, gone as it moves to something else.
+fn hover_tips(host: &Rc<Host>) {
+    let tip = gtk4::Label::new(None);
+    tip.add_css_class("hover-tip");
+    tip.set_halign(Align::Start);
+    tip.set_valign(Align::Start);
+    tip.set_can_target(false);
+    tip.set_visible(false);
+    tip.set_wrap(true);
+    tip.set_max_width_chars(40);
+    host.layer.add_overlay(&tip);
+    let timer: Rc<RefCell<Option<glib::SourceId>>> = Rc::default();
+    let shown: Rc<RefCell<String>> = Rc::default();
+    let motion = gtk4::EventControllerMotion::new();
+    let (h, t, tm, sh) = (Rc::downgrade(host), tip.clone(), timer.clone(), shown.clone());
+    motion.connect_motion(move |_, x, y| {
+        let Some(host) = h.upgrade() else { return };
+        // a popup's own: the bar alone gets GTK's
+        let text = host.popup().and_then(|_| {
+            let mut w = host.win.pick(x, y, gtk4::PickFlags::DEFAULT);
+            while let Some(x) = w {
+                if let Some(t) = x.tooltip_text().filter(|t| !t.is_empty()) {
+                    return Some(t.to_string());
+                }
+                w = x.parent();
+            }
+            None
+        });
+        if let Some(id) = tm.borrow_mut().take() {
+            id.remove();
+        }
+        let Some(text) = text else {
+            t.set_visible(false);
+            sh.borrow_mut().clear();
+            return;
+        };
+        if t.is_visible() && *sh.borrow() == text {
+            return;
+        }
+        t.set_visible(false);
+        let (t2, sh2, tm2, win) = (t.clone(), sh.clone(), tm.clone(), host.win.clone());
+        *tm.borrow_mut() = Some(glib::timeout_add_local_once(std::time::Duration::from_millis(400), move || {
+            tm2.borrow_mut().take();
+            t2.set_text(&text);
+            *sh2.borrow_mut() = text;
+            // under the pointer, kept within the window
+            let (_, nat) = t2.preferred_size();
+            let left = (x as i32 + 8).min(win.width() - nat.width() - 8).max(0);
+            t2.set_margin_start(left);
+            t2.set_margin_top(y as i32 + 20);
+            t2.set_visible(true);
+        }));
+    });
+    let (t, tm) = (tip.clone(), timer);
+    motion.connect_leave(move |_| {
+        if let Some(id) = tm.borrow_mut().take() {
+            id.remove();
+        }
+        t.set_visible(false);
+    });
+    host.win.add_controller(motion);
 }
 
 /// A monitor's size, a guess without one.

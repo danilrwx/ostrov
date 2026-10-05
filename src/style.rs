@@ -19,6 +19,7 @@ const CSS: &str = r#"
                                                    tray's menus, toasts, the OSD, a tab and a hovered block; the
                                                    bar's black a shade denser, past Hyprland's ignore_alpha 0.7 so
                                                    blurred where the bar is not */
+@define-color surface-solid #000000;            /* the surface without its see-through, under a hover */
 @define-color hover rgba(255, 255, 255, 0.15);  /* under the pointer */
 @define-color raised rgba(255, 255, 255, 0.08); /* a button, a toggle, a chip on a surface */
 @define-color card rgba(255, 255, 255, 0.06);   /* a card, a menu, the month on a surface */
@@ -121,6 +122,10 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 .drop-marker { background: @handle; min-width: 3px; border-radius: 2px; margin: 4px 2px; }
 .bar-gallery { padding: 12px 16px; }
 .gallery-item { padding: 4px 10px; }
+/* a line of a panel's own in its Edit (its width), as a menu's row is set */
+.gallery-line { padding: 0 10px; min-height: 34px; }
+/* a hover in an open popup, drawn in the bar's window (popup.rs), as GTK's tooltips look */
+.hover-tip { background: @surface-solid; color: @fg; border: 1px solid @rule; border-radius: 6px; padding: 4px 8px; }
 .tile.dragged > :first-child { box-shadow: 0 0 0 2px @accent; border-radius: 6px; }
 button.tile-remove { background: @urgent; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
 button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }

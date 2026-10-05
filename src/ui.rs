@@ -179,6 +179,34 @@ pub fn menu(icon: &str, title: &str) -> (gtk4::Box, gtk4::Box) {
     (card, items)
 }
 
+/// A row that folds what it holds away under it: its title, an arrow at its right turned down while open; the
+/// kit's own row, so a panel's settings and the bar's look like the menus around them.
+pub fn fold(title: &str, child: &impl IsA<gtk4::Widget>) -> gtk4::Box {
+    let col = gtk4::Box::new(Orientation::Vertical, 0);
+    let b = gtk4::Button::new();
+    b.add_css_class("item");
+    let bx = gtk4::Box::new(Orientation::Horizontal, 10);
+    let t = label(title, "");
+    t.set_hexpand(true);
+    bx.append(&t);
+    let arrow = gtk4::Image::from_icon_name("go-next-symbolic");
+    bx.append(&arrow);
+    b.set_child(Some(&bx));
+    let r = gtk4::Revealer::new();
+    r.set_transition_type(gtk4::RevealerTransitionType::SlideDown);
+    r.set_transition_duration(100);
+    r.set_child(Some(child));
+    let r2 = r.clone();
+    b.connect_clicked(move |_| {
+        let open = !r2.reveals_child();
+        r2.set_reveal_child(open);
+        arrow.set_icon_name(Some(if open { "go-down-symbolic" } else { "go-next-symbolic" }));
+    });
+    col.append(&b);
+    col.append(&r);
+    col
+}
+
 /// The arrow that unfolds a widget's menu, turned while it is open (its tile's "open").
 pub fn arrow(flip: Rc<dyn Fn()>) -> gtk4::Button {
     let b = gtk4::Button::from_icon_name("go-next-symbolic");
@@ -274,7 +302,12 @@ impl Toggle {
             self.face.set_icon_name(Some(icon));
         }
         self.active.set(on);
-        self.face.set_tooltip_text(Some(&if sub.is_empty() { self.title.clone() } else { format!("{}: {sub}", self.title) }));
+        let tip = if sub.is_empty() { self.title.clone() } else { format!("{}: {sub}", self.title) };
+        self.face.set_tooltip_text(Some(&tip));
+        // its main button's hover the same (it is under the pointer, not the toggle's box)
+        if let Some(main) = self.root.first_child() {
+            main.set_tooltip_text(Some(&tip));
+        }
         self.sub.set_text(sub);
         self.sub.set_visible(!sub.is_empty());
     }

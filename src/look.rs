@@ -28,6 +28,8 @@ pub fn palette(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) -> 
     let theirs = t.colors.get("surface").and_then(|s| rgb(s));
     let (r, g, b) = rgb(&a.surface).or(theirs).unwrap_or((0, 0, 0));
     out += &def("surface", &format!("rgba({r}, {g}, {b}, {:.2})", a.opacity.clamp(0.0, 1.0)));
+    // the same, solid: under what is drawn over a surface (a hover)
+    out += &def("surface-solid", &format!("rgb({r}, {g}, {b})"));
     if let Some((r, g, b)) = rgb(&a.bar_color) {
         out += &def("bar", &format!("rgba({r}, {g}, {b}, ALPHA)"));
     }
@@ -214,7 +216,7 @@ mod tests {
         let a = |accent: &str| Appearance { accent: accent.into(), ..Appearance::default() };
         assert!(palette(&a("#ffd60a"), &dark, &none).contains("ink #000000"));
         assert!(palette(&a("#0a3d91"), &dark, &none).contains("ink #ffffff"));
-        assert_eq!(palette(&a(""), &dark, &none), "@define-color surface rgba(0, 0, 0, 0.75);\n");
+        assert_eq!(palette(&a(""), &dark, &none), "@define-color surface rgba(0, 0, 0, 0.75);\n@define-color surface-solid rgb(0, 0, 0);\n");
     }
 
     /// The value a token ends up with: its last definition, as GTK takes it.

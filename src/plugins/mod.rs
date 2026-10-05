@@ -271,6 +271,8 @@ pub struct Plugin {
     trees: RefCell<HashMap<String, node::El>>,
     /// each badge's tree as last drawn, whether it said it is active, its click's node id
     badges: RefCell<HashMap<String, (node::El, bool, String)>>,
+    /// each widget's and badge's ("<wid>#bar") hover, its tree's top-level "tooltip"
+    tips: RefCell<HashMap<String, String>>,
     views: RefCell<Vec<Weak<View>>>,
     config: RefCell<Value>,
     state: RefCell<Value>,
@@ -361,6 +363,14 @@ impl View {
                 crate::style::clear(&self.items);
                 *self.menu.borrow_mut() = None;
             }
+        }
+    }
+
+    /// Its hovers: its tile's and its badge's.
+    pub fn hover(&self, tile: Option<&str>, badge: Option<&str>) {
+        self.tile.set_tooltip_text(tile);
+        if let Some(b) = &self.badge {
+            b.root.set_tooltip_text(badge);
         }
     }
 
@@ -479,10 +489,12 @@ impl Plugin {
         match node::El::deserialize(tree) {
             Ok(el) if bar => {
                 let active = tree["active"].as_bool().unwrap_or(false);
+                self.tips.borrow_mut().insert(format!("{base}#bar"), tree["tooltip"].as_str().unwrap_or("").to_string());
                 let click = tree["click"].as_str().unwrap_or_default().to_string();
                 self.badges.borrow_mut().insert(base.to_string(), (el, active, click));
             }
             Ok(el) => {
+                self.tips.borrow_mut().insert(base.to_string(), tree["tooltip"].as_str().unwrap_or("").to_string());
                 self.trees.borrow_mut().insert(base.to_string(), el);
             }
             Err(e) => return self.log(&format!("render {wid}: {e}")),
@@ -502,6 +514,10 @@ impl Plugin {
         if let Some(tree) = self.trees.borrow().get(&view.wid).cloned() {
             view.paint(&tree, &emit);
         }
+        let tips = self.tips.borrow();
+        let tip = |k: &str| tips.get(k).filter(|t| !t.is_empty()).cloned();
+        // a badge without its own hover takes its widget's
+        view.hover(tip(&view.wid).as_deref(), tip(&format!("{}#bar", view.wid)).or(tip(&view.wid)).as_deref());
         let badge = self.badges.borrow().get(&view.wid).cloned();
         if let Some((tree, active, click)) = badge
             && view.paint_badge(&tree, active, &click, &emit)
@@ -666,6 +682,7 @@ fn load(dir: PathBuf, m: Manifest, official: bool, cfg: &crate::config::Config) 
         backend,
         trees: RefCell::default(),
         badges: RefCell::default(),
+        tips: RefCell::default(),
         views: RefCell::default(),
         state: RefCell::default(),
         settings: RefCell::default(),
