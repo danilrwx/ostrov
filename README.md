@@ -280,6 +280,16 @@ A new one is its directory and its entry in `CATALOGUES` in `src/i18n.rs` (with 
 its counts are not English's or Russian's); `cargo test` checks that every catalogue reads and keeps its `{}`.
 Plugins carry their own texts in `i18n/<lang>.toml`.
 
+## Documentation
+
+- [docs/modules.md](docs/modules.md): every module and widget, its commands and settings
+- [docs/requirements.md](docs/requirements.md): what ostrov needs, and what each service and program brings
+- [docs/troubleshooting.md](docs/troubleshooting.md): what `ostrov doctor` says, and the common problems
+- [docs/plugins.md](docs/plugins.md), [docs/widgets.md](docs/widgets.md), [docs/themes.md](docs/themes.md):
+  extending it
+- [docs/architecture.md](docs/architecture.md): how it is built, for contributors
+- [specs/](specs/): what it must do, and how far it is from it
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md): building, the style, where things go, and how the screenshots above are

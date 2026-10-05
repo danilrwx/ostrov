@@ -20,6 +20,9 @@ build beside your own ostrov without stopping it by giving it another applicatio
 
 ## Where things go
 
+[docs/architecture.md](docs/architecture.md) draws the whole; [specs/](specs/) says what is wanted: a
+change starts with its requirement there.
+
 - `src/main.rs`: what is built at start, and the dispatch of `ostrov ARGS` (`FORMS` lists ostrov's own commands in
   the grammar of `src/forms.rs`, which also drives the shells' completion).
 - `src/modules/<id>/`: a part of the desktop, whole: `service.rs` (its state, its commands, its worker on the
