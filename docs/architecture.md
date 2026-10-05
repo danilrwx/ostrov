@@ -23,9 +23,9 @@ everything that waits — D-Bus, processes, files, the network. A plugin is a pr
 | `modules/` | a part of the desktop whole: `Module { id, forms, state, run, worker, widgets }` in `ALL`; nothing else names one |
 | `hub.rs` | the state on GTK's side: the last one kept, handed to each part that asked; the services' commands |
 | `wm.rs` | Hyprland: workspaces, its event socket, screens on and off, its focus grab for popups |
-| `bars.rs`, `bar/` | a bar per monitor; the bar's blocks by name (workspaces, window, layout, privacy, tray, `panel.ID`) |
+| `bars.rs`, `bar/` | a bar per monitor; the bar's blocks by name (workspaces, window, layout, privacy, tray, `panel.ID`, `widget.ID`); its editor in the bar itself (`bar/edit.rs`) |
 | `popup.rs` | the bar's window and what unrolls out of it: one surface, the block a tab, the popup under it |
-| `cc/` | panels: the grid (`grid.rs`, 8 wide, widgets as rectangles), Edit, the gallery, the inspector, the bar editor, Appearance |
+| `cc/` | panels: the grid (`grid.rs`, 8 wide, widgets as rectangles), Edit, the gallery, the inspector, Appearance |
 | `ui.rs` | the kit: toggle, slider, round button, menu card and rows, chips; the Settings' controls |
 | `style.rs`, `look.rs`, `theme.rs` | every colour a named token; the theme's palette, accent, surface, density, radii; Hyprland's blur |
 | `settings/` | schemas (sections of fields), the forms drawn from them, `config.toml` edited in place (`store.rs`), secrets |

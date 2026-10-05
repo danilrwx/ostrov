@@ -263,13 +263,49 @@ pub enum Side {
     Center,
 }
 
+/// How a popup on that side lines up under its tab.
+fn align(side: Side) -> Align {
+    match side {
+        Side::Left => Align::Start,
+        Side::Right => Align::End,
+        Side::Center => Align::Center,
+    }
+}
+
+/// The top edge's row for a side: the gap under the tab, an edge on the side the popup reaches past it.
+fn edges(top: &gtk4::Box, [left, gap, right]: [&gtk4::Box; 3], side: Side) {
+    gap.remove_css_class("gap");
+    gap.remove_css_class("gap-mid");
+    match side {
+        Side::Left => {
+            gap.add_css_class("gap");
+            top.append(gap);
+            top.append(right);
+        }
+        Side::Right => {
+            gap.add_css_class("gap");
+            top.append(left);
+            top.append(gap);
+        }
+        Side::Center => {
+            gap.add_css_class("gap-mid");
+            top.append(left);
+            top.append(gap);
+            top.append(right);
+        }
+    }
+}
+
 pub struct Popup {
     host: RefCell<Weak<Host>>,
     reveal: gtk4::Revealer,
     shape: gtk4::Box,
     /// the bar's block it grows out of; the tray's menu changes it to the icon clicked
     tab: RefCell<gtk4::Widget>,
-    side: Side,
+    side: Cell<Side>,
+    /// its top edge's row, and the edges at the tab's left and right, laid out by side
+    top: gtk4::Box,
+    edges: [gtk4::Box; 2],
     gap: gtk4::Box,
     on_open: RefCell<Vec<Box<dyn Fn()>>>,
     closed: Cell<Option<std::time::Instant>>,
@@ -284,11 +320,7 @@ impl Popup {
         reveal.set_transition_type(gtk4::RevealerTransitionType::SlideDown);
         reveal.set_transition_duration(120);
         reveal.set_valign(Align::Start);
-        reveal.set_halign(match side {
-            Side::Left => Align::Start,
-            Side::Right => Align::End,
-            Side::Center => Align::Center,
-        });
+        reveal.set_halign(align(side));
         reveal.set_margin_top(bar());
         reveal.set_size_request(width, -1);
 
@@ -302,24 +334,7 @@ impl Popup {
         let right = gtk4::Box::new(Orientation::Horizontal, 0);
         right.add_css_class("edge-right");
         right.set_hexpand(true);
-        match side {
-            Side::Left => {
-                gap.add_css_class("gap");
-                top.append(&gap);
-                top.append(&right);
-            }
-            Side::Right => {
-                gap.add_css_class("gap");
-                top.append(&left);
-                top.append(&gap);
-            }
-            Side::Center => {
-                gap.add_css_class("gap-mid");
-                top.append(&left);
-                top.append(&gap);
-                top.append(&right);
-            }
-        }
+        edges(&top, [&left, &gap, &right], side);
         shape.append(&top);
         body.add_css_class("attached");
         shape.append(body);
@@ -331,7 +346,9 @@ impl Popup {
             reveal: reveal.clone(),
             shape,
             tab: RefCell::new(tab.clone().upcast()),
-            side,
+            side: Cell::new(side),
+            top,
+            edges: [left, right],
             gap,
             on_open: RefCell::default(),
             closed: Cell::default(),
@@ -450,15 +467,42 @@ impl Popup {
         self.reveal.set_margin_top(bar());
         let tab = self.tab.borrow();
         let Some(b) = tab.compute_bounds(&host.win) else { return };
-        let inner = if self.side == Side::Center { 2 } else { 1 };
+        let inner = if self.side.get() == Side::Center { 2 } else { 1 };
         let tw = b.width().round() as i32;
         if tw > inner {
             self.gap.set_size_request(tw - inner, -1);
         }
-        match self.side {
+        match self.side.get() {
             Side::Right => self.reveal.set_margin_end(host.win.width() - (b.x() + b.width()).round() as i32),
             Side::Left => self.reveal.set_margin_start(b.x().round() as i32),
             Side::Center => {}
+        }
+    }
+
+    /// Hung on another side of its tab, its block moved to another part of the bar (bar/edit.rs).
+    pub fn set_side(&self, side: Side) {
+        if self.side.replace(side) == side {
+            return;
+        }
+        self.reveal.set_halign(align(side));
+        self.reveal.set_margin_start(0);
+        self.reveal.set_margin_end(0);
+        let [left, right] = &self.edges;
+        for w in [left, &self.gap, right] {
+            if w.parent().is_some() {
+                self.top.remove(w);
+            }
+        }
+        edges(&self.top, [left, &self.gap, right], side);
+        if self.is_open() {
+            self.place();
+        }
+    }
+
+    /// Taken out of its bar's window for good (the bar's editor's gallery, done).
+    pub fn remove(&self) {
+        if let Some(o) = self.reveal.parent().and_downcast::<gtk4::Overlay>() {
+            o.remove_overlay(&self.reveal);
         }
     }
 

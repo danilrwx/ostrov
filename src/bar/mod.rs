@@ -13,6 +13,7 @@ use gtk4::glib;
 use crate::hub::Hub;
 use crate::popup::{Host, Popup, Side};
 
+pub mod edit;
 mod layout;
 mod panel;
 mod privacy;
@@ -85,6 +86,16 @@ fn block(name: &str, cx: &Rc<Ctx>, side: Side) -> Option<Block> {
     })
 }
 
+/// The parts' sides, the popups of their blocks hanging so.
+const SIDES: [Side; 3] = [Side::Left, Side::Center, Side::Right];
+
+/// The left's first block kept off the screen's edge.
+fn edge_margin(left: &gtk4::Box) {
+    if let Some(first) = left.first_child() {
+        first.set_margin_start(12);
+    }
+}
+
 /// A block's pill: its content in a row, the ground lit under the pointer or as a tab.
 pub fn pill() -> gtk4::Box {
     let gap = || crate::config::load().appearance.bar_spacing.min(32) as i32;
@@ -115,7 +126,9 @@ pub struct Bar {
     left: gtk4::Box,
     center: gtk4::Box,
     right: gtk4::Box,
-    blocks: Vec<(String, Block)>,
+    blocks: RefCell<Vec<(String, Block)>>,
+    /// the right's last piece, the black at the screen's edge: the right's blocks go before it
+    end: gtk4::Box,
 }
 
 impl Bar {
@@ -140,7 +153,7 @@ impl Bar {
         right.append(&fill);
 
         let mut blocks = Vec::new();
-        for ((names, into), side) in layout.iter().zip([&left, &center, &right]).zip([Side::Left, Side::Center, Side::Right]) {
+        for ((names, into), side) in layout.iter().zip([&left, &center, &right]).zip(SIDES) {
             for name in names.iter() {
                 if let Some(b) = block(name, &cx, side) {
                     into.append(&b.widget);
@@ -152,14 +165,12 @@ impl Bar {
         end.add_css_class("bar-bg");
         end.set_size_request(6, -1);
         right.append(&end);
-        if let Some(first) = left.first_child() {
-            first.set_margin_start(12);
-        }
+        edge_margin(&left);
         strip.set_start_widget(Some(&left));
         strip.set_center_widget(Some(&center));
         strip.set_end_widget(Some(&right));
 
-        let bar = Rc::new(Bar { strip, cx: cx.clone(), left, center, right, blocks });
+        let bar = Rc::new(Bar { strip, cx: cx.clone(), left, center, right, blocks: RefCell::new(blocks), end });
         let first = BARS.with(|b| {
             let mut b = b.borrow_mut();
             let first = b.is_none();
@@ -178,7 +189,7 @@ impl Bar {
         click.connect_released(move |g, _, x, y| {
             let (Some(b), Some(w)) = (b.upgrade(), g.widget().filter(|_| y < crate::popup::bar() as f64)) else { return };
             let hit = w.pick(x, y, gtk4::PickFlags::DEFAULT);
-            let on_popup_block = b.blocks.iter().any(|(_, k)| k.popup.is_some() && hit.as_ref().is_some_and(|h| h.is_ancestor(&k.widget) || *h == k.widget));
+            let on_popup_block = b.blocks.borrow().iter().any(|(_, k)| k.popup.is_some() && hit.as_ref().is_some_and(|h| h.is_ancestor(&k.widget) || *h == k.widget));
             if !on_popup_block {
                 if let Some(p) = b.cx.host.popup() {
                     p.close();
@@ -189,6 +200,59 @@ impl Bar {
         bar
     }
 
+    /// Its blocks laid out anew, left, middle and right, as the bar's editor moves them (bar/edit.rs): the ones it
+    /// has moved where they go (their popups hung on their new side), new ones built, the ones left out gone. A
+    /// block is moved, not built again: a panel's face and the tray stay what they are.
+    pub fn relayout(&self, layout: &[Vec<String>; 3]) {
+        let mut old: Vec<(String, Block)> = self.blocks.take();
+        for (_, b) in &old {
+            if let Some(p) = b.widget.parent().and_downcast::<gtk4::Box>() {
+                p.remove(&b.widget);
+            }
+        }
+        let mut now = Vec::new();
+        for ((names, into), side) in layout.iter().zip([&self.left, &self.center, &self.right]).zip(SIDES) {
+            for name in names {
+                let b = match old.iter().position(|(n, _)| n == name) {
+                    Some(i) => Some(old.remove(i).1),
+                    None => block(name, &self.cx, side),
+                };
+                let Some(b) = b else { continue };
+                if let Some(p) = &b.popup {
+                    p.set_side(side);
+                }
+                b.widget.set_margin_start(0);
+                if into == &self.right {
+                    b.widget.insert_before(&self.right, Some(&self.end));
+                } else {
+                    into.append(&b.widget);
+                }
+                now.push((name.clone(), b));
+            }
+        }
+        // a block left out: its popup closed, gone with it
+        for (_, b) in old {
+            if let Some(p) = &b.popup {
+                p.close();
+            }
+        }
+        edge_margin(&self.left);
+        *self.blocks.borrow_mut() = now;
+    }
+
+    /// The parts' boxes, left, middle and right, and each block's name and widget: what the editor lays out.
+    pub fn parts(&self) -> [gtk4::Box; 3] {
+        [self.left.clone(), self.center.clone(), self.right.clone()]
+    }
+
+    pub fn widgets(&self) -> Vec<(String, gtk4::Widget)> {
+        self.blocks.borrow().iter().map(|(n, b)| (n.clone(), b.widget.clone())).collect()
+    }
+
+    pub fn host(&self) -> Rc<Host> {
+        self.cx.host.clone()
+    }
+
     /// Its blocks told their monitor changed (the workspaces': that monitor's).
     pub fn moved(&self) {
         for f in self.cx.wm.borrow().iter() {
@@ -197,23 +261,23 @@ impl Bar {
     }
 
     /// The name of the block whose popup is open.
-    pub fn open(&self) -> Option<&str> {
-        self.blocks.iter().find(|(_, b)| b.popup.as_ref().is_some_and(|p| p.is_open())).map(|(n, _)| n.as_str())
+    pub fn open(&self) -> Option<String> {
+        self.blocks.borrow().iter().find(|(_, b)| b.popup.as_ref().is_some_and(|p| p.is_open())).map(|(n, _)| n.clone())
     }
 
     /// A block's command (ostrov BLOCK ARGS); None when there is no such block or it has none.
     pub fn command(&self, name: &str, args: &[&str]) -> Option<Result<String, String>> {
-        self.blocks.iter().find(|(n, _)| n == name).and_then(|(_, b)| b.command.as_ref()).map(|c| c(args))
+        self.blocks.borrow().iter().find(|(n, _)| n == name).and_then(|(_, b)| b.command.as_ref()).map(|c| c(args))
     }
 
     /// Whether it has a block of that name with a command.
     pub fn has_command(&self, name: &str) -> bool {
-        self.blocks.iter().any(|(n, b)| n == name && b.command.is_some())
+        self.blocks.borrow().iter().any(|(n, b)| n == name && b.command.is_some())
     }
 
     /// The blocks with commands, and their forms.
     pub fn forms(&self) -> Vec<(String, &'static [&'static str])> {
-        self.blocks.iter().filter(|(_, b)| !b.forms.is_empty()).map(|(n, b)| (n.clone(), b.forms)).collect()
+        self.blocks.borrow().iter().filter(|(_, b)| !b.forms.is_empty()).map(|(n, b)| (n.clone(), b.forms)).collect()
     }
 
     /// The span between the left's blocks and the right's, the launcher's place: its start and end from the

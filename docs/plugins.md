@@ -327,7 +327,7 @@ the last badge rendered says `"active": true`), `never`. Until the plugin render
 icon, inactive.
 
 A widget also stands in the bar by itself, a block of its own: `widget.plugin.<id>.<widget>` in `[bar] left`,
-`center` or `right` (or the bar editor), its badge the block. A click there opens the widget's menu, unless the
+`center` or `right` (or dragged there from the bar's editor's gallery, `ostrov bar edit`), its badge the block. A click there opens the widget's menu, unless the
 badge's top says `"click": "<node id>"`: then a left click is the plugin's, `on_event(widget, node id, "click",
 "")`, and a right click opens the menu. The official `record`'s badge does it, a click on its timer stopping the
 recording:

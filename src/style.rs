@@ -114,6 +114,12 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 .cc .card, .cc .clock { background: @raised; border: 1px solid @rule; border-radius: 6px; }
 .cc.editing .tile > :first-child { opacity: 0.85; }
 .cc.editing { margin: 6px; }
+/* the bar's editor (bar/edit.rs): its parts outlined, the picked block ringed, where a drop lands */
+.editing .zone { border: 1px dashed @dim; border-radius: 6px; min-width: 48px; }
+.editing .edit-picked { box-shadow: inset 0 0 0 2px @handle; border-radius: 6px; }
+.drop-marker { background: @handle; min-width: 3px; border-radius: 2px; margin: 4px 2px; }
+.bar-gallery { padding: 12px 16px; }
+.gallery-item { padding: 4px 10px; }
 .tile.dragged > :first-child { box-shadow: 0 0 0 2px @accent; border-radius: 6px; }
 button.tile-remove { background: @urgent; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
 button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }

@@ -62,7 +62,7 @@ const FORMS: &[&str] = &[
     "panel", "menu NAME", "settings [SECTION]", "appearance", "calendar", "run", "clip",
     "lock", "dnd [on|off]", "notifications clear", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region",
     "share-pick [--allow-token]",
-    "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
+    "bar toggle|peek|unpeek|edit", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
     "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID", "plugin catalogue",
     "theme list", "theme set ID", "theme install PATH|GIT-URL", "theme remove ID",
     "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor", "welcome",
@@ -91,6 +91,7 @@ fn activate(app: &gtk4::Application) {
     // a bar on every monitor (bars.rs), each its window with the popups laid over it (popup.rs); the launcher over
     // the first's strip
     let bars = bars::Bars::start(app, &hub, cfg.bar);
+    bar::edit::init(&bars);
     let (host, bar, over) = bars.first();
 
     // the launcher, over the bar between the left's blocks and the right's, the middle's hidden under it; the
@@ -165,6 +166,7 @@ fn activate(app: &gtk4::Application) {
                 ["notifications", "clear"] => notes::get().ok_or("no notifications here")?.clear(),
                 ["capture", path] => shot::capture(path.to_string()),
                 ["key", name] => keys.key(name)?,
+                ["bar", "edit"] => bar::edit::start()?,
                 ["bar", what @ ("toggle" | "peek" | "unpeek")] => {
                     let docked = !host.docked.get();
                     for (h, ..) in bars.all.borrow().iter() {
@@ -200,7 +202,8 @@ fn activate(app: &gtk4::Application) {
                 // what is open, and the bar's mode: for a script, a test
                 ["state"] => {
                     let all = bars.all.borrow();
-                    let mut words: Vec<&str> = all.iter().find_map(|(_, b, _)| b.open()).into_iter().collect();
+                    let open = all.iter().find_map(|(_, b, _)| b.open());
+                    let mut words: Vec<&str> = open.as_deref().into_iter().collect();
                     words.push(if host.docked.get() { "docked" } else { "hidden" });
                     if launcher.is_open() {
                         words.push("launcher");

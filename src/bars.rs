@@ -17,7 +17,7 @@ use crate::popup::Host;
 pub struct Bars {
     app: gtk4::Application,
     hub: Rc<Hub>,
-    layout: [Vec<String>; 3],
+    layout: RefCell<[Vec<String>; 3]>,
     monitors: Monitors,
     /// the monitor focused as ostrov starts: "primary"'s, the first bar's
     primary: Option<String>,
@@ -31,7 +31,7 @@ impl Bars {
         let bars = Rc::new(Bars {
             app: app.clone(),
             hub: hub.clone(),
-            layout: [cfg.left, cfg.center, cfg.right],
+            layout: RefCell::new([cfg.left, cfg.center, cfg.right]),
             monitors: cfg.monitors,
             primary: crate::wm::focused_monitor(),
             all: RefCell::default(),
@@ -83,13 +83,27 @@ impl Bars {
         fn names(v: &[String]) -> Vec<&str> {
             v.iter().map(String::as_str).collect()
         }
-        let [l, c, r] = &self.layout;
+        let layout = self.layout.borrow();
+        let [l, c, r] = &*layout;
         let (l, c, r) = (names(l), names(c), names(r));
         let bar = Bar::build(&host, &self.hub, [&l, &c, &r]);
         over.set_child(Some(&bar.strip));
         host.docked.set(docked);
         host.apply();
         (host, bar, over)
+    }
+
+    /// Every bar's blocks laid out anew (the bar's editor's), and the bars made later so.
+    pub fn relayout(&self, layout: [Vec<String>; 3]) {
+        for (_, bar, _) in self.all.borrow().iter() {
+            bar.relayout(&layout);
+        }
+        *self.layout.borrow_mut() = layout;
+    }
+
+    /// The blocks as laid out now.
+    pub fn layout(&self) -> [Vec<String>; 3] {
+        self.layout.borrow().clone()
     }
 
     /// The first bar: the launcher's.

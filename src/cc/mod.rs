@@ -33,7 +33,6 @@ use crate::popup::{Popup, Side};
 use crate::style::{clear, label};
 
 pub mod appearance;
-mod bar_editor;
 pub mod grid;
 
 use grid::{Item, COLS};
@@ -1124,13 +1123,24 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         // the Appearance and the bar's entries their own pages, not forms
         let settings = crate::settings::form::Page::new(
             move || pg.set_visible_child_name("grid"),
-            move |id| (id == "appearance" || id == "bar") && { pg2.set_visible_child_name(id); true },
+            move |id| match id {
+                "appearance" => {
+                    pg2.set_visible_child_name(id);
+                    true
+                }
+                // the bar is edited in the bar itself
+                "bar" => {
+                    if let Err(e) = crate::bar::edit::start() {
+                        eprintln!("ostrov: bar: {e}");
+                    }
+                    true
+                }
+                _ => false,
+            },
         );
         pages.add_named(&settings.root, Some("settings"));
         let pg = pages.clone();
         pages.add_named(&appearance::page(move || pg.set_visible_child_name("grid")), Some("appearance"));
-        let pg = pages.clone();
-        pages.add_named(&bar_editor::page(move || pg.set_visible_child_name("settings")), Some("bar"));
         settings
     });
 

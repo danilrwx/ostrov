@@ -36,16 +36,10 @@
 "Left" = "Слева"
 "Middle" = "В центре"
 "Right" = "Справа"
-"To Left" = "Влево"
-"To Middle" = "В центр"
-"To Right" = "Вправо"
-"Earlier" = "Раньше"
-"Later" = "Позже"
-"Take off the bar" = "Убрать с панели"
 "empty" = "пусто"
-"Add to the Bar" = "Добавить в панель"
 "New panel's name…" = "Название новой панели…"
-"Apply" = "Применить"
+"Panels" = "Панели"
+"Drag a block into the bar, along it, or off it here; Tab, Shift+arrows and Delete too" = "Перетащите блок в бар, вдоль него или сюда, чтобы убрать; ещё Tab, Shift+стрелки и Delete"
 
 # the UI kit, the bar's blocks
 "Back" = "Назад"
