@@ -33,9 +33,6 @@ The first release: the whole shell in one binary.
   does. Screen recording the official plugin `record` (wf-recorder, optional audio, its badge the time going).
 - The wallpaper, picked from a directory, with a hook run on every change.
 - Games played in the performance power profile: the official plugin `games` (`[plugin.games]`).
-- `ostrov-ctl`, a second binary linking no GTK, for dwl: `status [--watch]` the status line for its bar (the
-  privacy dot, mute, offline, mako's notifications and Do Not Disturb, the battery, the clock; `^bl(NAME)` blocks
-  and `^fg(RRGGBB)` colours), `menu wifi|bt|audio|power|main` in wmenu, `click BLOCK` a block's action.
 - Settings and Appearance pages in the control centre, editing `config.toml` in place; themes (dark, light,
   graphite, nord, solarized), accent, opacity, corners, density, Hyprland's blur.
 - Themes as packages: `theme.toml` (the palette's colours, suggested corners, density, blur) and an optional

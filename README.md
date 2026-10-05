@@ -27,9 +27,6 @@ Hyprland desktop is usually pieced together from, made to look and work as one t
   a D-Bus interface, shell completion for every command.
 - **Official plugins** for the rest: screen recording, the night light, CalDAV calendars, Win+P for displays, removable drives,
   a power profile for games.
-- **ostrov-ctl** for a desktop on dwl instead: ostrov's services without GTK, the status line for dwl's bar
-  (`ostrov-ctl status --watch | dwl`: privacy, mute, offline, mako's notifications, battery, clock) and wmenu's
-  menus of Wi-Fi, Bluetooth, the sound and the power (`ostrov-ctl menu wifi|bt|audio|power|main`).
 
 <table>
 <tr>

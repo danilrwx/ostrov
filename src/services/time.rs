@@ -1,6 +1,5 @@
 //! The local clock and the calendar's dates, for the weather's hours and the calendar's days, and the time as the
-//! clock's badge says it (here, not in modules/clock, for ostrov-ctl's status too, which links no GTK): the local
-//! zone GLib's, the dates by Howard Hinnant's algorithms.
+//! clock's badge says it: the local zone GLib's, the dates by Howard Hinnant's algorithms.
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use gio::glib;
