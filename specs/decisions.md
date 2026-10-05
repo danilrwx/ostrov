@@ -7,7 +7,6 @@ What was tried or proposed and decided against. Not to be proposed again without
 | 2026-09-29 | One theme switch for the whole desktop (terminal, Chrome, k9s, nvim, transparency everywhere) dropped | the owner wanted just the dark theme back |
 | 2026-09-29 | Noctalia, ashell and the like not used instead of an own shell | «мой изначальный вариант лучше всех» |
 | 2026-10-03 | Quickshell (QML) replaced by ostrov in Rust | fewer dependencies, the owner's own design |
-| 2026-10-03 | Plugins as WebAssembly later; JSON-lines processes now | any language today, a sandbox to come |
 | 2026-10-04 | No window switcher, no overview (Mission Control) in ostrov | the compositor's job (hyprexpo and the like), a separate utility if ever |
 | 2026-10-04 | No login screen of ostrov's (greeter) | «получилось не очень»; tuigreet or regreet do it |
 | 2026-10-04 | Applying the user's style to the login screen dropped | too much for a shell |
@@ -25,4 +24,5 @@ What was tried or proposed and decided against. Not to be proposed again without
 | 2026-10-05 | No Dock | not wanted |
 | 2026-10-05 | No Orca support | not wanted |
 | 2026-10-05 | No settings manager of small utilities | not needed |
+| 2026-10-05 | No WebAssembly plugin backend | processes already take any language; WASI can neither run programs nor reach D-Bus, which drives, record and updates need; a runtime's weight for sandboxing plugins nobody else has written yet |
 | 2026-10-05 | Rewriting ostrov in another language (TypeScript+Astal, Python, C) not decided | the cost of a rewrite against faster builds in Rust; open if build times or verbosity hurt |

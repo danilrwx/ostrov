@@ -20,8 +20,6 @@ Every requirement not done (❌), half done (🟡) or undecided (❓). The ids l
 
 | ID | Question |
 |---|---|
-| BAR-18, EXT-10 | A plugin's own block in the bar, beside a badge in a panel's face |
-| EXT-1 | A WebAssembly plugin backend beside the processes |
 | macOS 5 | Window snapping like Rectangle: the compositor's more than ostrov's |
 | PUB-2 | Publishing: the GitHub name and the employer's consent |
 | P-8 | Further memory cuts, if wanted, need a new approach |

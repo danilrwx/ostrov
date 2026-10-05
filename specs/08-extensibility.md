@@ -12,7 +12,7 @@ goes to someone's API on the internet.
 
 | ID | Requirement | Status | Where / gap |
 |---|---|---|---|
-| EXT-1 | A plugin SHALL be a program in any language speaking ostrov's protocol (JSON lines over a process today, WebAssembly later), installed with `ostrov plugin install PATH|GIT-URL` after showing its permissions (2026-10-03, 2026-10-04) | 🟡 | `src/plugins/`, `wit/ostrov-plugin.wit`; whether a WebAssembly backend is still wanted is open (2026-10-05: «не уверен что ещё нужно, нужно обсудить») |
+| EXT-1 | A plugin SHALL be a program in any language speaking ostrov's protocol (JSON lines over a process), installed with `ostrov plugin install PATH|GIT-URL` after showing its permissions (2026-10-03, 2026-10-04) | ✅ | `src/plugins/`, `wit/ostrov-plugin.wit`; a WebAssembly backend dropped (2026-10-05, decisions.md) |
 | EXT-2 | A plugin's commands SHALL be `ostrov plugin ID ARGS`, stdin passed, the answer on stdout, listed in `ostrov help` (2026-10-04) | ✅ | `src/plugins/mod.rs` |
 | EXT-3 | A plugin SHALL put widgets in panels, made of the UI kit, updated in place (2026-10-04) | ✅ | `docs/plugins.md` Nodes |
 | EXT-4 | A plugin's settings SHALL be fields on the Settings page and in its widget's inspector, a token kept in the Secret Service (2026-10-04) | ✅ | `src/settings/` |
@@ -21,7 +21,7 @@ goes to someone's API on the internet.
 | EXT-7 | A plugin SHALL be a calendar (its events merged into the calendar) (2026-10-04) | ✅ | `calendar = true` |
 | EXT-8 | A plugin SHALL add launcher modes (2026-10-04) | ✅ | |
 | EXT-9 | A plugin SHALL ask the user through ostrov's dialogs (2026-10-04) | ✅ | |
-| EXT-10 | A plugin SHALL put a block of its own in the bar | ❓ | see BAR-18 |
+| EXT-10 | A plugin SHALL put a block of its own in the bar | ✅ | see BAR-18 |
 | EXT-11 | Plugins SHALL be installable by name from a catalogue, `ostrov plugin install NAME`, listed by `ostrov plugin catalogue` and on Settings' Plugins page with a switch each (2026-10-04, 2026-10-05) | ✅ | `catalogue.toml` built in, `src/plugins/catalogue.rs`; a remote index once the repository is published |
 | EXT-12 | SDKs SHALL exist for Rust and Python (2026-10-04) | ✅ | `sdk/`, `sdk/python` |
 | EXT-13 | Widgets SHALL be writable without code, in KDL: commands polled or listened to, expressions, toggles, sliders, menus, badges (2026-10-04) | ✅ | `src/widgets/`, `docs/widgets.md` |
