@@ -50,6 +50,7 @@ pub async fn cmd(c: &Ctx, args: &[&str]) -> Res {
 mod tests {
     /// The state as it is here: cargo test --release services_state -- --nocapture.
     #[tokio::test]
+    #[ignore = "the running system's buses: cargo test -- --ignored"]
     async fn services_state() {
         let (system, session) = (zbus::Connection::system().await.unwrap(), zbus::Connection::session().await.unwrap());
         let c = crate::services::Ctx { system, session };

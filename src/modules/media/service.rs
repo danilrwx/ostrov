@@ -155,6 +155,7 @@ pub async fn events(c: Arc<Ctx>, kick: Kick) {
 #[cfg(test)]
 mod tests {
     #[tokio::test]
+    #[ignore = "the running system's buses: cargo test -- --ignored"]
     async fn media_state() {
         let (system, session) = (zbus::Connection::system().await.unwrap(), zbus::Connection::session().await.unwrap());
         let c = crate::services::Ctx { system, session };

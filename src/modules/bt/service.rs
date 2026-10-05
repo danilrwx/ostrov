@@ -195,6 +195,7 @@ async fn paired(c: &Ctx, path: &str) -> Res {
 #[cfg(test)]
 mod tests {
     #[tokio::test]
+    #[ignore = "the running system's buses: cargo test -- --ignored"]
     async fn bt_state() {
         let c = crate::services::Ctx {
             system: zbus::Connection::system().await.unwrap(),
