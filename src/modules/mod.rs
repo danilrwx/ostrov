@@ -26,6 +26,7 @@ pub mod location;
 pub mod media;
 pub mod power;
 pub mod system;
+pub mod sysinfo;
 pub mod wallpaper;
 pub mod weather;
 pub mod wifi;
@@ -122,6 +123,7 @@ pub const ALL: &[&Module] = &[
     &clock::MODULE,
     &hyprland::MODULE,
     &system::MODULE,
+    &sysinfo::MODULE,
 ];
 
 /// A command's words as the services take them.

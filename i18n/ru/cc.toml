@@ -79,6 +79,13 @@
 "Wallpaper" = "Обои"
 "Weather" = "Погода"
 "Device Batteries" = "Батареи устройств"
+"System" = "Система"
+
+# the System widget's captions
+"CPU" = "ЦП"
+"RAM" = "ОЗУ"
+"Temp" = "Темп"
+"Net" = "Сеть"
 "Screen shared" = "Экран транслируется"
 "Screen shared: {}" = "Экран транслируется: {}"
 
