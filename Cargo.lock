@@ -1087,6 +1087,7 @@ dependencies = [
 name = "ostrov-plugin-drives"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "ostrov-plugin",
  "serde",
  "serde_json",

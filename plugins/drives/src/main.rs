@@ -218,15 +218,23 @@ fn find<'a>(drives: &'a [Drive], name: &str) -> Option<(&'a Drive, Option<&'a Vo
 }
 
 /// Block devices' events, a burst of them refreshing once 300 ms after its last; polling every 3 s when udevadm
-/// is not there or has gone. udevadm, outliving the plugin, dies of a broken pipe at its next event.
+/// is not there or has gone. udevadm dies with the plugin (the kernel's parent-death signal): left behind, each
+/// ostrov restart added one more waiting on block devices.
 fn watch(host: Host) {
     let (tx, rx) = channel();
-    let child = Command::new("udevadm")
-        .args(["monitor", "--udev", "--subsystem-match=block"])
+    let mut cmd = Command::new("udevadm");
+    cmd.args(["monitor", "--udev", "--subsystem-match=block"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn();
+        .stderr(Stdio::null());
+    // SAFETY: prctl only, between fork and exec, async-signal-safe
+    let child = unsafe {
+        std::os::unix::process::CommandExt::pre_exec(&mut cmd, || {
+            libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
+            Ok(())
+        })
+    }
+    .spawn();
     if let Some(out) = child.ok().and_then(|mut c| c.stdout.take()) {
         std::thread::spawn(move || {
             for line in BufReader::new(out).lines().map_while(Result::ok) {
