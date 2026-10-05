@@ -191,6 +191,8 @@ scale trough { min-height: 14px; border-radius: 6px; background: @well; border: 
 scale trough highlight { border-radius: 6px; background: @accent; border: none; margin: 0; min-height: 14px; min-width: 0; }
 scale slider { min-width: 0; min-height: 0; margin: 0; background: none; box-shadow: none; border: none; }
 scale:focus-visible trough { outline: 2px solid @accent; outline-offset: 2px; }
+/* as narrow as its tile: GTK's own progress bar asks 150px */
+progressbar.progress, progressbar.progress trough, progressbar.progress progress { min-width: 0; }
 progressbar.progress trough { min-height: 3px; border-radius: 2px; background: @well; }
 progressbar.progress progress { min-height: 3px; border-radius: 2px; background: @accent; }
 entry, passwordentry { background: @sunk; border: 1px solid @rule; border-radius: 6px; min-height: 30px; padding: 0 8px; }
@@ -202,6 +204,10 @@ calendar > header > button { min-width: 28px; min-height: 28px; border-radius: 6
 calendar > grid > label.day-name { color: @dim; font-weight: 600; font-size: 8.5pt; }
 calendar > grid > label.day-number { padding: 6px; border-radius: 6px; }
 calendar > grid > label.day-number.other-month { color: @dim; }
+/* a month two cells of the calendar wide: its days closer and smaller, their names and the year's switch gone
+   (calendar/widget.rs; the month's arrows go on past December) */
+calendar.narrow { padding: 2px; }
+calendar.narrow > grid > label.day-number { padding: 2px 1px; font-size: 8pt; }
 calendar > grid > label.day-number:selected { background: @accent; color: @ink; font-weight: 600; }
 
 /* the tray's menus: a surface of items, a line between groups */

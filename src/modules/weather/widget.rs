@@ -34,10 +34,16 @@ pub fn weather(_: &Ctx) -> Widget {
     badge.append(&btemp);
     let face = Face::new(&badge);
     let active = face.active.clone();
-    let h2 = hours.clone();
+    // as many hours as it has cells across (an hour about a cell wide), the rest left out, not cut
+    let fit = std::rc::Rc::new(std::cell::Cell::new(usize::MAX));
+    let (h2, f2) = (hours.clone(), fit.clone());
     Widget {
         face: Some(face),
-        size: Box::new(move |_, h| h2.set_visible(h >= 2)),
+        size: Box::new(move |w, h| {
+            h2.set_visible(h >= 2);
+            f2.set(w as usize);
+            few(&h2, w as usize);
+        }),
         ..Widget::new(&card.clone(), None, move |st| {
             let w = &st["weather"];
             active.set(w.is_object());
@@ -64,6 +70,18 @@ pub fn weather(_: &Ctx) -> Widget {
                 col.append(&line);
                 hours.append(&col);
             }
+            few(&hours, fit.get());
         })
+    }
+}
+
+/// The first n of a box's children shown, the rest hidden.
+fn few(b: &gtk4::Box, n: usize) {
+    let mut c = b.first_child();
+    let mut i = 0;
+    while let Some(w) = c {
+        w.set_visible(i < n);
+        i += 1;
+        c = w.next_sibling();
     }
 }

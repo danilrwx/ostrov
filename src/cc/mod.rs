@@ -214,7 +214,7 @@ impl Spec {
         let cfg = crate::config::load().panels.remove(id);
         match id {
             // six cells wide: halves of three, the battery's and its three buttons' row
-            "control" => spec(t("Control Centre"), "emblem-system-symbolic", 48.75, 6, true, vec![
+            "control" => spec(t("Control Centre"), "emblem-system-symbolic", CELL, 6, true, vec![
                 it("battery", 0, 0, 3, 1),
                 it("screenshot", 3, 0, 1, 1),
                 it("lock", 4, 0, 1, 1),
@@ -265,6 +265,9 @@ impl Spec {
         if self.fixed { self.width } else { ((self.cell - EDGE / 8.0) * cols as f64 + EDGE).round() as i32 }
     }
 }
+
+/// The control centre's cell, the one a widget's width is told in.
+const CELL: f64 = 48.75;
 
 /// How narrow and how wide a panel's grid goes, in cells.
 const MIN_COLS: u8 = 4;
@@ -745,9 +748,10 @@ impl Panel {
             if let Some(t) = tiles.get(&it.key) {
                 t.wrap.set_size_request(-1, it.h as i32 * row + (it.h as i32 - 1) * gap);
                 self.grid.attach(&t.wrap, it.x as i32, it.y as i32 + above(it.y, true), it.w as i32, it.h as i32);
-                // told its cells, each as wide on any panel: what it shows chosen by its width (a toggle's words
-                // from 3)
-                (t.widget.size)(it.w, it.h);
+                // told its width in the control centre's cells (a calendar's are wider): what it shows chosen
+                // by it (a toggle's words from 3, the player's art beside its words from 5)
+                let w = ((it.w as f64 * self.spec.cell / CELL).round() as u8).max(1);
+                (t.widget.size)(w, it.h);
             }
         }
         for (b, bx) in &bands {

@@ -82,9 +82,12 @@ pub fn player(_: &Ctx) -> Widget {
         glib::ControlFlow::Continue
     });
     let last_art = RefCell::new(String::new());
-    let (pc, a2, p3) = (pcol.clone(), art.clone(), play2.clone());
+    let (pc, a2, p3, cv) = (pcol.clone(), art.clone(), play2.clone(), cover.clone());
+    // under three cells its art alone, play over it; three and four its words and buttons, no art beside them
+    // (they would be cut); five and more both
     let size = move |w: u8, _h: u8| {
         let small = w < 3;
+        cv.set_visible(small || w >= 5);
         pc.set_visible(!small);
         p3.set_visible(small);
         a2.set_hexpand(small);

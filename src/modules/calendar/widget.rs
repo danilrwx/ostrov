@@ -66,12 +66,31 @@ pub fn month(_: &Ctx) -> Widget {
             c3.select_day(&now);
         }
     });
-    Widget::new(&col, None, move |st| {
-        if *events.borrow() != st["calendar"] {
-            *events.borrow_mut() = st["calendar"].clone();
-            draw();
-        }
-    })
+    let c4 = cal.clone();
+    Widget {
+        // narrower than six cells its days closer together, without their names, its year's switch away: the
+        // month whole, not cut
+        size: Box::new(move |w, _| {
+            let narrow = w < 6;
+            if narrow { c4.add_css_class("narrow") } else { c4.remove_css_class("narrow") }
+            // the days' names wider than their columns there: left out
+            c4.set_show_day_names(!narrow);
+            // the header's month switch, then the year's: the year's three hidden
+            let mut c = c4.first_child().filter(|h| h.css_name() == "header").and_then(|h| h.first_child());
+            let mut i = 0;
+            while let Some(x) = c {
+                x.set_visible(!narrow || i < 3);
+                i += 1;
+                c = x.next_sibling();
+            }
+        }),
+        ..Widget::new(&col, None, move |st| {
+            if *events.borrow() != st["calendar"] {
+                *events.borrow_mut() = st["calendar"].clone();
+                draw();
+            }
+        })
+    }
 }
 
 /// The events coming, today's and on, a few; its badge the next while it is within half an hour or on. Drawn
