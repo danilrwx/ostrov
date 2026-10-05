@@ -80,6 +80,8 @@ The same for the suggestions: `[appearance]`'s `radius`, `density` and `blur`, w
 | `lock` | the lock screen and the login screen |
 | `ground` | under the wallpaper, and in its place with none |
 | `shade` | the screen dimmed under a question (polkit's, askpass's) |
+| `scrim` | under a button over a picture (play on the player's cover) |
+| `on-scrim` | an icon on the scrim and on a tile's corner in Edit |
 
 A light theme sets `fg`, `dim`, `ink`, `accent`, `hover`, `raised`, `card`, `well`, `sunk`, `rule` and `bar` at least:
 ostrov's own are white on black. Mind that the surface is see-through: over a dark wallpaper a light surface at

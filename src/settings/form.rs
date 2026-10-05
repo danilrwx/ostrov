@@ -138,8 +138,7 @@ fn actions(f: &Field, st: &Rc<State>) -> gtk4::Box {
     let said = label("", "dim");
     said.set_ellipsize(gtk4::pango::EllipsizeMode::End);
     for a in &f.actions {
-        let b = gtk4::Button::with_label(t(&a.label));
-        b.add_css_class("chip");
+        let b = crate::ui::chip(t(&a.label));
         // named by its id (a plugin's host finds it so); without a run (a plugin's not wired yet) inert
         b.set_widget_name(&a.id);
         b.set_sensitive(a.run.is_some());

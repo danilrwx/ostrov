@@ -349,8 +349,7 @@ impl Notes {
             row.set_margin_top(6);
             row.add_css_class("note-actions");
             for (key, text) in others {
-                let b = gtk4::Button::with_label(text);
-                b.add_css_class("chip");
+                let b = crate::ui::chip(text);
                 let (me, id, key) = (self.clone(), n.id, key.clone());
                 b.connect_clicked(move |_| me.invoke(id, &key));
                 crate::ui::flow_in(&row, &b);
@@ -390,8 +389,7 @@ impl Notes {
     /// The answer's chip, and the entry it unfolds under the actions: Enter (or Send) sends what is typed; the
     /// toast held up meanwhile.
     fn reply_box(self: &Rc<Self>, id: u32, prompt: &str) -> (gtk4::Button, gtk4::Box) {
-        let open = gtk4::Button::with_label(if prompt.is_empty() { crate::i18n::t("Reply") } else { prompt });
-        open.add_css_class("chip");
+        let open = crate::ui::chip(if prompt.is_empty() { crate::i18n::t("Reply") } else { prompt });
         let line = gtk4::Box::new(Orientation::Horizontal, 6);
         line.add_css_class("note-reply");
         line.set_margin_top(6);

@@ -89,8 +89,7 @@ fn passphrase(items: &gtk4::Box, ssid: &str, asking: &Rc<RefCell<String>>, error
     bx.set_margin_bottom(4);
     let pass = gtk4::PasswordEntry::new();
     pass.set_hexpand(true);
-    let go = gtk4::Button::with_label(t("Connect"));
-    go.add_css_class("connect");
+    let go = crate::ui::primary(t("Connect"));
     bx.append(&pass);
     bx.append(&go);
     items.append(&bx);

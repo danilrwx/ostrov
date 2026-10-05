@@ -282,7 +282,10 @@ fn build(el: &El, emit: &Emit, flip: Option<Rc<dyn Fn()>>, d: &mut Drawn) -> gtk
         Kind::Chips { options, on } => {
             let names: Vec<&str> = options.iter().map(String::as_str).collect();
             let em = Rc::new(em);
-            (chips(&names, *on, move |i| em("change", i.to_string())).upcast(), Box::new(|_| ()))
+            let c = chips(&names, *on, move |i| em("change", i.to_string()));
+            // under a menu's rows' words, past their icons
+            c.set_margin_start(36);
+            (c.upcast(), Box::new(|_| ()))
         }
         Kind::Entry { placeholder } => {
             let e = gtk4::Entry::new();

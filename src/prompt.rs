@@ -166,10 +166,8 @@ impl Prompts {
         error.set_wrap(true);
         let buttons = gtk4::Box::new(Orientation::Horizontal, 8);
         buttons.set_halign(Align::End);
-        let cancel = gtk4::Button::with_label(t("Cancel"));
-        cancel.add_css_class("chip");
-        let ok = gtk4::Button::with_label(t("OK"));
-        ok.add_css_class("connect");
+        let cancel = crate::ui::chip(t("Cancel"));
+        let ok = crate::ui::primary(t("OK"));
         buttons.append(&cancel);
         buttons.append(&ok);
         let parts = [

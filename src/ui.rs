@@ -45,25 +45,10 @@ pub fn row(icon: &str, text: &str, note: &str, on: bool, pick: impl Fn() + 'stat
     b
 }
 
-/// A line of chips, the one at on pressed, each running pick with its index.
+/// A line of chips, the one at on pressed, each running pick with its index as it is pressed.
 pub fn chips(names: &[&str], on: Option<usize>, pick: impl Fn(usize) + Clone + 'static) -> gtk4::FlowBox {
-    // wrapping onto more lines, never wider than where it is
-    let bx = gtk4::FlowBox::new();
-    bx.set_selection_mode(gtk4::SelectionMode::None);
-    bx.set_column_spacing(4);
-    bx.set_row_spacing(4);
-    bx.set_max_children_per_line(32);
-    bx.set_margin_start(36);
-    bx.set_margin_bottom(4);
-    for (i, n) in names.iter().enumerate() {
-        let b = gtk4::ToggleButton::with_label(n);
-        b.add_css_class("chip");
-        b.set_active(on == Some(i));
-        let p = pick.clone();
-        b.connect_clicked(move |_| p(i));
-        bx.insert(&b, -1);
-    }
-    bx
+    let on: Vec<bool> = (0..names.len()).map(|i| on == Some(i)).collect();
+    options(names, &on, false, move |i, _| pick(i))
 }
 
 /// A choice of options as chips wrapping onto more lines as they need: one of them at a time, or any of them
@@ -74,14 +59,12 @@ pub fn options(
     multi: bool,
     pick: impl Fn(usize, bool) + Clone + 'static,
 ) -> gtk4::FlowBox {
-    let fb = gtk4::FlowBox::new();
-    fb.set_selection_mode(gtk4::SelectionMode::None);
-    fb.set_column_spacing(4);
-    fb.set_row_spacing(4);
+    let fb = chip_flow();
     let mut first: Option<gtk4::ToggleButton> = None;
     for (i, n) in names.iter().enumerate() {
         let b = gtk4::ToggleButton::with_label(n);
         b.add_css_class("chip");
+        shorten(&b);
         if !multi {
             match &first {
                 Some(f) => b.set_group(Some(f)),
@@ -96,9 +79,32 @@ pub fn options(
                 p(i, b.is_active())
             }
         });
-        fb.insert(&b, -1);
+        flow_in(&fb, &b);
     }
     fb
+}
+
+/// A small button, a choice or an action beside others (`.chip`).
+pub fn chip(text: &str) -> gtk4::Button {
+    let b = gtk4::Button::with_label(text);
+    b.add_css_class("chip");
+    shorten(&b);
+    b
+}
+
+/// A menu's main action, on the accent (`.connect`).
+pub fn primary(text: &str) -> gtk4::Button {
+    let b = gtk4::Button::with_label(text);
+    b.add_css_class("connect");
+    shorten(&b);
+    b
+}
+
+/// A button's words shortened (…) where it has less room than they need, not cut at its edge.
+pub fn shorten(b: &impl IsA<gtk4::Button>) {
+    if let Some(l) = b.as_ref().child().and_downcast::<gtk4::Label>() {
+        l.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+    }
 }
 
 /// A page's header (the control centre's Appearance, Settings): the arrow back, its title.
@@ -146,9 +152,9 @@ pub fn chip_flow() -> gtk4::FlowBox {
     let f = gtk4::FlowBox::new();
     f.set_selection_mode(gtk4::SelectionMode::None);
     f.set_homogeneous(false);
-    f.set_column_spacing(6);
-    f.set_row_spacing(6);
-    f.set_max_children_per_line(12);
+    f.set_column_spacing(4);
+    f.set_row_spacing(4);
+    f.set_max_children_per_line(32);
     // as wide as its chips, not spread over the line's width
     f.set_halign(Align::Start);
     f

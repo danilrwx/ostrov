@@ -967,7 +967,6 @@ impl Panel {
                 p.faces();
                 p.inspect();
             });
-            chips.set_margin_start(0);
             line("Size", chips.upcast_ref());
         }
         // when its badge is in the bar, and the bar alone
@@ -983,7 +982,6 @@ impl Panel {
                     p.inspect();
                 }
             });
-            chips.set_margin_start(0);
             line("In the bar", chips.upcast_ref());
         }
         // on the panel always, or only while its widget is active
@@ -1000,7 +998,6 @@ impl Panel {
                 }
                 p.inspect();
             });
-            chips.set_margin_start(0);
             line("On the panel", chips.upcast_ref());
         }
         // how it lines up across its tile
@@ -1017,23 +1014,18 @@ impl Panel {
                 }
                 p.inspect();
             });
-            chips.set_margin_start(0);
             line("Align", chips.upcast_ref());
         }
-        let acts = gtk4::FlowBox::new();
-        acts.set_selection_mode(gtk4::SelectionMode::None);
-        acts.set_column_spacing(6);
-        acts.set_row_spacing(6);
+        let acts = crate::ui::chip_flow();
         let act = |text: &'static str, f: Box<dyn Fn(&Rc<Panel>)>| {
-            let b = gtk4::Button::with_label(t(text));
-            b.add_css_class("chip");
+            let b = crate::ui::chip(t(text));
             let me = Rc::downgrade(self);
             b.connect_clicked(move |_| {
                 if let Some(p) = me.upgrade() {
                     f(&p);
                 }
             });
-            acts.insert(&b, -1);
+            crate::ui::flow_in(&acts, &b);
         };
         let k = key.clone();
         if off {
@@ -1382,8 +1374,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         b.connect_clicked(move |_| pg.set_visible_child_name(to));
         foot.append(&b);
     }
-    let edit_button = gtk4::Button::with_label(t("Edit"));
-    edit_button.add_css_class("chip");
+    let edit_button = crate::ui::chip(t("Edit"));
     edit_button.set_hexpand(true);
     edit_button.set_halign(Align::End);
     edit_button.set_valign(Align::Center);

@@ -33,6 +33,8 @@ const CSS: &str = r#"
 @define-color lock #000000;                     /* the lock screen */
 @define-color ground #000000;                   /* under the wallpaper, and in its place with none */
 @define-color shade rgba(0, 0, 0, 0.4);         /* the screen under a question (polkit's, askpass's) */
+@define-color scrim rgba(0, 0, 0, 0.55);        /* under a button over a picture (play on the player's cover) */
+@define-color on-scrim #ffffff;                 /* an icon on the scrim and on the handle */
 
 /* the shapes: a surface rounded 10, what is on it 6 */
 * { font-size: 11pt; color: @fg; }
@@ -63,28 +65,33 @@ separator { background: @rule; margin: 4px; min-height: 1px; min-width: 1px; }
 .error { color: @urgent; }
 
 /* what is on a surface */
-.card { background: @card; border: 1px solid @rule; border-radius: 6px; padding: 10px; }
+/* a card, outlined: in a menu on the card's ground, a tile's on a raised one as a toggle's */
+.card, .menu, .battery, .plugin-card, .cc .card, .cc .clock { border: 1px solid @rule; border-radius: 6px; }
+.card, .menu { background: @card; padding: 10px; }
+.battery, .plugin-card, .cc .card, .cc .clock { background: @raised; }
+.menu { margin-top: 4px; }
+.battery { padding: 0 14px; min-height: 40px; }
+/* a plugin's widget drawn as anything but a toggle, a slider or a round button: on a card like the battery's */
+.plugin-card { padding: 4px 14px; }
 .card.critical { border-color: @urgent; }
 .toast.critical { box-shadow: inset 0 0 0 1px @urgent; }
-.menu { background: @card; border: 1px solid @rule; border-radius: 6px; padding: 10px; margin-top: 4px; }
 .menu-head { margin-bottom: 6px; }
-.battery { background: @raised; border: 1px solid @rule; border-radius: 6px; padding: 0 14px; min-height: 40px; }
 .badge { background: @accent; color: @ink; border-radius: 6px; min-width: 32px; min-height: 32px; }
 .art { border-radius: 6px; }
 /* play/pause over the art, the player two cells wide */
-button.art-play { background: rgba(0, 0, 0, 0.55); min-width: 40px; min-height: 40px; border-radius: 9999px; padding: 0; }
-button.art-play image { color: #ffffff; }
+button.art-play { background: @scrim; min-width: 40px; min-height: 40px; border-radius: 9999px; padding: 0; }
+button.art-play image { color: @on-scrim; }
 
 button.round { background: @raised; border: 1px solid @rule; border-radius: 6px; min-width: 40px; min-height: 40px; }
 button.arrow, button.flat-round { border-radius: 6px; min-width: 32px; min-height: 32px; }
 button.round:hover, button.arrow:hover, button.flat-round:hover, button.item:hover, button.chip:hover,
 calendar > header > button:hover, .hit:hover { background: @hover; }
-button.round.open, button.arrow.open, .tile.open button.round, .tile.open button.arrow:not(.toggle-side), button.item.on, button.chip:checked, .hit.picked { background: @accent; }
+button.round.open, button.arrow.open, .tile.open button.round, .tile.open button.arrow:not(.toggle-side), button.item.on, .hit.picked { background: @accent; }
+button.chip:checked, button.chip.picked { background: @accent; border-color: @accent; }
 button.round.open image, button.arrow.open image, .tile.open button.round image,
 .tile.open button.arrow:not(.toggle-side) image, button.item.on label, button.item.on image,
-button.chip:checked label, button.chip:checked image, .hit.picked label, .hit.picked image { color: @ink; }
+button.chip:checked label, button.chip:checked image, button.chip.picked label, .hit.picked label, .hit.picked image { color: @ink; }
 button.arrow image { transition: -gtk-icon-transform 100ms; }
-button.arrow.open image, .tile.open button.arrow image { }
 button.item { padding: 0 10px; min-height: 34px; border-radius: 6px; }
 button.connect { background: @accent; padding: 0 10px; border-radius: 6px; min-height: 30px; }
 button.connect label { color: @ink; font-weight: bold; }
@@ -116,7 +123,6 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 .cc .card-body { padding: 10px; }
 .surface label.hour { color: @dim; font-size: 8.5pt; }
 .cc .clock-body { padding: 0 14px; }
-.cc .card, .cc .clock { background: @raised; border: 1px solid @rule; border-radius: 6px; }
 .cc.editing .tile > :first-child { opacity: 0.85; }
 .cc.editing { margin: 6px; }
 /* the bar's editor (bar/edit.rs): its parts outlined, the picked block ringed, where a drop lands */
@@ -138,10 +144,8 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 .tile.dragged > :first-child { box-shadow: 0 0 0 2px @accent; border-radius: 6px; }
 button.tile-remove { background: @urgent; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
 button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }
-/* a plugin's widget drawn as anything but a toggle, a slider or a round button: on a card like the battery's */
-.plugin-card { background: @raised; border: 1px solid @rule; border-radius: 6px; padding: 4px 14px; }
 .tile.picked > :first-child { box-shadow: 0 0 0 2px @accent; border-radius: 6px; }
-.tile-grip { background: @handle; color: #ffffff; border-radius: 10px; min-width: 20px; min-height: 20px; margin: -5px; -gtk-icon-size: 12px; }
+.tile-grip { background: @handle; color: @on-scrim; border-radius: 10px; min-width: 20px; min-height: 20px; margin: -5px; -gtk-icon-size: 12px; }
 .clock { padding: 0 14px; }
 .surface label.clock-time { font-size: 20pt; font-weight: bold; }
 /* the tiles as tall as the density's rows (look.rs), not their own */
@@ -157,8 +161,6 @@ flowboxchild { padding: 0; }
 .page-body { margin-right: 10px; }
 scrollbar { background: none; border: none; }
 scrollbar slider { background: @well; border: none; border-radius: 999px; min-width: 4px; min-height: 24px; }
-button.chip.picked { background: @accent; border-color: @accent; }
-button.chip.picked label { color: @ink; }
 button.theme { border: 2px solid @rule; border-radius: 6px; min-height: 40px; padding: 4px 6px; }
 button.theme label { font-size: 9pt; }
 button.theme.picked { border-color: @accent; }

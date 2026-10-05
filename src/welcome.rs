@@ -88,16 +88,13 @@ impl Welcome {
         card.append(&fit);
 
         let foot = gtk4::Box::new(Orientation::Horizontal, 8);
-        let skip = gtk4::Button::with_label(t("Skip"));
-        skip.add_css_class("chip");
+        let skip = crate::ui::chip(t("Skip"));
         let dots = gtk4::Box::new(Orientation::Horizontal, 6);
         dots.set_hexpand(true);
         dots.set_halign(Align::Center);
         dots.set_valign(Align::Center);
-        let back = gtk4::Button::with_label(t("Back"));
-        back.add_css_class("chip");
-        let next = gtk4::Button::with_label(t("Next"));
-        next.add_css_class("connect");
+        let back = crate::ui::chip(t("Back"));
+        let next = crate::ui::primary(t("Next"));
         for w in [skip.upcast_ref::<gtk4::Widget>(), dots.upcast_ref(), back.upcast_ref(), next.upcast_ref()] {
             foot.append(w);
         }
@@ -243,8 +240,7 @@ fn polkit(p: &gtk4::Box) {
     note.set_xalign(0.0);
     p.append(&note);
     let Some(system) = crate::polkit::autostart(&name) else { return };
-    let b = gtk4::Button::with_label(t("Keep it out of Hyprland"));
-    b.add_css_class("chip");
+    let b = crate::ui::chip(t("Keep it out of Hyprland"));
     b.set_halign(gtk4::Align::Start);
     b.connect_clicked(move |b| {
         let said = match crate::polkit::keep_out(&system) {
@@ -371,8 +367,7 @@ fn battery_fill(body: &gtk4::Box) {
         });
         body.append(&setting(t("Charge limit"), t("Charging stops here, and starts again 5% below it."), &chips, true));
     } else {
-        let install = gtk4::Button::with_label(t("Install"));
-        install.add_css_class("connect");
+        let install = crate::ui::primary(t("Install"));
         let b = body.clone();
         install.connect_clicked(move |button| {
             button.set_sensitive(false);

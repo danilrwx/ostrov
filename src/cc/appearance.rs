@@ -93,24 +93,24 @@ fn fill(body: &gtk4::Box, keep: &'static [&'static str]) {
     }
     body.append(&setting(t("Theme"), "", &themes, true));
 
-    let accents = gtk4::FlowBox::new();
-    accents.set_selection_mode(gtk4::SelectionMode::None);
-    accents.set_column_spacing(4);
-    accents.set_row_spacing(6);
-    accents.set_max_children_per_line(12);
-    let own = gtk4::Button::with_label(t("Theme's"));
-    own.add_css_class("chip");
+    // the theme's own and any other colour over the swatches, all one size: GTK's flow lines its children up in
+    // columns
+    let accents = crate::ui::chip_flow();
+    accents.set_homogeneous(true);
+    let accent = gtk4::Box::new(Orientation::Vertical, 6);
+    let own = crate::ui::chip(t("Theme's"));
     own.set_tooltip_text(Some(t("The theme's own accent")));
     if a.accent.is_empty() {
         own.add_css_class("picked");
     }
     let b2 = body.clone();
     own.connect_clicked(move |_| set(&b2, keep, "accent", None));
-    accents.insert(&own, -1);
+    let line = gtk4::Box::new(Orientation::Horizontal, 6);
+    line.append(&own);
+    accent.append(&line);
     for (i, c) in ACCENTS.iter().enumerate() {
         let b = gtk4::Button::new();
         b.add_css_class("swatch");
-        b.set_halign(gtk4::Align::Center);
         b.set_valign(gtk4::Align::Center);
         b.add_css_class(&format!("swatch-{i}"));
         b.set_tooltip_text(Some(c));
@@ -119,7 +119,7 @@ fn fill(body: &gtk4::Box, keep: &'static [&'static str]) {
         }
         let body = body.clone();
         b.connect_clicked(move |_| set(&body, keep, "accent", Some((*c).into())));
-        accents.insert(&b, -1);
+        crate::ui::flow_in(&accents, &b);
     }
     // any other colour, through GTK's dialog
     let custom = gtk4::ColorDialogButton::new(Some(gtk4::ColorDialog::new()));
@@ -137,8 +137,10 @@ fn fill(body: &gtk4::Box, keep: &'static [&'static str]) {
     custom.connect_rgba_notify(move |b| {
         set(&body2, keep, "accent", Some(crate::settings::form::hex(&b.rgba()).into()))
     });
-    accents.insert(&custom, -1);
-    body.append(&setting(t("Accent"), "", &accents, true));
+    custom.set_valign(gtk4::Align::Center);
+    line.append(&custom);
+    accent.append(&accents);
+    body.append(&setting(t("Accent"), "", &accent, true));
 
     let mut rest = crate::settings::appearance().remove(0);
     let kept = |k: &str| k != "theme" && k != "accent" && (keep.is_empty() || keep.contains(&k));

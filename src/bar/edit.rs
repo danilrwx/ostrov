@@ -180,10 +180,8 @@ pub fn start() -> Result<(), String> {
     hint.set_hexpand(true);
     hint.set_wrap(true);
     foot.append(&hint);
-    let cancel = gtk4::Button::with_label(t("Cancel"));
-    cancel.add_css_class("chip");
-    let done = gtk4::Button::with_label(t("Done"));
-    done.add_css_class("connect");
+    let cancel = crate::ui::chip(t("Cancel"));
+    let done = crate::ui::primary(t("Done"));
     foot.append(&cancel);
     foot.append(&done);
     body.append(&foot);
@@ -440,8 +438,7 @@ impl Edit {
             None => self.shelf.append(&label(t("Nothing to set"), "dim")),
         }
         let acts = gtk4::Box::new(Orientation::Horizontal, 6);
-        let off = gtk4::Button::with_label(t("Take Off the Bar"));
-        off.add_css_class("chip");
+        let off = crate::ui::chip(t("Take Off the Bar"));
         let n = name.to_string();
         off.connect_clicked(move |_| {
             if let Some(e) = current() {
@@ -457,8 +454,7 @@ impl Edit {
             n => n.strip_prefix("panel."),
         };
         if let Some(id) = panel.map(String::from) {
-            let edit = gtk4::Button::with_label(t("Edit the Panel"));
-            edit.add_css_class("chip");
+            let edit = crate::ui::chip(t("Edit the Panel"));
             edit.connect_clicked(move |_| {
                 finish(true);
                 if let Some(p) = crate::cc::panel(&id) {
