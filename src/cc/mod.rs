@@ -293,6 +293,33 @@ struct Placed {
     /// in the bar alone, no tile on the panel (the clock's time up there, nothing of it below)
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     hidden: bool,
+    /// across its tile: left, center, right; unset, filling it
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    align: Option<String>,
+    /// on the panel only while its widget is active (a drive plugged in); unset, always
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    while_active: bool,
+}
+
+/// How a widget lines up across its tile, as panel.toml names it, and its words in the inspector.
+const ALIGNS: [(&str, Align, &str); 4] =
+    [("fill", Align::Fill, "Fill"), ("left", Align::Start, "Left"), ("center", Align::Center, "Centre"), ("right", Align::End, "Right")];
+
+fn align(name: &str) -> Align {
+    ALIGNS.iter().find(|a| a.0 == name).map_or(Align::Fill, |a| a.1)
+}
+
+/// A panel's widgets' alignments as panel.toml has them.
+fn aligns_of(id: &str) -> HashMap<String, String> {
+    let saved = read_saved().unwrap_or_default();
+    let placed = saved.get(id).into_iter().flatten();
+    placed.filter_map(|p| Some((p.id.clone(), p.align.clone()?))).collect()
+}
+
+/// A panel's widgets on it only while active, as panel.toml has them.
+fn while_active_of(id: &str) -> std::collections::HashSet<String> {
+    let saved = read_saved().unwrap_or_default();
+    saved.get(id).into_iter().flatten().filter(|p| p.while_active).map(|p| p.id.clone()).collect()
 }
 
 /// panel.toml: each panel's widgets, under its id ([[control]], [[calendar]]); [[widget]] the control centre's
@@ -373,7 +400,7 @@ fn load(reg: &[Meta], spec: &Spec) -> (Vec<Item>, Vec<Item>, HashMap<String, Sho
 }
 
 /// A panel's layout into panel.toml, the other panels' kept.
-fn save(id: &str, items: &[Item], hidden: &[Item], shows: &HashMap<String, Show>) {
+fn save(id: &str, items: &[Item], hidden: &[Item], shows: &HashMap<String, Show>, aligns: &HashMap<String, String>, lively: &std::collections::HashSet<String>) {
     let mut s = read_saved().unwrap_or_default();
     s.remove("widget");
     let all = items.iter().map(|i| (i, false)).chain(hidden.iter().map(|i| (i, true)));
@@ -385,6 +412,8 @@ fn save(id: &str, items: &[Item], hidden: &[Item], shows: &HashMap<String, Show>
         h: i.h,
         bar: shows.get(&i.key).copied(),
         hidden,
+        align: aligns.get(&i.key).filter(|a| *a != "fill").cloned(),
+        while_active: lively.contains(&i.key),
     });
     s.insert(id.to_string(), placed.collect());
     let text = match toml::to_string(&s) {
@@ -416,6 +445,11 @@ pub struct Panel {
     pub face: gtk4::Box,
     face_icon: gtk4::Image,
     shows: RefCell<HashMap<String, Show>>,
+    /// how each widget lines up across its tile ("fill" unless said)
+    aligns: RefCell<HashMap<String, String>>,
+    /// the widgets on it only while active, and those of them shown as last laid out
+    lively: RefCell<std::collections::HashSet<String>>,
+    lively_shown: RefCell<Vec<String>>,
     /// the grid's page, the Settings', the Appearance's
     pages: gtk4::Stack,
     settings: Option<Rc<crate::settings::form::Page>>,
@@ -547,6 +581,7 @@ impl Panel {
         let widget = (m.make)(&Ctx { close, flip, again, state: self.state.clone() });
         widget.root.set_hexpand(true);
         widget.root.set_vexpand(true);
+        widget.root.set_halign(align(self.aligns.borrow().get(key).map_or("fill", String::as_str)));
 
         let wrap = gtk4::Overlay::new();
         wrap.add_css_class("tile");
@@ -614,11 +649,28 @@ impl Panel {
 
     /// The grid laid out anew from the items: each tile at its cells, and under each band of rows whose widgets
     /// have menus a row of their own for those menus, shown only while one of them is unfolded.
+    /// The tiles on the grid now: all of them while it is edited; else those not on it only while active, and
+    /// those whose widgets are, the others closing up their places.
+    fn shown(&self) -> Vec<Item> {
+        let lively = self.lively.borrow();
+        if self.editing.get() || lively.is_empty() {
+            return self.items.borrow().clone();
+        }
+        let tiles = self.tiles.borrow();
+        let active = |k: &str| tiles.get(k).and_then(|t| t.widget.face.as_ref()).is_none_or(|f| f.active.get());
+        let mut items: Vec<Item> =
+            self.items.borrow().iter().filter(|i| !lively.contains(&i.key) || active(&i.key)).cloned().collect();
+        grid::compact(&mut items, self.cols.get());
+        items
+    }
+
     fn layout(&self) {
         while let Some(c) = self.grid.first_child() {
             self.grid.remove(&c);
         }
-        let items = self.items.borrow();
+        let items = self.shown();
+        *self.lively_shown.borrow_mut() =
+            items.iter().filter(|i| self.lively.borrow().contains(&i.key)).map(|i| i.key.clone()).collect();
         let tiles = self.tiles.borrow();
         let (row, gap) = self.dims.get();
         let mut bands: Vec<(u8, gtk4::Box)> = Vec::new();
@@ -718,6 +770,11 @@ impl Panel {
 
     /// Each badge shown or not, as when it shows says and its widget's activity; the icon while none is.
     fn fit_faces(&self) {
+        // a tile on the panel only while active come or gone: the grid laid out again
+        let lively: Vec<String> = self.shown().into_iter().filter(|i| self.lively.borrow().contains(&i.key)).map(|i| i.key).collect();
+        if lively != *self.lively_shown.borrow() {
+            self.layout();
+        }
         let mut any = false;
         for (k, t) in self.tiles.borrow().iter() {
             let Some(f) = &t.widget.face else { continue };
@@ -761,7 +818,7 @@ impl Panel {
         if let Err(e) = crate::settings::write(&format!("panels.{}", self.spec.id), "cols", Some(&serde_json::json!(n)), true) {
             eprintln!("ostrov: panel: {e}");
         }
-        save(&self.spec.id, &self.base.borrow(), &self.hidden.borrow(), &self.shows.borrow());
+        save(&self.spec.id, &self.base.borrow(), &self.hidden.borrow(), &self.shows.borrow(), &self.aligns.borrow(), &self.lively.borrow());
         self.layout();
         self.faces();
         self.fill_gallery();
@@ -772,7 +829,7 @@ impl Panel {
         let mut base = self.items.borrow().clone();
         grid::rescale(&mut base, self.cols.get(), BASE);
         *self.base.borrow_mut() = base;
-        save(&self.spec.id, &self.base.borrow(), &self.hidden.borrow(), &self.shows.borrow());
+        save(&self.spec.id, &self.base.borrow(), &self.hidden.borrow(), &self.shows.borrow(), &self.aligns.borrow(), &self.lively.borrow());
         // its width kept with it: a saved layout without one is taken for one from before widths, eight
         let cols = serde_json::json!(self.cols.get());
         if let Err(e) = crate::settings::write(&format!("panels.{}", self.spec.id), "cols", Some(&cols), true) {
@@ -805,6 +862,8 @@ impl Panel {
         self.pick("");
         self.fill_gallery();
         self.gallery.set_visible(on);
+        // every tile while edited, those only while active among them; as they are after
+        self.layout();
     }
 
     fn remove(self: &Rc<Self>, key: &str) {
@@ -896,6 +955,40 @@ impl Panel {
             });
             chips.set_margin_start(0);
             line("In the bar", chips.upcast_ref());
+        }
+        // on the panel always, or only while its widget is active
+        let has_face = self.tiles.borrow().get(&key).is_some_and(|t| t.widget.face.is_some());
+        if !off && has_face {
+            let now = usize::from(self.lively.borrow().contains(&key));
+            let (me, k) = (Rc::downgrade(self), key.clone());
+            let chips = crate::ui::chips(&[t("Always"), t("While active")], Some(now), move |i| {
+                let Some(p) = me.upgrade() else { return };
+                if i == 1 {
+                    p.lively.borrow_mut().insert(k.clone());
+                } else {
+                    p.lively.borrow_mut().remove(&k);
+                }
+                p.inspect();
+            });
+            chips.set_margin_start(0);
+            line("On the panel", chips.upcast_ref());
+        }
+        // how it lines up across its tile
+        if !off {
+            let now = self.aligns.borrow().get(&key).cloned().unwrap_or_else(|| "fill".into());
+            let names: Vec<&str> = ALIGNS.iter().map(|a| t(a.2)).collect();
+            let at = ALIGNS.iter().position(|a| a.0 == now);
+            let (me, k) = (Rc::downgrade(self), key.clone());
+            let chips = crate::ui::chips(&names, at, move |i| {
+                let Some(p) = me.upgrade() else { return };
+                p.aligns.borrow_mut().insert(k.clone(), ALIGNS[i].0.to_string());
+                if let Some(t) = p.tiles.borrow().get(&k) {
+                    t.widget.root.set_halign(ALIGNS[i].1);
+                }
+                p.inspect();
+            });
+            chips.set_margin_start(0);
+            line("Align", chips.upcast_ref());
         }
         let acts = gtk4::Box::new(Orientation::Horizontal, 6);
         let act = |text: &'static str, f: Box<dyn Fn(&Rc<Panel>)>| {
@@ -1266,6 +1359,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     let popup = Popup::new(host, tab, side, spec.width_for(cols), &col);
     let reg = registry();
     let (base, hidden, shows) = load(&reg, &spec);
+    let spec_id = spec.id.clone();
     let mut items = base.clone();
     grid::rescale(&mut items, BASE, cols);
     let face_icon = gtk4::Image::from_icon_name(&spec.icon);
@@ -1277,6 +1371,9 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         face: face.clone(),
         face_icon,
         shows: RefCell::new(shows),
+        aligns: RefCell::new(aligns_of(&spec_id)),
+        lively: RefCell::new(while_active_of(&spec_id)),
+        lively_shown: RefCell::default(),
         pages,
         settings,
         dims: Cell::new(dims),
