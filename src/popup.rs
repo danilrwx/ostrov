@@ -265,10 +265,12 @@ fn hover_tips(host: &Rc<Host>) {
     let shown: Rc<RefCell<String>> = Rc::default();
     let motion = gtk4::EventControllerMotion::new();
     let (h, t, tm, sh) = (Rc::downgrade(host), tip.clone(), timer.clone(), shown.clone());
-    motion.connect_motion(move |_, x, y| {
+    motion.connect_motion(move |ec, x, y| {
         let Some(host) = h.upgrade() else { return };
-        // a popup's own: the bar alone gets GTK's
-        let text = host.popup().and_then(|_| {
+        // none while a button is held (a slider dragged: its bubble says it), a popup's own: the bar alone gets
+        // GTK's
+        let held = ec.current_event_state().intersects(gtk4::gdk::ModifierType::BUTTON1_MASK | gtk4::gdk::ModifierType::BUTTON3_MASK);
+        let text = host.popup().filter(|_| !held).and_then(|_| {
             let mut w = host.win.pick(x, y, gtk4::PickFlags::DEFAULT);
             while let Some(x) = w {
                 if let Some(t) = x.tooltip_text().filter(|t| !t.is_empty()) {
@@ -307,7 +309,7 @@ fn hover_tips(host: &Rc<Host>) {
             t2.set_visible(true);
         }));
     });
-    let (t, tm) = (tip.clone(), timer);
+    let (t, tm) = (tip.clone(), timer.clone());
     motion.connect_leave(move |_| {
         if let Some(id) = tm.borrow_mut().take() {
             id.remove();
@@ -315,6 +317,18 @@ fn hover_tips(host: &Rc<Host>) {
         t.set_visible(false);
     });
     host.win.add_controller(motion);
+    // a press puts the hover away, whatever it lands on
+    let press = gtk4::GestureClick::new();
+    press.set_button(0);
+    press.set_propagation_phase(gtk4::PropagationPhase::Capture);
+    let (t, tm) = (tip.clone(), timer.clone());
+    press.connect_pressed(move |_, _, _, _| {
+        if let Some(id) = tm.borrow_mut().take() {
+            id.remove();
+        }
+        t.set_visible(false);
+    });
+    host.win.add_controller(press);
 }
 
 /// Over a widget in a bar's window (a slider's track), at frac of its width from its left, the text in a bubble;
