@@ -17,6 +17,7 @@ const CATALOGUES: &[(&str, &[&str])] = &[(
         include_str!("../i18n/ru/modules.toml"),
         include_str!("../i18n/ru/shell.toml"),
         include_str!("../i18n/ru/welcome.toml"),
+        include_str!("../i18n/ru/ctl.toml"),
     ],
 )];
 

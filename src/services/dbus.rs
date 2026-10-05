@@ -1,12 +1,13 @@
 //! What the services share of D-Bus: a method called by its interface's name, a property set or read, an
-//! ObjectManager's objects, and an error as the user is told it.
+//! ObjectManager's objects, a service's signals as kicks, and an error as the user is told it.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use serde::Serialize;
 use zbus::zvariant::{self, DynamicDeserialize, DynamicType, OwnedObjectPath, OwnedValue};
 
-use super::Res;
+use super::{Ctx, Kick, Res};
 
 /// An interface's properties, and every object's interfaces, as GetManagedObjects hands them.
 pub type Props = HashMap<String, OwnedValue>;
@@ -57,4 +58,16 @@ where
 
 pub async fn managed(conn: &zbus::Connection, service: &str) -> Result<Objects, String> {
     call(conn, service, "/", "org.freedesktop.DBus.ObjectManager.GetManagedObjects", &()).await
+}
+
+/// Every signal of a service's on the system bus (iwd's, BlueZ's...), as a kick.
+pub async fn signals(c: Arc<Ctx>, sender: &str, kick: Kick) {
+    use futures_util::StreamExt;
+    let Ok(rule) = zbus::MatchRule::builder().msg_type(zbus::message::Type::Signal).sender(sender).map(|b| b.build()) else {
+        return;
+    };
+    let Ok(mut s) = zbus::MessageStream::for_match_rule(rule, &c.system, None).await else { return };
+    while s.next().await.is_some() {
+        let _ = kick.send(()).await;
+    }
 }

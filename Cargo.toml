@@ -10,6 +10,8 @@ readme = "README.md"
 keywords = ["hyprland", "wayland", "desktop", "shell", "gtk4"]
 categories = ["gui"]
 exclude = ["/.github", "/packaging/arch", "/flake.nix"]
+# beside it ostrov-ctl (src/bin/ostrov-ctl), the status line and menus for dwl, linking no GTK
+default-run = "ostrov"
 
 # ostrov itself at the root, built alone by `cargo build`; the Rust SDK for plugins and the official plugins beside
 # it, built with it by `cargo build --workspace` (plugins/README.md), one target directory for all.
@@ -58,6 +60,7 @@ hyprland, iwd | network-manager, bluez, upower, power-profiles-daemon, polkitd, 
 suggests = "fd-find, unicode-data, gnome-keyring, kanshi"
 assets = [
     ["target/release/ostrov", "usr/bin/", "755"],
+    ["target/release/ostrov-ctl", "usr/bin/", "755"],
     ["completions/_ostrov", "usr/share/zsh/vendor-completions/", "644"],
     ["completions/ostrov.bash", "usr/share/bash-completion/completions/ostrov", "644"],
     ["completions/ostrov.fish", "usr/share/fish/vendor_completions.d/", "644"],

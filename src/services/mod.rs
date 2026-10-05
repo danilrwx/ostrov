@@ -18,6 +18,8 @@ pub mod location;
 pub mod rfkill;
 pub mod time;
 
+pub use dbus::signals;
+
 /// What every service reaches the desktop through: the system bus and the session bus.
 pub struct Ctx {
     pub system: zbus::Connection,
@@ -93,18 +95,6 @@ pub async fn watch(c: Arc<Ctx>, out: async_channel::Sender<Value>) {
             }
             _ = tick.tick() => emit(&c).await,
         }
-    }
-}
-
-/// Every signal of a service's on the system bus (iwd's, BlueZ's...), as a kick.
-pub async fn signals(c: Arc<Ctx>, sender: &str, kick: Kick) {
-    use futures_util::StreamExt;
-    let Ok(rule) = zbus::MatchRule::builder().msg_type(zbus::message::Type::Signal).sender(sender).map(|b| b.build()) else {
-        return;
-    };
-    let Ok(mut s) = zbus::MessageStream::for_match_rule(rule, &c.system, None).await else { return };
-    while s.next().await.is_some() {
-        let _ = kick.send(()).await;
     }
 }
 

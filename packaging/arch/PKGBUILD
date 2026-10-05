@@ -22,7 +22,9 @@ optdepends=('hyprland: the compositor ostrov is made for'
             'fd: the launcher finding files'
             'kanshi: display profiles, applied as monitors are plugged in, listed by the displays plugin'
             'unicode-emoji: the launcher finding emoji'
-            'gnome-keyring: secrets in the Secret Service')
+            'gnome-keyring: secrets in the Secret Service'
+            'wmenu: the menus of ostrov-ctl, for dwl'
+            'mako: notifications under dwl, counted in ostrov-ctl status')
 provides=('ostrov')
 conflicts=('ostrov')
 backup=('etc/pam.d/ostrov')
@@ -57,6 +59,7 @@ check() {
 package() {
   cd ostrov
   install -Dm755 target/release/ostrov "$pkgdir/usr/bin/ostrov"
+  install -Dm755 target/release/ostrov-ctl "$pkgdir/usr/bin/ostrov-ctl"
   # xdg-desktop-portal-hyprland's screen-share picker, ostrov run by that name (README.md, Screen sharing)
   ln -s ostrov "$pkgdir/usr/bin/ostrov-share-picker"
   install -Dm644 packaging/pam/ostrov "$pkgdir/etc/pam.d/ostrov"
