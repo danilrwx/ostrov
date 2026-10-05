@@ -1,6 +1,5 @@
-//! The compositor ostrov runs under, Hyprland or sway, behind one face: the workspaces, going to one, the
-//! events that change them, a popup's grab on the pointer. Hyprland through its sockets and its focus grab
-//! protocol, sway through its IPC; under neither (another wlroots compositor) no workspaces and no grab.
+//! Hyprland behind one face: the workspaces, going to one, the events that change them, a popup's grab on the
+//! pointer, through its sockets and its focus grab protocol; under another compositor no workspaces and no grab.
 
 use std::cell::RefCell;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -21,15 +20,12 @@ use wayland_protocols_hyprland::focus_grab::v1::client::hyprland_focus_grab_v1::
 #[derive(Clone, Copy, PartialEq)]
 pub enum Wm {
     Hyprland,
-    Sway,
     Other,
 }
 
 pub fn wm() -> Wm {
     if std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some() {
         Wm::Hyprland
-    } else if std::env::var_os("SWAYSOCK").is_some() {
-        Wm::Sway
     } else {
         Wm::Other
     }
@@ -64,67 +60,30 @@ pub(crate) fn hyprctl(req: &str) -> String {
     out
 }
 
-/// A message to sway: i3's IPC, "i3-ipc", the payload's length and the type, then the payload.
-fn sway_send(s: &mut UnixStream, kind: u32, payload: &str) -> std::io::Result<()> {
-    let mut m = b"i3-ipc".to_vec();
-    m.extend((payload.len() as u32).to_ne_bytes());
-    m.extend(kind.to_ne_bytes());
-    m.extend(payload.as_bytes());
-    s.write_all(&m)
-}
-
-/// A message from sway: its type and payload.
-fn sway_read(s: &mut UnixStream) -> std::io::Result<(u32, String)> {
-    let mut head = [0u8; 14];
-    s.read_exact(&mut head)?;
-    let len = u32::from_ne_bytes(head[6..10].try_into().unwrap()) as usize;
-    let kind = u32::from_ne_bytes(head[10..14].try_into().unwrap());
-    let mut body = vec![0u8; len];
-    s.read_exact(&mut body)?;
-    Ok((kind, String::from_utf8_lossy(&body).into_owned()))
-}
-
-/// A request to sway (0 a command, 1 the workspaces), its answer.
-fn swaymsg(kind: u32, payload: &str) -> String {
-    let Some(Ok(mut s)) = std::env::var("SWAYSOCK").ok().map(UnixStream::connect) else { return String::new() };
-    if sway_send(&mut s, kind, payload).is_err() {
-        return String::new();
-    }
-    sway_read(&mut s).map(|r| r.1).unwrap_or_default()
-}
-
 /// The workspaces past the special ones, in order, and the focused one: those on monitor (its name, eDP-1) and the
 /// one shown there, or with None all of them and the focused one.
 pub fn workspaces(monitor: Option<&str>) -> (Vec<i64>, Option<i64>) {
-    let (list, key, on) = match wm() {
-        Wm::Hyprland => (hyprctl("j/workspaces"), "id", "monitor"),
-        Wm::Sway => (swaymsg(1, ""), "num", "output"),
-        Wm::Other => return (vec![], None),
-    };
+    if wm() != Wm::Hyprland {
+        return (vec![], None);
+    }
+    let list = hyprctl("j/workspaces");
     let list: Value = serde_json::from_str(&list).unwrap_or_default();
-    let ws = || list.as_array().into_iter().flatten().filter(|w| monitor.is_none_or(|m| w[on] == m));
-    let mut ids: Vec<i64> = ws().filter_map(|w| w[key].as_i64()).filter(|i| *i > 0).collect();
+    let ws = list.as_array().into_iter().flatten().filter(|w| monitor.is_none_or(|m| w["monitor"] == m));
+    let mut ids: Vec<i64> = ws.filter_map(|w| w["id"].as_i64()).filter(|i| *i > 0).collect();
     ids.sort();
-    let focused = match (wm(), monitor) {
-        (Wm::Hyprland, Some(m)) => {
-            monitors().into_iter().find(|o| o["name"] == m).and_then(|o| o["activeWorkspace"]["id"].as_i64())
-        }
-        (Wm::Hyprland, None) => {
-            serde_json::from_str::<Value>(&hyprctl("j/activeworkspace")).ok().and_then(|a| a["id"].as_i64())
-        }
-        (_, Some(_)) => ws().find(|w| w["visible"] == true).and_then(|w| w[key].as_i64()),
-        _ => ws().find(|w| w["focused"] == true).and_then(|w| w[key].as_i64()),
+    let focused = match monitor {
+        Some(m) => monitors().into_iter().find(|o| o["name"] == m).and_then(|o| o["activeWorkspace"]["id"].as_i64()),
+        None => serde_json::from_str::<Value>(&hyprctl("j/activeworkspace")).ok().and_then(|a| a["id"].as_i64()),
     };
     (ids, focused)
 }
 
-/// The compositor's monitors (sway's outputs), as its IPC says them.
+/// Hyprland's monitors, as its socket says them.
 fn monitors() -> Vec<Value> {
-    let list = match wm() {
-        Wm::Hyprland => hyprctl("j/monitors"),
-        Wm::Sway => swaymsg(3, ""),
-        Wm::Other => return vec![],
-    };
+    if wm() != Wm::Hyprland {
+        return vec![];
+    }
+    let list = hyprctl("j/monitors");
     serde_json::from_str::<Value>(&list).ok().and_then(|v| v.as_array().cloned()).unwrap_or_default()
 }
 
@@ -134,38 +93,18 @@ pub fn focused_monitor() -> Option<String> {
 }
 
 pub fn go(id: i64) {
-    match wm() {
-        Wm::Hyprland => drop(hyprctl(&format!("dispatch workspace {id}"))),
-        Wm::Sway => drop(swaymsg(0, &format!("workspace number {id}"))),
-        Wm::Other => {}
+    if wm() == Wm::Hyprland {
+        drop(hyprctl(&format!("dispatch workspace {id}")));
     }
 }
 
 /// The compositor's events, for as long as it runs (on a thread of its own).
 pub fn events(tx: async_channel::Sender<Event>) {
-    match wm() {
-        Wm::Hyprland => {
-            let Some(Ok(s)) = hypr_socket(".socket2.sock").map(UnixStream::connect) else { return };
-            for line in BufReader::new(s).lines().map_while(Result::ok) {
-                if let Some(e) = hypr_event(&line) {
-                    let _ = tx.send_blocking(e);
-                }
-            }
+    let Some(Ok(s)) = hypr_socket(".socket2.sock").map(UnixStream::connect) else { return };
+    for line in BufReader::new(s).lines().map_while(Result::ok) {
+        if let Some(e) = hypr_event(&line) {
+            let _ = tx.send_blocking(e);
         }
-        Wm::Sway => {
-            let Some(Ok(mut s)) = std::env::var("SWAYSOCK").ok().map(UnixStream::connect) else { return };
-            if sway_send(&mut s, 2, r#"["workspace","window"]"#).is_err() || sway_read(&mut s).is_err() {
-                return;
-            }
-            // workspace events (0x80000000) redraw and end a peek, window ones (0x80000003) end it
-            while let Ok((kind, _)) = sway_read(&mut s) {
-                if kind == 0x8000_0000 {
-                    let _ = tx.send_blocking(Event::Workspaces);
-                }
-                let _ = tx.send_blocking(Event::Done);
-            }
-        }
-        Wm::Other => {}
     }
 }
 
@@ -193,10 +132,8 @@ fn hypr_event(line: &str) -> Option<Event> {
 
 /// The screens on or off (idle.rs: off a while after the lock).
 pub fn screens(on: bool) {
-    match wm() {
-        Wm::Hyprland => drop(hyprctl(if on { "dispatch dpms on" } else { "dispatch dpms off" })),
-        Wm::Sway => drop(swaymsg(0, if on { "output * power on" } else { "output * power off" })),
-        Wm::Other => {}
+    if wm() == Wm::Hyprland {
+        drop(hyprctl(if on { "dispatch dpms on" } else { "dispatch dpms off" }));
     }
 }
 
@@ -273,7 +210,7 @@ impl Drop for Grab {
 }
 
 /// Input kept to these windows (mapped ones) until a click elsewhere, which calls cleared; None where there is
-/// no focus grab (sway): the popup closes on losing the keyboard instead.
+/// no focus grab (another compositor): the popup closes on losing the keyboard instead.
 pub fn grab(windows: &[gtk4::Window], cleared: impl Fn() + 'static) -> Option<Grab> {
     GRAB.with(|g| {
         let mut g = g.borrow_mut();

@@ -39,7 +39,7 @@ pub fn session(c: &Ctx) -> Widget {
         ("weather-clear-night-symbolic", "Suspend", vec!["systemctl", "suspend"]),
         ("view-refresh-symbolic", "Restart…", vec!["systemctl", "reboot"]),
         ("system-shutdown-symbolic", "Power Off…", vec!["systemctl", "poweroff"]),
-        ("system-log-out-symbolic", "Log Out", vec!["sh", "-c", "hyprctl dispatch exit || swaymsg exit"]),
+        ("system-log-out-symbolic", "Log Out", vec!["hyprctl", "dispatch", "exit"]),
     ] {
         let close = c.close.clone();
         items.append(&row(icon, t(text), "", false, move || {

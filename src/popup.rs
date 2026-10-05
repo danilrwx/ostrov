@@ -114,7 +114,7 @@ impl Host {
             }
         });
         win.add_controller(click);
-        // without a grab (sway) a click into a window, caught by the keyboard it takes
+        // without a grab (another compositor) a click into a window, caught by the keyboard it takes
         let h = Rc::downgrade(&host);
         win.connect_is_active_notify(move |w| {
             let Some(h) = h.upgrade() else { return };

@@ -62,8 +62,8 @@ Hyprland desktop is usually pieced together from, made to look and work as one t
 
 ## Requirements
 
-ostrov is made for **Hyprland 0.53** or newer. It also speaks sway's IPC for the basics (workspaces, the keyboard
-layout, screens off), but the window's title needs Hyprland, and so do the plugins night and displays.
+ostrov is made for **Hyprland 0.53** or newer, and for it alone: under another compositor the bar, panels and the
+rest still run, without workspaces, the window's title, the keyboard layout and the panels' focus grab.
 
 Libraries: GTK 4.14 or newer, gtk4-layer-shell 1.2 or newer (it also provides the session lock), GLib 2.80 or
 newer, libwayland, PAM.
