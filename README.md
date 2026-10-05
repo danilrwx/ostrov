@@ -8,11 +8,12 @@ Hyprland desktop is usually pieced together from, made to look and work as one t
 
 - **A bar made of blocks**: workspaces, the focused window's title, the tray, the keyboard layout, the privacy
   indicator (mic or camera in use, the screen shared; its menu mutes the mic, turns an app's camera off, stops a
-  share), and the faces of the panels, made of their widgets' badges.
+  share), the faces of the panels, made of their widgets' badges, and any widget standing in it by itself. Edited
+  in the bar itself: drag blocks between its left, middle and right, or in from a gallery under it.
 - **Panels of widgets**, macOS-style: the control centre and the calendar are grids of widgets (Wi-Fi, Bluetooth,
-  volume and mic with per-app sliders, brightness, power modes, battery, Airplane Mode, wallpaper, the player, the weather, the
-  month and its events, notifications with Do Not Disturb). Edit them in place, add from a gallery, make your
-  own panels.
+  volume and mic with per-app sliders, brightness, power modes, battery, Airplane Mode, wallpaper, the player,
+  the weather, the system's load, memory, temperature and network, the month and its events, notifications with
+  Do Not Disturb). Edit them in place, add from a gallery, make your own panels; work them from the keyboard.
 - **A launcher in the bar**, dmenu-style: apps, a calculator, emoji (`:name`), files (`/name`), web search
   (`s words`, and engines of your own by prefix: `g words`, `?question`), the clipboard's history, and plugins' modes.
 - **Notifications** (it is the notification server), with toasts and an OSD for volume and brightness.
@@ -24,9 +25,9 @@ Hyprland desktop is usually pieced together from, made to look and work as one t
 - **Settings and themes in the UI**: a Settings page for every section, an Appearance page with five built-in
   themes and an accent, both writing `config.toml` in place, comments kept.
 - **Extensible**: widgets in KDL without code, plugins in any language (a Rust SDK and a Python one), themes,
-  a D-Bus interface, shell completion for every command.
-- **Official plugins** for the rest: screen recording, the night light, CalDAV calendars, Win+P for displays, removable drives,
-  a power profile for games.
+  a D-Bus interface, shell completion for every command; plugins installed by name from a catalogue.
+- **Official plugins** for the rest: screen recording, the night light, CalDAV calendars, Win+P for displays,
+  removable drives, a power profile for games, the system's pending updates.
 
 <table>
 <tr>
