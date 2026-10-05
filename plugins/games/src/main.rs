@@ -47,13 +47,11 @@ fn follow(rx: Receiver<Focus>) {
                 }
                 before = Some(now);
             }
-        } else if !game {
-            if let Some(p) = before.take() {
-                if let Err(e) = ppctl(&["set", &p]) {
+        } else if !game
+            && let Some(p) = before.take()
+                && let Err(e) = ppctl(&["set", &p]) {
                     eprintln!("games: {e}");
                 }
-            }
-        }
     }
 }
 

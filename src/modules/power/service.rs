@@ -35,7 +35,7 @@ async fn read(c: &Ctx, p: &mut Power) -> zbus::Result<()> {
 
 async fn get(c: &Ctx, prop: &str) -> zbus::Result<OwnedValue> {
     let reply = c.system.call_method(Some(PPD), PATH, Some(PROPS), "Get", &(PPD, prop)).await?;
-    Ok(reply.body().deserialize()?)
+    reply.body().deserialize()
 }
 
 /// power set PROFILE.

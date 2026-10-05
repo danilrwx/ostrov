@@ -308,7 +308,7 @@ pub fn check(kind: &Kind, v: Value) -> Result<Value, String> {
                 return Err(fill(t("between {} and {}"), &[min, max]));
             }
         }
-        Kind::Url if !text.is_empty() && !(text.starts_with("https://") || text.starts_with("http://")) => {
+        Kind::Url if !text.is_empty() && !text.starts_with("https://") && !text.starts_with("http://") => {
             return Err(t("an http:// or https:// address").into());
         }
         Kind::Color if !text.is_empty() && gtk4::gdk::RGBA::parse(text.as_str()).is_err() => {

@@ -1,5 +1,5 @@
 //! The launcher's calculator: arithmetic typed in the prompt evaluated by a small recursive descent over
-//! + - * / % ^ (right-associative, binding tighter than a unary minus, so -2^2 is -4), parentheses, sqrt and pi.
+//! `+ - * / % ^` (right-associative, binding tighter than a unary minus, so -2^2 is -4), parentheses, sqrt and pi.
 //! A decimal comma reads as a point. A plain number is not an expression: the launcher would show it back as is.
 
 /// The value of what is typed, shown; None when it is no expression (an app's name, a lone number) or no finite

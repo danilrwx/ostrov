@@ -4,6 +4,9 @@
 //! lock screen; the desktop's state and switches from its services (services/, modules/), the compositor's
 //! through wm.rs, how it all looks in style.rs. One ostrov runs: `ostrov ARGS` hands ARGS to it.
 
+// GTK's callbacks kept and shared (Rc<RefCell<Option<Rc<dyn Fn>>>>) are the code's idiom, named where they recur
+#![allow(clippy::type_complexity)]
+
 mod api;
 mod backend;
 mod bar;

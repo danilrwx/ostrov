@@ -118,11 +118,10 @@ impl Host {
         let h = Rc::downgrade(&host);
         win.connect_is_active_notify(move |w| {
             let Some(h) = h.upgrade() else { return };
-            if !w.is_active() && h.grab.borrow().is_none() {
-                if let Some(p) = h.popup() {
+            if !w.is_active() && h.grab.borrow().is_none()
+                && let Some(p) = h.popup() {
                     p.close();
                 }
-            }
         });
         // the input set once there is a surface to set it on
         let h = Rc::downgrade(&host);

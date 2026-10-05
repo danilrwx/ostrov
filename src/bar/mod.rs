@@ -190,11 +190,10 @@ impl Bar {
             let (Some(b), Some(w)) = (b.upgrade(), g.widget().filter(|_| y < crate::popup::bar() as f64)) else { return };
             let hit = w.pick(x, y, gtk4::PickFlags::DEFAULT);
             let on_popup_block = b.blocks.borrow().iter().any(|(_, k)| k.popup.is_some() && hit.as_ref().is_some_and(|h| h.is_ancestor(&k.widget) || *h == k.widget));
-            if !on_popup_block {
-                if let Some(p) = b.cx.host.popup() {
+            if !on_popup_block
+                && let Some(p) = b.cx.host.popup() {
                     p.close();
                 }
-            }
         });
         cx.host.win.add_controller(click);
         bar

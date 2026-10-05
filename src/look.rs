@@ -174,21 +174,18 @@ pub fn apply(a: &Appearance, t: &Theme) {
     let now = (a.blur.or(t.blur), a.blur_size, a.blur_passes);
     let last = BLUR.with(|b| b.replace(now));
     let set = |k: &str, v: String| drop(crate::wm::hyprctl(&format!("keyword decoration:blur:{k} {v}")));
-    if now.0 != last.0 {
-        if let Some(on) = now.0 {
+    if now.0 != last.0
+        && let Some(on) = now.0 {
             set("enabled", (on as u8).to_string());
         }
-    }
-    if now.1 != last.1 {
-        if let Some(n) = now.1 {
+    if now.1 != last.1
+        && let Some(n) = now.1 {
             set("size", n.to_string());
         }
-    }
-    if now.2 != last.2 {
-        if let Some(n) = now.2 {
+    if now.2 != last.2
+        && let Some(n) = now.2 {
             set("passes", n.to_string());
         }
-    }
 }
 
 #[cfg(test)]

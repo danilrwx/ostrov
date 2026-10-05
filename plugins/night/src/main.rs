@@ -311,10 +311,22 @@ impl Plugin for Night {
     fn run(&mut self, host: &Host, args: &[&str], _: Option<&str>) -> Result<String, String> {
         let on = self.on;
         match args {
-            ["on"] => self.change(host, |c| Ok(c.mode = "on".into()))?,
-            ["off"] => self.change(host, |c| Ok(c.mode = "off".into()))?,
-            ["toggle"] => self.change(host, |c| Ok(c.mode = if on { "off" } else { "on" }.into()))?,
-            ["mode", m @ ("off" | "on" | "time" | "sun")] => self.change(host, |c| Ok(c.mode = m.to_string()))?,
+            ["on"] => self.change(host, |c| {
+                let _: () = c.mode = "on".into();
+                Ok(())
+            })?,
+            ["off"] => self.change(host, |c| {
+                let _: () = c.mode = "off".into();
+                Ok(())
+            })?,
+            ["toggle"] => self.change(host, |c| {
+                let _: () = c.mode = if on { "off" } else { "on" }.into();
+                Ok(())
+            })?,
+            ["mode", m @ ("off" | "on" | "time" | "sun")] => self.change(host, |c| {
+                let _: () = c.mode = m.to_string();
+                Ok(())
+            })?,
             ["time", from, to] => self.change(host, |c| {
                 clock(from)?;
                 clock(to)?;
@@ -323,7 +335,10 @@ impl Plugin for Night {
             })?,
             ["warmth", k] => {
                 let k = k.parse::<i64>().map_err(|_| USAGE.to_string())?.clamp(2500, 6500);
-                self.change(host, |c| Ok(c.temp = k))?
+                self.change(host, |c| {
+                    let _: () = c.temp = k;
+                    Ok(())
+                })?
             }
             _ => return Err(USAGE.into()),
         }
@@ -374,7 +389,10 @@ impl Plugin for Night {
         let r = match node {
             "night" => {
                 let m = if value == "true" { "on" } else { "off" };
-                self.change(host, |c| Ok(c.mode = m.into()))
+                self.change(host, |c| {
+                    let _: () = c.mode = m.into();
+                    Ok(())
+                })
             }
             "from" | "to" => self.change(host, |c| {
                 clock(value)?;
@@ -385,14 +403,20 @@ impl Plugin for Night {
                 // shown on the screen at once whatever the mode while it is dragged, the next tick putting the
                 // screen back to the mode's
                 let k = (6500.0 - value.parse::<f64>().unwrap_or(0.4) * 4000.0).round() as i64;
-                let r = self.change(host, |c| Ok(c.temp = k.clamp(2500, 6500)));
+                let r = self.change(host, |c| {
+                    let _: () = c.temp = k.clamp(2500, 6500);
+                    Ok(())
+                });
                 if let Err(e) = shader(k.clamp(2500, 6500)).and_then(|p| set_shader(&p)) {
                     host.log(e);
                 }
                 r
             }
             m => match m.strip_prefix("mode-") {
-                Some(m) => self.change(host, |c| Ok(c.mode = m.into())),
+                Some(m) => self.change(host, |c| {
+                    let _: () = c.mode = m.into();
+                    Ok(())
+                }),
                 None => return,
             },
         };

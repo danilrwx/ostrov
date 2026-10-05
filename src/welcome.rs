@@ -366,7 +366,7 @@ fn battery_fill(body: &gtk4::Box) {
             crate::hub::service_then(
                 vec!["battery".into(), "limit".into(), LIMITS[i].to_string()],
                 None,
-                move |r| said(r),
+                said,
             );
         });
         body.append(&setting(t("Charge limit"), t("Charging stops here, and starts again 5% below it."), &chips, true));

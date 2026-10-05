@@ -225,7 +225,7 @@ pub fn battery(hub: &Rc<Hub>, notes: &Rc<Notes>, prompts: &Rc<crate::prompt::Pro
 /// The warning due at pct, warned the last level warned of (100 for none): the lowest level under that one pct
 /// has come down to, so a start already at 8% warns of 10% alone.
 fn due(warned: u8, pct: f64) -> Option<u8> {
-    [20u8, 10, 5].into_iter().filter(|&l| l < warned && pct <= f64::from(l)).last()
+    [20u8, 10, 5].into_iter().rfind(|&l| l < warned && pct <= f64::from(l))
 }
 
 #[cfg(test)]

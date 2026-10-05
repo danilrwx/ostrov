@@ -6,7 +6,7 @@
 
 use std::hash::{Hash, Hasher};
 use std::io::{Read, Write};
-use std::os::fd::{AsFd, OwnedFd};
+use std::os::fd::AsFd;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -188,11 +188,10 @@ impl Dispatch<ZwlrDataControlManagerV1, ()> for Clip {
 
 impl Dispatch<ZwlrDataControlOfferV1, Mimes> for Clip {
     fn event(_: &mut Self, _: &ZwlrDataControlOfferV1, e: zwlr_data_control_offer_v1::Event, mimes: &Mimes, _: &Connection, _: &QueueHandle<Self>) {
-        if let zwlr_data_control_offer_v1::Event::Offer { mime_type } = e {
-            if let Ok(mut m) = mimes.lock() {
+        if let zwlr_data_control_offer_v1::Event::Offer { mime_type } = e
+            && let Ok(mut m) = mimes.lock() {
                 m.push(mime_type);
             }
-        }
     }
 }
 
@@ -239,7 +238,7 @@ impl Dispatch<ZwlrDataControlSourceV1, Arc<Vec<u8>>> for Clip {
             zwlr_data_control_source_v1::Event::Send { fd, .. } => {
                 let data = data.clone();
                 std::thread::spawn(move || {
-                    let mut f = std::fs::File::from(OwnedFd::from(fd));
+                    let mut f = std::fs::File::from(fd);
                     let _ = f.write_all(&data);
                 });
             }

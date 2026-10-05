@@ -221,7 +221,7 @@ fn worker(_: Arc<Ctx>, _: Kick) -> Fut<'static, ()> {
             return;
         }
         tokio::task::spawn_blocking(apply).await.ok();
-        let Some(Ok(s)) = hypr_socket(".socket2.sock").map(|p| std::os::unix::net::UnixStream::connect(p)) else { return };
+        let Some(Ok(s)) = hypr_socket(".socket2.sock").map(std::os::unix::net::UnixStream::connect) else { return };
         let _ = s.set_nonblocking(true);
         let Ok(s) = tokio::net::UnixStream::from_std(s) else { return };
         let mut lines = tokio::io::BufReader::new(s).lines();

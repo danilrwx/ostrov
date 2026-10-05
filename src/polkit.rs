@@ -108,7 +108,7 @@ fn other() -> String {
 
 /// What the agent asks of GTK's thread.
 enum Up {
-    Ask(Ask),
+    Ask(Box<Ask>),
     Cancel,
 }
 
@@ -131,7 +131,7 @@ pub fn start(prompts: &Rc<Prompts>) {
     glib::spawn_future_local(async move {
         while let Ok(up) = rx.recv().await {
             match up {
-                Up::Ask(a) => prompts.ask(a),
+                Up::Ask(a) => prompts.ask(*a),
                 Up::Cancel => prompts.cancel(),
             }
         }
@@ -181,7 +181,7 @@ impl Agent {
                     let text = if info.is_empty() { message.to_string() } else { format!("{message}\n{info}") };
                     let mut ask = Ask::new(icon, &fill(t("{} for {}"), &[&title, &user]), &text, Kind::Secret, reply);
                     ask.error = std::mem::take(&mut error);
-                    self.up.send(Up::Ask(ask)).await.map_err(|e| e.to_string())?;
+                    self.up.send(Up::Ask(Box::new(ask))).await.map_err(|e| e.to_string())?;
                     let Some(password) = answer.recv().await.ok().flatten() else {
                         return Err("cancelled".into());
                     };

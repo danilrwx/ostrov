@@ -93,10 +93,13 @@ fn update(own: &str) -> Result<(), String> {
     Command::new(term).args(["-e", "sh", "-c", &script]).spawn().map(drop).map_err(|e| e.to_string())
 }
 
+/// The packages waiting, or what went wrong looking.
+type Waiting = Result<Vec<String>, String>;
+
 struct Updates {
-    waiting: Option<Result<Vec<String>, String>>,
+    waiting: Option<Waiting>,
     /// a check's result from its thread, taken in at DONE
-    result: Arc<Mutex<Option<Result<Vec<String>, String>>>>,
+    result: Arc<Mutex<Option<Waiting>>>,
     checking: bool,
     started: bool,
 }

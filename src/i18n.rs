@@ -66,7 +66,7 @@ pub fn follow_locale() {
 }
 
 /// The text in the user's language; a text not 'static (a schema's, sent as JSON) comes back as long as it lives.
-pub fn t<'a>(en: &'a str) -> &'a str {
+pub fn t(en: &str) -> &str {
     WORDS.get_or_init(|| catalogue(lang())).get(en).copied().unwrap_or(en)
 }
 

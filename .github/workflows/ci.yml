@@ -25,7 +25,7 @@ jobs:
         run: cargo build --release --locked
       - name: Test
         run: cargo test --release --locked
-      # not fatal yet: the code has not been through clippy
       - name: Clippy
-        run: cargo clippy --release --locked
-        continue-on-error: true
+        run: cargo clippy --release --locked --workspace -- -D warnings
+      - name: Plugins' tests
+        run: cargo test --release --locked --workspace
