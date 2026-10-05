@@ -83,11 +83,18 @@ pub fn player(_: &Ctx) -> Widget {
     });
     let last_art = RefCell::new(String::new());
     let (pc, a2, p3, cv) = (pcol.clone(), art.clone(), play2.clone(), cover.clone());
+    let (ti, ar, ct) = (title.clone(), artist.clone(), ctl.clone());
     // under three cells its art alone, play over it; three and four its words and buttons, no art beside them
     // (they would be cut); five and more both
     let size = move |w: u8, _h: u8| {
         let small = w < 3;
         cv.set_visible(small || w >= 5);
+        // without its art beside them, its words and buttons in the middle
+        let mid = !small && w < 5;
+        let x = if mid { 0.5 } else { 0.0 };
+        ti.set_xalign(x);
+        ar.set_xalign(x);
+        ct.set_halign(if mid { gtk4::Align::Center } else { gtk4::Align::Start });
         pc.set_visible(!small);
         p3.set_visible(small);
         a2.set_hexpand(small);
