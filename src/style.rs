@@ -170,6 +170,7 @@ scale { padding: 0 4px; }
 scale trough { min-height: 14px; border-radius: 6px; background: @well; border: none; }
 scale trough highlight { border-radius: 6px; background: @accent; border: none; margin: 0; min-height: 14px; min-width: 0; }
 scale slider { min-width: 0; min-height: 0; margin: 0; background: none; box-shadow: none; border: none; }
+scale:focus-visible trough { outline: 2px solid @accent; outline-offset: 2px; }
 progressbar.progress trough { min-height: 3px; border-radius: 2px; background: @well; }
 progressbar.progress progress { min-height: 3px; border-radius: 2px; background: @accent; }
 entry, passwordentry { background: @sunk; border: 1px solid @rule; border-radius: 6px; min-height: 30px; padding: 0 8px; }

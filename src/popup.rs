@@ -170,8 +170,9 @@ impl Host {
         self.open.borrow().as_ref().and_then(Weak::upgrade).filter(|p| p.is_open() && here(p))
     }
 
-    /// The window set for its mode and what is open in it: its layer and strip, the keyboard (the launcher's
-    /// alone, a popup's on demand for a passphrase and Escape), shown or not, input where it is drawn.
+    /// The window set for its mode and what is open in it: its layer and strip, the keyboard (the launcher's and
+    /// an open popup's alone: Super+X's panel worked from the keys at once, Tab and the arrows around its widgets,
+    /// Escape out), shown or not, input where it is drawn.
     pub fn apply(&self) {
         let popup = self.popup();
         if self.docked.get() {
@@ -181,10 +182,8 @@ impl Host {
             self.win.set_layer(Layer::Overlay);
             self.win.set_exclusive_zone(0);
         }
-        self.win.set_keyboard_mode(if self.launching.get() {
+        self.win.set_keyboard_mode(if self.launching.get() || popup.is_some() {
             KeyboardMode::Exclusive
-        } else if popup.is_some() {
-            KeyboardMode::OnDemand
         } else {
             KeyboardMode::None
         });
@@ -441,6 +440,13 @@ impl Popup {
         self.tab.borrow().add_css_class("tab");
         self.reveal.set_reveal_child(true);
         host.opened(self);
+        // the keys start at its first widget (ringed only once a key is pressed, GTK's focus-visible)
+        let shape = self.shape.downgrade();
+        glib::idle_add_local_once(move || {
+            if let Some(s) = shape.upgrade() {
+                s.child_focus(gtk4::DirectionType::TabForward);
+            }
+        });
     }
 
     /// Hung from another block (the tray's icons share one popup).
