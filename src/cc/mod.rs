@@ -35,7 +35,7 @@ use crate::style::{clear, label};
 pub mod appearance;
 pub mod grid;
 
-use grid::{Item, COLS};
+use grid::{Item, BASE};
 
 /// A widget made: its tile, its menu's card, its badge for the bar, how it draws the state and fits a size.
 pub struct Widget {
@@ -188,41 +188,51 @@ pub struct Spec {
     pub width: i32,
     pub pages: bool,
     pub layout: Vec<Item>,
+    /// how many cells wide its grid is, and its layout laid out for that; a cell's width in pixels
+    pub cols: u8,
+    pub cell: f64,
+    /// [panels.ID] width set: the panel that wide whatever its cells
+    fixed: bool,
 }
 
 impl Spec {
     /// The panel id: the control centre, the calendar, or one of [panels.ID] (empty until edited).
     pub fn of(id: &str) -> Spec {
         let it = |key: &str, x, y, w, h| Item { key: key.into(), x, y, w, h };
-        let spec = |name: &str, icon: &str, width, pages, layout| Spec {
+        // a cell's width, the panel as many of them wide as its grid has cells
+        let spec = |name: &str, icon: &str, cell: f64, cols: u8, pages, layout| Spec {
             id: id.into(),
             name: name.into(),
             icon: icon.into(),
-            width,
+            width: (cell * cols as f64).round() as i32,
             pages,
             layout,
+            cols,
+            cell,
+            fixed: false,
         };
         let cfg = crate::config::load().panels.remove(id);
         match id {
-            "control" => spec(t("Control Centre"), "emblem-system-symbolic", 390, true, vec![
-                it("battery", 0, 0, 5, 1),
-                it("screenshot", 5, 0, 1, 1),
-                it("lock", 6, 0, 1, 1),
-                it("session", 7, 0, 1, 1),
-                it("volume", 0, 1, 8, 1),
-                it("mic", 0, 2, 8, 1),
-                it("brightness", 0, 3, 8, 1),
-                it("wifi", 0, 4, 4, 1),
-                it("bt", 4, 4, 4, 1),
-                it("power", 0, 5, 4, 1),
-                it("wallpaper", 4, 5, 4, 1),
-                it("awake", 0, 6, 4, 1),
-                it("headset", 4, 6, 4, 1),
-                it("airplane", 0, 7, 4, 1),
+            // six cells wide: halves of three, the battery's and its three buttons' row
+            "control" => spec(t("Control Centre"), "emblem-system-symbolic", 48.75, 6, true, vec![
+                it("battery", 0, 0, 3, 1),
+                it("screenshot", 3, 0, 1, 1),
+                it("lock", 4, 0, 1, 1),
+                it("session", 5, 0, 1, 1),
+                it("volume", 0, 1, 6, 1),
+                it("mic", 0, 2, 6, 1),
+                it("brightness", 0, 3, 6, 1),
+                it("wifi", 0, 4, 3, 1),
+                it("bt", 3, 4, 3, 1),
+                it("power", 0, 5, 3, 1),
+                it("wallpaper", 3, 5, 3, 1),
+                it("awake", 0, 6, 3, 1),
+                it("headset", 3, 6, 3, 1),
+                it("airplane", 0, 7, 3, 1),
             ]),
             // the calendar as it was: the weather and the player over the notifications at the left; the
             // date, the month, the coming events at the right
-            "calendar" => spec(t("Calendar"), "x-office-calendar-symbolic", 680, false, vec![
+            "calendar" => spec(t("Calendar"), "x-office-calendar-symbolic", 85.0, 8, false, vec![
                 it("weather", 0, 0, 4, 2),
                 it("clock", 4, 0, 4, 1),
                 it("month", 4, 1, 4, 5),
@@ -230,7 +240,7 @@ impl Spec {
                 it("notifications", 0, 4, 4, 6),
                 it("agenda", 4, 6, 4, 4),
             ]),
-            _ => spec(id, "view-grid-symbolic", 390, false, Vec::new()),
+            _ => spec(id, "view-grid-symbolic", 48.75, 6, false, Vec::new()),
         }
         .with(cfg)
     }
@@ -239,9 +249,34 @@ impl Spec {
         if let Some(c) = cfg {
             self.name = c.name.unwrap_or(self.name);
             self.icon = c.icon.unwrap_or(self.icon);
-            self.width = c.width.unwrap_or(self.width);
+            if let Some(w) = c.width {
+                self.width = w;
+                self.fixed = true;
+            }
+            self.cols = c.cols.map_or(self.cols, |n| n.clamp(MIN_COLS, MAX_COLS));
         }
         self
+    }
+
+    /// Its width for a grid that many cells wide: a set width as it is, else that many cells.
+    fn width_for(&self, cols: u8) -> i32 {
+        if self.fixed { self.width } else { (self.cell * cols as f64).round() as i32 }
+    }
+}
+
+/// How narrow and how wide a panel's grid goes, in cells.
+const MIN_COLS: u8 = 4;
+const MAX_COLS: u8 = 12;
+
+/// A panel's cells across: [panels.ID] cols, else 8 for a layout saved before panels had a width of their own,
+/// else its spec's.
+fn cols_of(spec: &Spec) -> u8 {
+    let set = crate::config::load().panels.get(&spec.id).and_then(|c| c.cols);
+    let legacy = read_saved().is_some_and(|s| s.contains_key(&spec.id) || (spec.id == "control" && s.contains_key("widget")));
+    match set {
+        Some(n) => n.clamp(MIN_COLS, MAX_COLS),
+        None if legacy => BASE,
+        None => spec.cols,
     }
 }
 
@@ -276,7 +311,7 @@ fn layout_path() -> std::path::PathBuf {
 /// The size of those allowed nearest (w, h), a row off counting as two columns.
 fn nearest(sizes: &[(u8, u8)], w: i32, h: i32) -> (u8, u8) {
     let d = |&(sw, sh): &(u8, u8)| (sw as i32 - w).pow(2) + 4 * (sh as i32 - h).pow(2);
-    sizes.iter().copied().min_by_key(d).unwrap_or((COLS, 1))
+    sizes.iter().copied().min_by_key(d).unwrap_or((BASE, 1))
 }
 
 /// The size a corner dragged by (dw, dh) cells (fractions of them) from (w, h) takes: of the allowed sizes
@@ -301,7 +336,7 @@ fn toward(sizes: &[(u8, u8)], (w, h): (u8, u8), (dw, dh): (f64, f64)) -> (u8, u8
 
 /// A panel's layout as panel.toml has it (widgets unknown dropped, sizes not allowed made the nearest allowed),
 /// else its spec's; the widgets in the bar alone, where they were; and when its badges show where it says.
-fn load(reg: &[Meta], spec: &Spec) -> (Vec<Item>, Vec<Item>, HashMap<String, Show>) {
+fn load(reg: &[Meta], spec: &Spec, cols: u8) -> (Vec<Item>, Vec<Item>, HashMap<String, Show>) {
     let mut saved = read_saved().unwrap_or_default();
     let placed = saved.remove(&spec.id).or_else(|| if spec.id == "control" { saved.remove("widget") } else { None });
     let mut shows = HashMap::new();
@@ -311,7 +346,7 @@ fn load(reg: &[Meta], spec: &Spec) -> (Vec<Item>, Vec<Item>, HashMap<String, Sho
             .into_iter()
             .filter_map(|p| {
                 let m = reg.iter().find(|m| m.id == p.id)?;
-                let (w, h) = nearest(m.sizes, p.w as i32, p.h as i32);
+                let (w, h) = nearest(&grid::fit(m.sizes, cols), p.w as i32, p.h as i32);
                 if let Some(b) = p.bar {
                     shows.insert(p.id.clone(), b);
                 }
@@ -324,12 +359,16 @@ fn load(reg: &[Meta], spec: &Spec) -> (Vec<Item>, Vec<Item>, HashMap<String, Sho
             })
             .collect(),
         // the spec's, of the widgets there are (a plugin or a KDL file gone, its place empty no more)
-        None => spec.layout.iter().filter(|i| reg.iter().any(|m| m.id == i.key)).cloned().collect(),
+        None => {
+            let mut l: Vec<Item> = spec.layout.iter().filter(|i| reg.iter().any(|m| m.id == i.key)).cloned().collect();
+            grid::rescale(&mut l, spec.cols, cols);
+            l
+        }
     };
     let mut seen = std::collections::HashSet::new();
     items.retain(|i| seen.insert(i.key.clone()));
     hidden.retain(|i| seen.insert(i.key.clone()));
-    grid::settle(&mut items);
+    grid::settle(&mut items, cols);
     (items, hidden, shows)
 }
 
@@ -391,6 +430,8 @@ pub struct Panel {
     picked: RefCell<String>,
     edit_button: gtk4::Button,
     items: RefCell<Vec<Item>>,
+    /// its grid's width in cells
+    cols: Cell<u8>,
     /// the widgets in the bar alone, kept where they were on the grid (their badges' order)
     hidden: RefCell<Vec<Item>>,
     tiles: RefCell<HashMap<String, Tile>>,
@@ -421,13 +462,14 @@ impl Panel {
     /// A widget on the grid made w×h, a size it allows, saved.
     pub fn resize(self: &Rc<Self>, key: &str, w: u8, h: u8) -> Result<(), String> {
         let m = self.reg.iter().find(|m| m.id == key).ok_or(format!("no widget {key}"))?;
-        if !m.sizes.contains(&(w, h)) {
-            let all: Vec<String> = m.sizes.iter().map(|(w, h)| format!("{w}×{h}")).collect();
+        let sizes = self.sizes(m);
+        if !sizes.contains(&(w, h)) {
+            let all: Vec<String> = sizes.iter().map(|(w, h)| format!("{w}×{h}")).collect();
             return Err(format!("{key} is {}", all.join(", ")));
         }
         let it = self.items.borrow().iter().find(|i| i.key == key).cloned().ok_or(format!("{key} is not on the grid"))?;
         let mut items = self.items.borrow().clone();
-        grid::place(&mut items, key, it.x, it.y, w, h);
+        grid::place(&mut items, key, it.x, it.y, w, h, self.cols.get());
         *self.items.borrow_mut() = items;
         self.layout();
         self.faces();
@@ -612,12 +654,13 @@ impl Panel {
             if let Some(t) = tiles.get(&it.key) {
                 t.wrap.set_size_request(-1, it.h as i32 * row + (it.h as i32 - 1) * gap);
                 self.grid.attach(&t.wrap, it.x as i32, it.y as i32 + above(it.y, true), it.w as i32, it.h as i32);
-                (t.widget.size)(it.w, it.h);
+                // told in cells of 8, the width widgets choose what to show by (a toggle's words from 4)
+                (t.widget.size)(grid::base(it.w, self.cols.get()), it.h);
             }
         }
         for (b, bx) in &bands {
             fit_band(bx.upcast_ref());
-            self.grid.attach(bx, 0, *b as i32 + above(*b, false), COLS as i32, 1);
+            self.grid.attach(bx, 0, *b as i32 + above(*b, false), self.cols.get() as i32, 1);
         }
     }
 
@@ -690,6 +733,45 @@ impl Panel {
     }
 
     /// In the editing or out of it, the layout saved on the way out.
+    /// A widget's sizes on this panel's grid.
+    fn sizes(&self, m: &Meta) -> Vec<(u8, u8)> {
+        grid::fit(m.sizes, self.cols.get())
+    }
+
+    /// The grid made n cells wide: its layout rescaled, the panel as wide, both saved.
+    fn set_cols(self: &Rc<Self>, n: u8) {
+        let n = n.clamp(MIN_COLS, MAX_COLS);
+        let from = self.cols.replace(n);
+        if from == n {
+            return;
+        }
+        grid::rescale(&mut self.items.borrow_mut(), from, n);
+        // sizes the grid's cells allow now
+        let fitted: Vec<(String, (u8, u8))> = self
+            .items
+            .borrow()
+            .iter()
+            .filter_map(|i| {
+                let m = self.reg.iter().find(|m| m.id == i.key)?;
+                Some((i.key.clone(), nearest(&self.sizes(m), i.w as i32, i.h as i32)))
+            })
+            .collect();
+        for it in self.items.borrow_mut().iter_mut() {
+            if let Some((_, (w, h))) = fitted.iter().find(|(k, _)| *k == it.key) {
+                (it.w, it.h) = (*w, *h);
+            }
+        }
+        grid::settle(&mut self.items.borrow_mut(), n);
+        self.popup.set_width(self.spec.width_for(n));
+        if let Err(e) = crate::settings::write(&format!("panels.{}", self.spec.id), "cols", Some(&serde_json::json!(n)), true) {
+            eprintln!("ostrov: panel: {e}");
+        }
+        save(&self.spec.id, &self.items.borrow(), &self.hidden.borrow(), &self.shows.borrow());
+        self.layout();
+        self.faces();
+        self.fill_gallery();
+    }
+
     fn set_editing(self: &Rc<Self>, on: bool) {
         if !on && self.editing.get() {
             save(&self.spec.id, &self.items.borrow(), &self.hidden.borrow(), &self.shows.borrow());
@@ -723,7 +805,7 @@ impl Panel {
         }
         self.items.borrow_mut().retain(|i| i.key != key);
         self.hidden.borrow_mut().retain(|i| i.key != key);
-        grid::compact(&mut self.items.borrow_mut());
+        grid::compact(&mut self.items.borrow_mut(), self.cols.get());
         self.tiles.borrow_mut().remove(key);
         self.layout();
         self.faces();
@@ -771,17 +853,18 @@ impl Panel {
             self.inspector.append(&bx);
         };
         // its sizes, the one it has pressed
-        if m.sizes.len() > 1 && !off {
-            let names: Vec<String> = m.sizes.iter().map(|(w, h)| format!("{w}×{h}")).collect();
+        let sizes = self.sizes(m);
+        if sizes.len() > 1 && !off {
+            let names: Vec<String> = sizes.iter().map(|(w, h)| format!("{w}×{h}")).collect();
             let strs: Vec<&str> = names.iter().map(String::as_str).collect();
-            let at = m.sizes.iter().position(|&s| s == (it.w, it.h));
-            let (me, k, sizes) = (Rc::downgrade(self), key.clone(), m.sizes);
+            let at = sizes.iter().position(|&s| s == (it.w, it.h));
+            let (me, k) = (Rc::downgrade(self), key.clone());
             let chips = crate::ui::chips(&strs, at, move |i| {
                 let Some(p) = me.upgrade() else { return };
                 let Some(it) = p.items.borrow().iter().find(|x| x.key == k).cloned() else { return };
                 let (w, h) = sizes[i];
                 let mut items = p.items.borrow().clone();
-                grid::place(&mut items, &k, it.x, it.y, w, h);
+                grid::place(&mut items, &k, it.x, it.y, w, h, p.cols.get());
                 *p.items.borrow_mut() = items;
                 p.layout();
                 p.faces();
@@ -842,7 +925,7 @@ impl Panel {
         let Some(it) = self.items.borrow().iter().find(|i| i.key == key).cloned() else { return };
         self.pick("");
         self.items.borrow_mut().retain(|i| i.key != key);
-        grid::compact(&mut self.items.borrow_mut());
+        grid::compact(&mut self.items.borrow_mut(), self.cols.get());
         self.hidden.borrow_mut().push(it);
         let bar = self.reg.iter().find(|m| m.id == key).map_or(Show::Never, |m| m.bar);
         if self.show(key, bar) == Show::Never {
@@ -858,7 +941,7 @@ impl Panel {
         let Some(mut it) = self.hidden.borrow().iter().find(|i| i.key == key).cloned() else { return };
         self.pick("");
         self.hidden.borrow_mut().retain(|i| i.key != key);
-        (it.x, it.y) = grid::free(&self.items.borrow(), it.w, it.h);
+        (it.x, it.y) = grid::free(&self.items.borrow(), it.w, it.h, self.cols.get());
         self.items.borrow_mut().push(it);
         self.layout();
         self.faces();
@@ -869,8 +952,8 @@ impl Panel {
     fn add(self: &Rc<Self>, key: &str) {
         let Some(m) = self.reg.iter().find(|m| m.id == key) else { return };
         let Some(t) = self.tile(key) else { return };
-        let (w, h) = m.sizes.first().copied().unwrap_or((COLS, 1));
-        let (x, y) = grid::free(&self.items.borrow(), w, h);
+        let (w, h) = self.sizes(m).first().copied().unwrap_or((self.cols.get(), 1));
+        let (x, y) = grid::free(&self.items.borrow(), w, h, self.cols.get());
         self.items.borrow_mut().push(Item { key: key.into(), x, y, w, h });
         self.tiles.borrow_mut().insert(key.into(), t);
         self.layout();
@@ -914,13 +997,37 @@ impl Panel {
         clear(&self.gallery);
         let hidden: Vec<String> = self.hidden.borrow().iter().map(|i| i.key.clone()).collect();
         self.fill_shelf();
+        // the panel's width, in cells
+        let width = gtk4::Box::new(Orientation::Horizontal, 6);
+        let name = label(t("Width"), "title");
+        name.set_hexpand(true);
+        width.append(&name);
+        for (icon, by) in [("list-remove-symbolic", -1i8), ("list-add-symbolic", 1)] {
+            let b = gtk4::Button::from_icon_name(icon);
+            b.add_css_class("flat-round");
+            let me = Rc::downgrade(self);
+            b.connect_clicked(move |_| {
+                if let Some(p) = me.upgrade() {
+                    p.set_cols(p.cols.get().saturating_add_signed(by));
+                }
+            });
+            if by < 0 {
+                b.set_sensitive(self.cols.get() > MIN_COLS);
+                width.append(&b);
+                width.append(&label(&self.cols.get().to_string(), "bold"));
+            } else {
+                b.set_sensitive(self.cols.get() < MAX_COLS);
+                width.append(&b);
+            }
+        }
+        self.gallery.append(&width);
         self.gallery.append(&label(t("Add Widgets"), "title"));
         let mut on: Vec<String> = self.items.borrow().iter().map(|i| i.key.clone()).collect();
         on.extend(hidden);
         let mut any = false;
         for m in self.reg.iter().filter(|m| !on.iter().any(|k| k == m.id)) {
             any = true;
-            let sizes: Vec<String> = m.sizes.iter().map(|(w, h)| format!("{w}×{h}")).collect();
+            let sizes: Vec<String> = self.sizes(m).iter().map(|(w, h)| format!("{w}×{h}")).collect();
             let me = Rc::downgrade(self);
             let id = m.id;
             self.gallery.append(&crate::ui::row(m.icon, m.name, &sizes.join(" "), false, move || {
@@ -968,7 +1075,7 @@ impl Panel {
             g.set_state(gtk4::EventSequenceState::Claimed);
             // a cell's pitch from the tile as laid out, whatever the grid's margins: its size over its cells
             let (row, gap) = p.dims.get();
-            let mut pitch = ((p.grid.width() + gap) as f64 / COLS as f64, (row + gap) as f64);
+            let mut pitch = ((p.grid.width() + gap) as f64 / p.cols.get() as f64, (row + gap) as f64);
             if let Some(t) = p.tiles.borrow().get(&it.key) {
                 t.wrap.add_css_class("dragged");
                 if let Some(b) = t.wrap.compute_bounds(&p.grid) {
@@ -987,10 +1094,10 @@ impl Panel {
             let (fx, fy) = (dx / pitch.0, dy / pitch.1);
             let (cx, cy) = (fx.round() as i32, fy.round() as i32);
             let next = if *corner {
-                let (nw, nh) = toward(m.sizes, (it.w, it.h), (fx, fy));
+                let (nw, nh) = toward(&p.sizes(m), (it.w, it.h), (fx, fy));
                 (it.x, it.y, nw, nh)
             } else {
-                let x = (it.x as i32 + cx).clamp(0, (COLS - it.w) as i32) as u8;
+                let x = (it.x as i32 + cx).clamp(0, (p.cols.get() - it.w) as i32) as u8;
                 (x, (it.y as i32 + cy).max(0) as u8, it.w, it.h)
             };
             if next == *last {
@@ -998,7 +1105,7 @@ impl Panel {
             }
             *last = next;
             let mut items = start.clone();
-            grid::place(&mut items, &it.key, next.0, next.1, next.2, next.3);
+            grid::place(&mut items, &it.key, next.0, next.1, next.2, next.3, p.cols.get());
             *p.items.borrow_mut() = items;
             p.layout();
             p.faces();
@@ -1144,9 +1251,10 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         settings
     });
 
-    let popup = Popup::new(host, tab, side, spec.width, &col);
+    let cols = cols_of(&spec);
+    let popup = Popup::new(host, tab, side, spec.width_for(cols), &col);
     let reg = registry();
-    let (items, hidden, shows) = load(&reg, &spec);
+    let (items, hidden, shows) = load(&reg, &spec, cols);
     let face_icon = gtk4::Image::from_icon_name(&spec.icon);
     face_icon.set_tooltip_text(Some(&spec.name));
     let p = Rc::new(Panel {
@@ -1166,6 +1274,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         picked: RefCell::default(),
         edit_button: edit_button.clone(),
         items: RefCell::new(items),
+        cols: Cell::new(cols),
         hidden: RefCell::new(hidden),
         tiles: RefCell::default(),
         open: RefCell::default(),

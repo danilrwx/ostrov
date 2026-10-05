@@ -99,7 +99,8 @@ allow = []               # ["Telegram Desktop"]
 # [panels.music]
 # name = "Music"
 # icon = "audio-x-generic-symbolic"
-# width = 390                 # px; the control centre is 390 wide
+# cols = 6                    # its grid's width in cells (Edit's Width): the control centre 6, the calendar 8
+# width = 390                 # px, whatever its cells; unset, its cells' width
 
 # Widgets' own settings, [widget.ID], as each widget's schema says (the inspector in Edit, or the Settings page).
 [widget.clock]

@@ -9,12 +9,12 @@ icon = "weather-clear-night-symbolic"
 description = "Warmer colours in the evening, through Hyprland's screen shader."
 permissions = []
 
+# under the brightness slider, in its menu: the switch, its modes and its warmth
 [[widgets]]
 id = "toggle"
 name = "Night Light"
-sizes = [[4, 1], [2, 1], [1, 1], [8, 1]]
-badge = true
-bar = "active"
+sizes = [[8, 1]]
+attach = "brightness"
 
 [[commands]]
 name = "on"

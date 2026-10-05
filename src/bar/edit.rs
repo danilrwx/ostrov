@@ -1,4 +1,4 @@
-//! The bar's editor, in the bar itself: `ostrov bar edit`, or Bar on the Settings page. The bar's three parts
+//! The bar's editor, in the bar itself: `ostrov bar edit` (again: cancelled), or Bar on the Settings page. The bar's three parts
 //! outlined, a gallery unrolled under the bar with the blocks not in it: the system's (workspaces, the window's
 //! title, the layout, the tray, privacy), the panels and every widget (ostrov's, a KDL file's, a plugin's) by
 //! itself. A block dragged along the bar or into another part moves there, one from the gallery goes where it is
@@ -135,9 +135,10 @@ fn current() -> Option<Rc<Edit>> {
     EDIT.with(|e| e.borrow().clone())
 }
 
-/// The editor opened on the focused monitor's bar.
+/// The editor opened on the focused monitor's bar; open already, cancelled.
 pub fn start() -> Result<(), String> {
     if current().is_some() {
+        finish(false);
         return Ok(());
     }
     let bars = BARS.with(|b| b.borrow().clone()).ok_or("ostrov is starting")?;

@@ -249,6 +249,8 @@ pub struct PanelSpec {
     pub name: Option<String>,
     pub icon: Option<String>,
     pub width: Option<i32>,
+    /// its grid's width in cells (Edit's Width)
+    pub cols: Option<u8>,
 }
 
 pub fn path() -> PathBuf {

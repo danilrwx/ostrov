@@ -157,6 +157,10 @@ pub struct WidgetDecl {
     /// when the badge shows unless the panel says otherwise
     #[serde(default = "never")]
     pub bar: Show,
+    /// one of ostrov's widgets it goes inside (brightness: the night light under its slider), its tile and its
+    /// menu unfolded in that widget's menu; then not in the gallery by itself
+    #[serde(default)]
+    pub attach: String,
 }
 
 fn never() -> Show {
@@ -198,7 +202,7 @@ fn parse_manifest(text: &str, dir: &str) -> Result<Manifest, String> {
         if !word(&w.id) {
             return Err(format!("widget id {:?}: not of [a-z0-9-]", w.id));
         }
-        w.sizes.retain(|&(x, y)| (1..=crate::cc::grid::COLS).contains(&x) && y >= 1);
+        w.sizes.retain(|&(x, y)| (1..=crate::cc::grid::BASE).contains(&x) && y >= 1);
         if w.sizes.is_empty() {
             w.sizes.push((4, 1));
         }
@@ -291,6 +295,8 @@ pub struct View {
     drawn: RefCell<Option<node::Drawn>>,
     menu: RefCell<Option<node::Drawn>>,
     badge: Option<Badge>,
+    /// inside another widget's menu: its toggle without an arrow, its menu shown under it
+    inline: Cell<bool>,
 }
 
 /// A view's badge: the box its tree is drawn into, the cell its panel reads it active by.
@@ -325,6 +331,7 @@ impl View {
             drawn: RefCell::default(),
             menu: RefCell::default(),
             badge,
+            inline: Cell::new(false),
         });
         let v = view.clone();
         let w = Widget {
@@ -340,7 +347,8 @@ impl View {
 
     /// The tree in the tile, its root's menu in the menu's card.
     pub fn paint(&self, tree: &node::El, emit: &node::Emit) {
-        node::draw(&self.tile, tree, &mut self.drawn.borrow_mut(), emit, Some(self.flip.clone()));
+        let flip = (!self.inline.get()).then(|| self.flip.clone());
+        node::draw(&self.tile, tree, &mut self.drawn.borrow_mut(), emit, flip);
         // the kit's own ground for a toggle, a slider, a round button; a card's for anything else
         let own = matches!(tree.kind, node::Kind::Toggle { .. } | node::Kind::Slider { .. } | node::Kind::Round { .. });
         let classes: &[&str] = if own { &[] } else { &["plugin-card"] };
@@ -508,6 +516,24 @@ impl Plugin {
         self.views.borrow_mut().push(Rc::downgrade(&view));
         self.paint(&view);
         w
+    }
+
+    /// One of its widgets inside one of ostrov's: its tile, its menu's items unfolded under it.
+    fn attachment(&self, decl: &WidgetDecl, c: &Ctx) -> gtk4::Widget {
+        let (view, _) = View::make(&decl.id, &decl.name, &decl.icon, (8, 1), false, c);
+        view.inline.set(true);
+        self.views.borrow_mut().push(Rc::downgrade(&view));
+        self.paint(&view);
+        let col = gtk4::Box::new(gtk4::Orientation::Vertical, 6);
+        if let Some(p) = view.items.parent().and_downcast::<gtk4::Box>() {
+            p.remove(&view.items);
+        }
+        col.append(&view.tile);
+        col.append(&view.items);
+        // kept while its box is: dropped, the plugin draws into it no more
+        let keep = view.clone();
+        col.connect_destroy(move |_| drop(keep.clone()));
+        col.upcast()
     }
 
     /// A dialog it asks, its icon and id above it all, so it passes for nothing else; one at a time, a no after
@@ -766,7 +792,7 @@ pub fn metas() -> Vec<Meta> {
     PLUGINS.with(|ps| {
         let mut all = Vec::new();
         for p in ps.borrow().iter() {
-            for (n, w) in p.m.widgets.iter().enumerate() {
+            for (n, w) in p.m.widgets.iter().enumerate().filter(|(_, w)| w.attach.is_empty()) {
                 let p2 = p.clone();
                 all.push(Meta {
                     id: leak(format!("plugin.{}.{}", p.m.id, w.id)),
@@ -780,6 +806,17 @@ pub fn metas() -> Vec<Meta> {
             }
         }
         all
+    })
+}
+
+/// The plugins' widgets going inside one of ostrov's (their manifests' attach), each its tile and its menu.
+pub fn attached(into: &str, c: &Ctx) -> Vec<gtk4::Widget> {
+    PLUGINS.with(|ps| {
+        let ps = ps.borrow();
+        let each = |p: &Rc<Plugin>| -> Vec<gtk4::Widget> {
+            p.m.widgets.iter().filter(|w| w.attach == into).map(|d| p.attachment(d, c)).collect()
+        };
+        ps.iter().flat_map(each).collect()
     })
 }
 

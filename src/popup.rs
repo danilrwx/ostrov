@@ -507,6 +507,14 @@ impl Popup {
         }
     }
 
+    /// As wide as that (a panel's grid made wider or narrower).
+    pub fn set_width(&self, width: i32) {
+        self.reveal.set_size_request(width, -1);
+        if self.is_open() {
+            self.place();
+        }
+    }
+
     /// Taken out of its bar's window for good (the bar's editor's gallery, done).
     pub fn remove(&self) {
         if let Some(o) = self.reveal.parent().and_downcast::<gtk4::Overlay>() {

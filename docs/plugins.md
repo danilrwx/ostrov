@@ -67,9 +67,10 @@ permissions = ["secrets"]      # see Permissions
 id = "counter"                 # on the grid as plugin.<id>.<widget id>: plugin.hello-python.counter
 name = "Hello Counter"         # in the gallery, and its menu's title
 icon = "face-smile-symbolic"   # the plugin's if left out
-sizes = [[4, 1], [2, 1], [8, 1]]  # cells [w, h] the grid (8 wide) allows, the first the default; [[4, 1]] if none
+sizes = [[4, 1], [2, 1], [8, 1]]  # cells [w, h] on a grid of 8 (a narrower panel's takes the same share), the first the default; [[4, 1]] if none
 badge = true                   # a badge in its panel's face in the bar (see Badges); false if left out
 bar = "active"                 # when the badge shows: always, active (while it says so), never (the default)
+# attach = "brightness"        # inside one of ostrov's widgets' menus instead of on the grid (the night light under the brightness slider)
 
 [[launcher]]
 prefix = "?"                   # what is typed starting with it is the plugin's (see Launcher modes)

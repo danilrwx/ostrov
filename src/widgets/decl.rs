@@ -128,7 +128,7 @@ fn sizes(s: &str) -> Option<Vec<(u8, u8)>> {
         .map(|wh| {
             let (w, h) = wh.split_once('x')?;
             let (w, h): (u8, u8) = (w.parse().ok()?, h.parse().ok()?);
-            ((1..=crate::cc::grid::COLS).contains(&w) && h >= 1).then_some((w, h))
+            ((1..=crate::cc::grid::BASE).contains(&w) && h >= 1).then_some((w, h))
         })
         .collect()
 }

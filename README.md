@@ -39,12 +39,23 @@ Hyprland desktop is usually pieced together from, made to look and work as one t
 <td align="center">Edit, with the gallery</td>
 </tr>
 <tr>
-<td><img src="docs/screenshots/appearance.png" alt="The Appearance page in the light theme"></td>
+<td><img src="docs/screenshots/appearance.png" alt="The Appearance page: themes, accent, surface and bar"></td>
 <td><img src="docs/screenshots/welcome.png" alt="The welcome on the first run: theme, accent, density, language"></td>
 </tr>
 <tr>
-<td align="center">Appearance, in the light theme</td>
+<td align="center">Appearance</td>
 <td align="center">The first run's welcome</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td><img src="docs/screenshots/night.png" alt="The brightness slider's menu: the night light, its modes and its warmth"></td>
+<td><img src="docs/screenshots/bar.png" alt="The bar's editor: its parts outlined, the blocks not in it in a gallery under it"></td>
+</tr>
+<tr>
+<td align="center">Brightness, with the night light</td>
+<td align="center">The bar's editor</td>
 </tr>
 </table>
 
