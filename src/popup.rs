@@ -297,6 +297,7 @@ fn hover_tips(host: &Rc<Host>) {
             *sh2.borrow_mut() = text;
             // under the pointer, kept within the window; measured without its last place (its margins are in
             // its size)
+            on_top(&t2);
             t2.set_margin_start(0);
             t2.set_margin_top(0);
             let (_, nat) = t2.preferred_size();
@@ -325,6 +326,7 @@ pub fn bubble(over: &gtk4::Widget, frac: f64, text: Option<&str>) {
     let b = &host.bubble;
     let (Some(text), Some(at)) = (text, over.compute_bounds(&host.win)) else { return b.set_visible(false) };
     b.set_text(text);
+    on_top(b);
     // measured shown (a hidden widget asks for nothing) and without its last place (its margins are in its size)
     b.set_visible(true);
     b.set_margin_start(0);
@@ -336,6 +338,14 @@ pub fn bubble(over: &gtk4::Widget, frac: f64, text: Option<&str>) {
     b.set_margin_start(x.clamp(0, (host.win.width() - nat.width()).max(0)));
     b.set_margin_top((at.y() as i32 - nat.height() - 6).max(0));
     b.set_visible(true);
+}
+
+/// Drawn over the rest of its window: moved after the popups added to it since.
+fn on_top(w: &impl IsA<gtk4::Widget>) {
+    let Some(parent) = w.parent() else { return };
+    if parent.last_child().as_ref() != Some(w.upcast_ref()) {
+        w.insert_before(&parent, None::<&gtk4::Widget>);
+    }
 }
 
 /// A monitor's size, a guess without one.
