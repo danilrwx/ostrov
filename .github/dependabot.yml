@@ -1,0 +1,16 @@
+# ci(deps) keeps dependabot PRs conventional so the labeler and release
+# notes pick them up. Add an npm/gomod/... block once the repo has one.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore

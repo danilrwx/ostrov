@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.93"
 description = "ostrov's plugin protocol (wit/ostrov-plugin.wit) for plugins written in Rust: JSON lines over stdin and stdout"
 license = "MIT"
-repository = "https://github.com/ostrov-shell/ostrov"
+repository = "https://github.com/danilrwx/ostrov"
 keywords = ["ostrov", "hyprland", "plugin"]
 
 [dependencies]

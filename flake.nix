@@ -47,7 +47,7 @@
 
           meta = with pkgs.lib; {
             description = "A whole desktop shell for Hyprland in one binary";
-            homepage = "https://github.com/ostrov-shell/ostrov";
+            homepage = "https://github.com/danilrwx/ostrov";
             license = licenses.mit;
             platforms = platforms.linux;
             mainProgram = "ostrov";

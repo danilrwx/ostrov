@@ -104,7 +104,7 @@ gtk4-layer-shell, GLib, libwayland and PAM:
 
 Then:
 
-    git clone https://github.com/ostrov-shell/ostrov
+    git clone https://github.com/danilrwx/ostrov
     cd ostrov
     cargo install --locked --path .
 

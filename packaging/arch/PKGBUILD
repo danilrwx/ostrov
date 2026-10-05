@@ -4,7 +4,7 @@ pkgver=0.1.0.r0.g0000000
 pkgrel=1
 pkgdesc='A whole desktop shell for Hyprland in one binary: bar, panels, launcher, notifications, lock screen and more'
 arch=('x86_64' 'aarch64')
-url='https://github.com/ostrov-shell/ostrov'
+url='https://github.com/danilrwx/ostrov'
 license=('MIT')
 depends=('gtk4' 'gtk4-layer-shell' 'glib2' 'pam' 'wayland' 'pipewire' 'wireplumber')
 makedepends=('git' 'cargo' 'pkgconf')
@@ -27,7 +27,7 @@ optdepends=('hyprland: the compositor ostrov is made for'
 provides=('ostrov')
 conflicts=('ostrov')
 backup=('etc/pam.d/ostrov')
-source=('git+https://github.com/ostrov-shell/ostrov.git')
+source=('git+https://github.com/danilrwx/ostrov.git')
 sha256sums=('SKIP')
 
 pkgver() {
