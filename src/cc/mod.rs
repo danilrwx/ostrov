@@ -605,6 +605,16 @@ impl Panel {
             }
         }
         wrap.set_child(Some(&clip));
+        // in the editing, a widget showing nothing now (the headset with none on) stands as its icon and name
+        let ghost = gtk4::Box::new(Orientation::Horizontal, 10);
+        ghost.add_css_class("tile-ghost");
+        ghost.append(&gtk4::Image::from_icon_name(m.icon));
+        let name = label(t(m.name), "dim");
+        name.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+        ghost.append(&name);
+        ghost.set_can_target(false);
+        ghost.set_visible(false);
+        wrap.add_overlay(&ghost);
         // its widget's stretch kept within the tile: let up to the grid it would hand the grid's spare height to
         // its rows, making them taller than a cell
         wrap.set_vexpand(false);
@@ -766,6 +776,14 @@ impl Panel {
         let st = self.state.borrow().clone();
         for t in self.tiles.borrow().values() {
             (t.widget.draw)(&st);
+            // its stand-in while edited, as it shows something or not now
+            let mut c = t.wrap.first_child();
+            while let Some(w) = c {
+                if w.has_css_class("tile-ghost") {
+                    w.set_visible(self.editing.get() && !t.widget.root.is_visible());
+                }
+                c = w.next_sibling();
+            }
             // its hover its badge's: the battery's time left, a toggle's state, a slider's level
             if let Some(f) = &t.widget.face {
                 let tip = f.root.tooltip_text();
@@ -881,6 +899,9 @@ impl Panel {
             while let Some(w) = c {
                 if w.has_css_class("tile-remove") || w.has_css_class("tile-grip") {
                     w.set_visible(on);
+                }
+                if w.has_css_class("tile-ghost") {
+                    w.set_visible(on && !t.widget.root.is_visible());
                 }
                 c = w.next_sibling();
             }

@@ -145,6 +145,8 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 .tile.dragged > :first-child { box-shadow: 0 0 0 2px @accent; border-radius: 6px; }
 button.tile-remove { background: @urgent; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
 button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }
+/* a widget showing nothing now, in the editing: its icon and name on a dashed outline */
+.tile-ghost { border: 1px dashed @dim; border-radius: 6px; padding: 0 14px; }
 .tile.picked > :first-child { box-shadow: 0 0 0 2px @accent; border-radius: 6px; }
 .tile-grip { background: @handle; color: @on-scrim; border-radius: 10px; min-width: 20px; min-height: 20px; margin: -5px; -gtk-icon-size: 12px; }
 .clock { padding: 0 14px; }
