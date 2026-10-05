@@ -262,7 +262,7 @@ impl Live {
         if let Some(b) = &d.badge {
             let (tree, active) = decl::badge(b, &sc);
             if let Ok(el) = node::El::deserialize(&tree) {
-                shown.view.paint_badge(&el, active, &emit);
+                shown.view.paint_badge(&el, active, "", &emit);
             }
         }
     }

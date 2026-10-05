@@ -266,8 +266,8 @@ pub struct Plugin {
     backend: Arc<dyn Draws>,
     /// each widget's tree as last drawn, and the widgets made for the grid
     trees: RefCell<HashMap<String, node::El>>,
-    /// each badge's tree as last drawn, and whether it said it is active
-    badges: RefCell<HashMap<String, (node::El, bool)>>,
+    /// each badge's tree as last drawn, whether it said it is active, its click's node id
+    badges: RefCell<HashMap<String, (node::El, bool, String)>>,
     views: RefCell<Vec<Weak<View>>>,
     config: RefCell<Value>,
     state: RefCell<Value>,
@@ -298,6 +298,7 @@ pub struct View {
 struct Badge {
     root: gtk4::Box,
     active: Rc<Cell<bool>>,
+    click: crate::cc::Click,
     drawn: RefCell<Option<node::Drawn>>,
 }
 
@@ -311,9 +312,10 @@ impl View {
         let badge = badge.then(|| {
             let root = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
             root.append(&gtk4::Image::from_icon_name(icon));
-            Badge { root, active: Rc::new(Cell::new(false)), drawn: RefCell::default() }
+            Badge { root, active: Rc::new(Cell::new(false)), click: Default::default(), drawn: RefCell::default() }
         });
-        let face = badge.as_ref().map(|b| Face { root: b.root.clone().upcast(), active: b.active.clone() });
+        let face =
+            badge.as_ref().map(|b| Face { root: b.root.clone().upcast(), active: b.active.clone(), click: b.click.clone() });
         let view = Rc::new(View {
             wid: wid.into(),
             tile: tile.clone(),
@@ -355,10 +357,15 @@ impl View {
         }
     }
 
-    /// The badge's tree drawn, and whether it is active: whether that changed (its panel's face to be fitted).
-    pub fn paint_badge(&self, tree: &node::El, active: bool, emit: &node::Emit) -> bool {
+    /// The badge's tree drawn, whether it is active, the node id a click on it in the bar emits ("" none):
+    /// whether its activity changed (its panel's face to be fitted).
+    pub fn paint_badge(&self, tree: &node::El, active: bool, click: &str, emit: &node::Emit) -> bool {
         let Some(b) = &self.badge else { return false };
         node::draw(&b.root, tree, &mut b.drawn.borrow_mut(), emit, None);
+        *b.click.borrow_mut() = (!click.is_empty()).then(|| {
+            let (emit, click) = (emit.clone(), click.to_string());
+            Rc::new(move || emit(&click, "click", String::new())) as Rc<dyn Fn()>
+        });
         b.active.replace(active) != active
     }
 }
@@ -450,7 +457,7 @@ impl Plugin {
     }
 
     /// A widget's tree, rendered or pushed: kept, and drawn into its views.
-    /// A badge's tree ("<wid>#bar") the same, its top-level "active" kept beside it.
+    /// A badge's tree ("<wid>#bar") the same, its top-level "active" and "click" kept beside it.
     fn set_tree(self: &Rc<Self>, wid: &str, tree: &Value) {
         if tree.is_null() {
             return;
@@ -465,7 +472,8 @@ impl Plugin {
         match node::El::deserialize(tree) {
             Ok(el) if bar => {
                 let active = tree["active"].as_bool().unwrap_or(false);
-                self.badges.borrow_mut().insert(base.to_string(), (el, active));
+                let click = tree["click"].as_str().unwrap_or_default().to_string();
+                self.badges.borrow_mut().insert(base.to_string(), (el, active, click));
             }
             Ok(el) => {
                 self.trees.borrow_mut().insert(base.to_string(), el);
@@ -488,8 +496,8 @@ impl Plugin {
             view.paint(&tree, &emit);
         }
         let badge = self.badges.borrow().get(&view.wid).cloned();
-        if let Some((tree, active)) = badge
-            && view.paint_badge(&tree, active, &emit)
+        if let Some((tree, active, click)) = badge
+            && view.paint_badge(&tree, active, &click, &emit)
         {
             (view.again)();
         }

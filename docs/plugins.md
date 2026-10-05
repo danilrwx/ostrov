@@ -326,7 +326,19 @@ one, an `image` and a `label`, or a horizontal `box` of them, with one field mor
 
 When it shows is the manifest's `bar` unless the panel's Edit says otherwise (its eye): `always`, `active` (while
 the last badge rendered says `"active": true`), `never`. Until the plugin renders it, the badge is the widget's
-icon, inactive. A plugin that does not declare `badge` is never asked for `#bar`, so `api = 1` plugins written
+icon, inactive.
+
+A widget also stands in the bar by itself, a block of its own: `widget.plugin.<id>.<widget>` in `[bar] left`,
+`center` or `right` (or the bar editor), its badge the block. A click there opens the widget's menu, unless the
+badge's top says `"click": "<node id>"`: then a left click is the plugin's, `on_event(widget, node id, "click",
+"")`, and a right click opens the menu. The official `record`'s badge does it, a click on its timer stopping the
+recording:
+
+```json
+{"type": "box", "orientation": "horizontal", "active": true, "click": "toggle", "children": [
+  {"type": "label", "text": "●", "class": "error"}, {"type": "label", "text": "0:42"}
+]}
+``` A plugin that does not declare `badge` is never asked for `#bar`, so `api = 1` plugins written
 before badges work unchanged.
 
 ## Dialogs

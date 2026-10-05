@@ -52,11 +52,17 @@ pub struct Widget {
 pub struct Face {
     pub root: gtk4::Widget,
     pub active: Rc<Cell<bool>>,
+    /// what a click on it does where it stands in the bar by itself (widget.ID), if not its menu: a plugin's
+    /// badge's "click"
+    pub click: Click,
 }
+
+/// A badge's own click, set and unset as it is drawn.
+pub type Click = Rc<RefCell<Option<Rc<dyn Fn()>>>>;
 
 impl Face {
     pub fn new(root: &impl IsA<gtk4::Widget>) -> Face {
-        Face { root: root.clone().upcast(), active: Rc::new(Cell::new(true)) }
+        Face { root: root.clone().upcast(), active: Rc::new(Cell::new(true)), click: Click::default() }
     }
 
     /// A badge of an icon alone, and the cell its widget says it is active by.
@@ -96,7 +102,7 @@ impl Widget {
         let t2 = t.clone();
         Widget {
             size: Box::new(move |w, h| t2.size(w, h)),
-            face: Some(Face { root: t.face.clone().upcast(), active: t.active.clone() }),
+            face: Some(Face { root: t.face.clone().upcast(), active: t.active.clone(), click: Click::default() }),
             ..Widget::new(&t.root, menu, draw)
         }
     }

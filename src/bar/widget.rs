@@ -1,6 +1,7 @@
 //! A panel's widget standing in the bar on its own, widget.ID: its badge (its icon if it has none) as the
 //! block, its menu unrolled out of it on a click (a toggle's arrow, a slider's). Any widget there is: ostrov's
-//! own, a KDL file's, a plugin's.
+//! own, a KDL file's, a plugin's. A plugin's badge saying "click" has a left click of its own, sent to the plugin
+//! (a recording stopped), the menu on a right click.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -47,6 +48,7 @@ pub fn build(cx: &Rc<Ctx>, id: &str, side: Side) -> Option<Block> {
         })
     };
     let widget = (m.make)(&crate::cc::Ctx { close, flip: flip.clone(), again, state: state.clone() });
+    let own = widget.face.as_ref().map(|f| f.click.clone()).unwrap_or_default();
     match &widget.face {
         Some(f) => face.append(&f.root),
         None => face.append(&gtk4::Image::from_icon_name(m.icon)),
@@ -61,7 +63,14 @@ pub fn build(cx: &Rc<Ctx>, id: &str, side: Side) -> Option<Block> {
         *popup.borrow_mut() = Some(Popup::new(&cx.host, &s, side, 390, &body));
     }
     let click = gtk4::GestureClick::new();
-    click.connect_released(move |_, _, _, _| flip());
+    click.set_button(0);
+    click.connect_released(move |g, _, _, _| {
+        let mine = own.borrow().clone();
+        match mine {
+            Some(f) if g.current_button() == gtk4::gdk::BUTTON_PRIMARY => f(),
+            _ => flip(),
+        }
+    });
     face.add_controller(click);
     face.set_cursor_from_name(Some("pointer"));
     *w.borrow_mut() = Some(widget);

@@ -157,7 +157,9 @@ impl Plugin for Record {
     fn render(&mut self, _: &Host, widget: &str) -> Option<Value> {
         let time = self.on.map(|(_, since)| elapsed(since.elapsed().as_secs()));
         if widget == "record#bar" {
-            return Some(json!({"type": "box", "orientation": "horizontal", "active": time.is_some(), "children": [
+            // standing in the bar by itself (widget.plugin.record.record), a click there starts or stops it
+            return Some(json!({"type": "box", "orientation": "horizontal", "active": time.is_some(), "click": "toggle",
+                "children": [
                 {"type": "label", "text": "●", "class": "error"},
                 {"type": "label", "text": time.clone().unwrap_or_default()},
             ]}));
