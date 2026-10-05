@@ -12,7 +12,7 @@ pub const MODULE: Module = Module {
     state: Some(state),
     run: Some(run),
     worker: Some(worker),
-    widgets: &[widget("media", "Now Playing", "audio-x-generic-symbolic", &[(4, 2), (8, 2)], widget::player)],
+    widgets: &[widget("media", "Now Playing", "audio-x-generic-symbolic", &[(4, 2), (8, 2), (2, 2)], widget::player)],
     ..Module::NONE
 };
 

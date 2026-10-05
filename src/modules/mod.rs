@@ -103,7 +103,7 @@ pub const fn widget(id: &'static str, name: &'static str, icon: &'static str, si
 /// The sizes of a toggle: from a square to the whole width; of a round button; of a slider.
 pub const TOGGLE: &[(u8, u8)] = &[(4, 1), (2, 1), (1, 1), (8, 1)];
 pub const BUTTON: &[(u8, u8)] = &[(1, 1), (2, 1)];
-pub const SLIDER: &[(u8, u8)] = &[(8, 1)];
+pub const SLIDER: &[(u8, u8)] = &[(8, 1), (4, 1)];
 
 pub const ALL: &[&Module] = &[
     &wifi::MODULE,

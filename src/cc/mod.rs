@@ -258,9 +258,12 @@ impl Spec {
         self
     }
 
-    /// Its width for a grid that many cells wide: a set width as it is, else that many cells.
+    /// Its width for a grid that many cells wide: a set width as it is, else that many cells. A cell is an eighth
+    /// of eight cells' width, the panel's padding (less a gap) in it: that taken out, each cell as wide whatever
+    /// the cells (four cells not narrower each than eight, a round button not cut).
     fn width_for(&self, cols: u8) -> i32 {
-        if self.fixed { self.width } else { (self.cell * cols as f64).round() as i32 }
+        const EDGE: f64 = 22.0;
+        if self.fixed { self.width } else { ((self.cell - EDGE / 8.0) * cols as f64 + EDGE).round() as i32 }
     }
 }
 
@@ -736,8 +739,7 @@ impl Panel {
         for (b, bx) in &bands {
             fit_band(bx.upcast_ref());
             self.grid.attach(bx, 0, *b as i32 + above(*b, false), self.cols.get() as i32, 1);
-        }
-    }
+        }    }
 
     /// One widget's menu unfolded, the others folded ("" all).
     fn set_open(&self, key: &str) {
@@ -941,10 +943,9 @@ impl Panel {
         self.inspector.append(&head);
 
         let line = |title: &'static str, w: &gtk4::Widget| {
-            let bx = gtk4::Box::new(Orientation::Horizontal, 8);
-            let l = label(t(title), "dim");
-            l.set_width_chars(10);
-            bx.append(&l);
+            // its words over its chips, the chips wrapping: as narrow as the panel goes
+            let bx = gtk4::Box::new(Orientation::Vertical, 4);
+            bx.append(&label(t(title), "dim"));
             bx.append(w);
             self.inspector.append(&bx);
         };
@@ -1019,7 +1020,10 @@ impl Panel {
             chips.set_margin_start(0);
             line("Align", chips.upcast_ref());
         }
-        let acts = gtk4::Box::new(Orientation::Horizontal, 6);
+        let acts = gtk4::FlowBox::new();
+        acts.set_selection_mode(gtk4::SelectionMode::None);
+        acts.set_column_spacing(6);
+        acts.set_row_spacing(6);
         let act = |text: &'static str, f: Box<dyn Fn(&Rc<Panel>)>| {
             let b = gtk4::Button::with_label(t(text));
             b.add_css_class("chip");
@@ -1029,7 +1033,7 @@ impl Panel {
                     f(&p);
                 }
             });
-            acts.append(&b);
+            acts.insert(&b, -1);
         };
         let k = key.clone();
         if off {
@@ -1355,7 +1359,12 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     shelf.set_margin_end(6);
     shelf.set_visible(false);
     body.append(&shelf);
-    body.append(&inspector);
+    // the inspector as wide as the grid is: what it holds wraps or is cut, the panel never widened by it
+    let fit = gtk4::ScrolledWindow::new();
+    fit.set_policy(gtk4::PolicyType::External, gtk4::PolicyType::Never);
+    fit.set_propagate_natural_height(true);
+    fit.set_child(Some(&inspector));
+    body.append(&fit);
     body.append(&gallery);
 
     // the footer: the control centre's gear to the Settings and palette to the Appearance, Edit
@@ -1514,6 +1523,16 @@ mod tests {
     use super::toward;
 
     const TOGGLE: &[(u8, u8)] = &[(4, 1), (2, 1), (1, 1), (8, 1)];
+
+    #[test]
+    fn a_cell_as_wide_on_any_grid() {
+        let spec = super::Spec { cell: 48.75, fixed: false, ..super::Spec::of("nope") };
+        assert_eq!(spec.width_for(8), 390);
+        // the padding less a gap (22) taken out, a cell 46 wide however many
+        for cols in 4..=12u8 {
+            assert!(((spec.width_for(cols) - 22) as f64 / cols as f64 - 46.0).abs() < 0.2, "{cols}");
+        }
+    }
 
     #[test]
     fn a_corner_takes_the_size_it_heads_for() {

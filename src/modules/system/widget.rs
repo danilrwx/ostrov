@@ -128,6 +128,12 @@ pub fn notifications(_: &Ctx) -> Widget {
     dnd.set_halign(gtk4::Align::Start);
     let clear_all = gtk4::Button::with_label(t("Clear"));
     clear_all.add_css_class("chip");
+    // narrower than their words, the chips shorten them, never cut off at the tile's edge
+    for b in [dnd.upcast_ref::<gtk4::Button>(), &clear_all] {
+        if let Some(l) = b.child().and_downcast::<gtk4::Label>() {
+            l.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+        }
+    }
     foot.append(&dnd);
     foot.append(&clear_all);
     col.append(&foot);

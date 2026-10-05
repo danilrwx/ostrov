@@ -46,8 +46,13 @@ pub fn row(icon: &str, text: &str, note: &str, on: bool, pick: impl Fn() + 'stat
 }
 
 /// A line of chips, the one at on pressed, each running pick with its index.
-pub fn chips(names: &[&str], on: Option<usize>, pick: impl Fn(usize) + Clone + 'static) -> gtk4::Box {
-    let bx = gtk4::Box::new(Orientation::Horizontal, 4);
+pub fn chips(names: &[&str], on: Option<usize>, pick: impl Fn(usize) + Clone + 'static) -> gtk4::FlowBox {
+    // wrapping onto more lines, never wider than where it is
+    let bx = gtk4::FlowBox::new();
+    bx.set_selection_mode(gtk4::SelectionMode::None);
+    bx.set_column_spacing(4);
+    bx.set_row_spacing(4);
+    bx.set_max_children_per_line(32);
     bx.set_margin_start(36);
     bx.set_margin_bottom(4);
     for (i, n) in names.iter().enumerate() {
@@ -56,7 +61,7 @@ pub fn chips(names: &[&str], on: Option<usize>, pick: impl Fn(usize) + Clone + '
         b.set_active(on == Some(i));
         let p = pick.clone();
         b.connect_clicked(move |_| p(i));
-        bx.append(&b);
+        bx.insert(&b, -1);
     }
     bx
 }

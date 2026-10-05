@@ -1,5 +1,6 @@
 //! The player now: its art, track, artist, previous/play/next, how far in (running on between its reports while
-//! it plays); its badge, while it plays, a note and the track.
+//! it plays); two cells wide its art alone, play/pause over it, the track in its hover; its badge, while it plays,
+//! a note and the track.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -45,7 +46,18 @@ pub fn player(_: &Ctx) -> Widget {
     pcol.append(&artist);
     pcol.append(&ctl);
     pcol.append(&progress);
-    player.append(&art);
+    // the art, play/pause over it while the widget is two cells wide
+    let cover = gtk4::Overlay::new();
+    cover.set_child(Some(&art));
+    let play2 = gtk4::Button::from_icon_name("media-playback-start-symbolic");
+    play2.add_css_class("round");
+    play2.add_css_class("art-play");
+    play2.set_halign(gtk4::Align::Center);
+    play2.set_valign(gtk4::Align::Center);
+    play2.set_visible(false);
+    play2.connect_clicked(|_| media("play-pause"));
+    cover.add_overlay(&play2);
+    player.append(&cover);
     player.append(&pcol);
 
     let badge = gtk4::Box::new(Orientation::Horizontal, 6);
@@ -70,8 +82,17 @@ pub fn player(_: &Ctx) -> Widget {
         glib::ControlFlow::Continue
     });
     let last_art = RefCell::new(String::new());
+    let (pc, a2, p3) = (pcol.clone(), art.clone(), play2.clone());
+    let size = move |w: u8, _h: u8| {
+        let small = w < 3;
+        pc.set_visible(!small);
+        p3.set_visible(small);
+        a2.set_hexpand(small);
+        a2.set_vexpand(small);
+    };
     Widget {
         face: Some(face),
+        size: Box::new(size),
         ..Widget::new(&player.clone(), None, move |st| {
             let m = &st["media"];
             let has = !s(m, &["name"]).is_empty();
@@ -92,7 +113,11 @@ pub fn player(_: &Ctx) -> Widget {
             btitle.set_text(t);
             artist.set_text(s(m, &["artist"]));
             artist.set_visible(!s(m, &["artist"]).is_empty());
-            play.set_icon_name(if playing { "media-playback-pause-symbolic" } else { "media-playback-start-symbolic" });
+            let icon = if playing { "media-playback-pause-symbolic" } else { "media-playback-start-symbolic" };
+            play.set_icon_name(icon);
+            play2.set_icon_name(icon);
+            let who = s(m, &["artist"]);
+            player.set_tooltip_text(Some(&if who.is_empty() { t.to_string() } else { format!("{t} — {who}") }));
             prev.set_sensitive(m["canPrev"].as_bool().unwrap_or(false));
             next.set_sensitive(m["canNext"].as_bool().unwrap_or(false));
             let len = m["length"].as_i64().unwrap_or(0);

@@ -71,6 +71,9 @@ separator { background: @rule; margin: 4px; min-height: 1px; min-width: 1px; }
 .battery { background: @raised; border: 1px solid @rule; border-radius: 6px; padding: 0 14px; min-height: 40px; }
 .badge { background: @accent; color: @ink; border-radius: 6px; min-width: 32px; min-height: 32px; }
 .art { border-radius: 6px; }
+/* play/pause over the art, the player two cells wide */
+button.art-play { background: rgba(0, 0, 0, 0.55); min-width: 40px; min-height: 40px; border-radius: 9999px; padding: 0; }
+button.art-play image { color: #ffffff; }
 
 button.round { background: @raised; border: 1px solid @rule; border-radius: 6px; min-width: 40px; min-height: 40px; }
 button.arrow, button.flat-round { border-radius: 6px; min-width: 32px; min-height: 32px; }
