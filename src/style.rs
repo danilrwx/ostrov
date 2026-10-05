@@ -97,6 +97,7 @@ button.chip, togglebutton.chip { background: @raised; border: 1px solid @rule; b
 .toggle-main { padding: 0 6px 0 14px; border-radius: 6px; }
 .toggle-main:hover { background: @raised; }
 .toggle-title { font-weight: bold; }
+.toggle-glyph { font-weight: bold; min-width: 16px; }
 .toggle-sub { color: @dim; font-size: 8.5pt; }
 button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radius: 0 6px 6px 0; }
 .toggle.on button.toggle-side { border-left-color: alpha(@ink, 0.22); }

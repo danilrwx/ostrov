@@ -210,6 +210,8 @@ pub struct Toggle {
     col: gtk4::Box,
     sub: gtk4::Label,
     side: Option<gtk4::Button>,
+    /// a word or a flag in the icon's place (glyph), the icon hidden while it shows
+    glyph: gtk4::Label,
 }
 
 impl Toggle {
@@ -223,6 +225,9 @@ impl Toggle {
         let bx = gtk4::Box::new(Orientation::Horizontal, 10);
         let img = gtk4::Image::from_icon_name(icon);
         bx.append(&img);
+        let glyph = label("", "toggle-glyph");
+        glyph.set_visible(false);
+        bx.append(&glyph);
         let col = gtk4::Box::new(Orientation::Vertical, 0);
         col.set_valign(Align::Center);
         let t = label(title, "toggle-title");
@@ -248,7 +253,14 @@ impl Toggle {
         let face = gtk4::Image::from_icon_name(icon);
         face.set_tooltip_text(Some(title));
         let active = Rc::new(std::cell::Cell::new(false));
-        Toggle { root, icon: img, face, active, title: title.into(), inner: bx, col, sub, side }
+        Toggle { root, icon: img, face, active, title: title.into(), inner: bx, col, sub, side, glyph }
+    }
+
+    /// A word or a flag shown in the icon's place ("" the icon again): the keyboard layout's EN or 🇺🇸.
+    pub fn glyph(&self, text: &str) {
+        self.glyph.set_text(text);
+        self.glyph.set_visible(!text.is_empty());
+        self.icon.set_visible(text.is_empty());
     }
 
     pub fn set(&self, on: bool, icon: &str, sub: &str) {

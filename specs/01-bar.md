@@ -13,7 +13,7 @@
 | BAR-9 | IF the bar was peeked and the workspace changed, THEN it SHALL hide again once Super is released, never stay stuck (2026-10-03: «после смены столов бар залипает») | ✅ | `src/bar/mod.rs` |
 | BAR-10 | ostrov SHALL put a bar on every monitor, or the primary alone, or the ones named, following monitors plugged and unplugged (2026-10-03: «мультимонитор хочется») | ✅ | `src/bars.rs`, `[bar] monitors` |
 | BAR-11 | The tray SHALL show StatusNotifier items with their menus; a right click SHALL open the item's menu (Discord's too), with the bar's padding (2026-10-01, 2026-10-03) | ✅ | `src/bar/tray.rs` |
-| BAR-12 | The keyboard layout block SHALL be white like the other texts, and switch the layout on click (2026-10-03) | ✅ | `src/bar/mod.rs` |
+| BAR-12 | The keyboard layout block SHALL be white like the other texts, and switch the layout on click (2026-10-03) | ✅ | the `layout` block is the keymap widget by itself (07 KBD-1) |
 | BAR-13 | The privacy block SHALL show while the mic or the camera is in use or the screen is shared; its menu SHALL mute the mic, turn an app's camera off, stop a share (2026-10-04) | ✅ | `src/bar/privacy.rs` |
 | BAR-14 | WHEN the battery is below 30%, its icon SHALL turn gradually red, fully red at 10% (2026-10-03) | 🚫 | the owner is fine with UPower's icon as is (2026-10-05) |
 | BAR-15 | WHEN the pointer is over the battery, its tooltip SHALL say the time left, as UPower reckons it (2026-10-03) | ✅ | `src/modules/battery/widget.rs`, `ui::battery_time` |

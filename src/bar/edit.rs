@@ -24,7 +24,6 @@ use crate::style::label;
 const BLOCKS: &[(&str, &str, &str)] = &[
     ("workspaces", "Workspaces", "view-grid-symbolic"),
     ("window", "Window Title", "window-new-symbolic"),
-    ("layout", "Keyboard Layout", "input-keyboard-symbolic"),
     ("tray", "Tray", "application-x-addon-symbolic"),
     ("privacy", "Privacy", "camera-web-symbolic"),
 ];
@@ -50,6 +49,7 @@ fn named(id: &str) -> (String, String) {
     let id = match id {
         "status" => "panel.control",
         "clock" => "panel.calendar",
+        "layout" => "widget.keymap",
         n => n,
     };
     if let Some(w) = id.strip_prefix("widget.") {

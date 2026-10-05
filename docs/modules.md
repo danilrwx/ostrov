@@ -65,8 +65,12 @@ step, the OSD); its slider `brightness` (8×1).
 
 ## Keyboard layout — `keymap`
 
-Hyprland's main keyboard's layout, kicked on every switch; the bar's `layout` block shows it and switches it on a
-click.
+Hyprland's main keyboard's layouts (`input:kb_layout`, us,ru) and the active one, kicked on every switch.
+`ostrov keymap next`, `ostrov keymap set N` (0 the first). Its widget `keymap` (1×1 to the whole width): the layout
+in the icon's place, its name beside it, a click the next layout, its menu every layout; in the bar by itself as
+`widget.keymap` (the `layout` block is it), a left click the next layout, a right click the menu.
+`[widget.keymap] show` says how the layout shows: `language` (EN, RU, the default), `flag` (🇺🇸 🇷🇺) or `code`
+(us, ru).
 
 ## Now Playing — `media`
 

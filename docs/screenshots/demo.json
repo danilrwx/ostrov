@@ -18,7 +18,7 @@
       {"address": "00:11:22:33:44:02", "connected": false, "icon": "input-keyboard", "name": "Keyboard", "paired": true}
     ]
   },
-  "keymap": "English (US)",
+  "keymap": {"name": "English (US)", "index": 0, "layouts": ["us", "ru"]},
   "media": {
     "name": "org.mpris.MediaPlayer2.demo", "identity": "Music", "title": "Song", "artist": "Artist", "art": "@COVER@",
     "playing": true, "position": 0, "length": 214000000, "canPrev": true, "canNext": true, "canPlay": true

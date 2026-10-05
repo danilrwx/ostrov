@@ -14,7 +14,6 @@ use crate::hub::Hub;
 use crate::popup::{Host, Popup, Side};
 
 pub mod edit;
-mod layout;
 mod panel;
 mod privacy;
 mod tray;
@@ -73,7 +72,8 @@ fn block(name: &str, cx: &Rc<Ctx>, side: Side) -> Option<Block> {
     Some(match name {
         "workspaces" => workspaces::build(cx),
         "window" => window::build(cx),
-        "layout" => layout::build(cx),
+        // the keyboard layout's widget, by its name from before it was one
+        "layout" => return widget::build(cx, "keymap", side),
         "privacy" => privacy::build(cx, side),
         "tray" => tray::build(cx),
         "status" => panel::build(cx, "control", side),
