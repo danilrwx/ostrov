@@ -295,7 +295,10 @@ fn hover_tips(host: &Rc<Host>) {
             tm2.borrow_mut().take();
             t2.set_text(&text);
             *sh2.borrow_mut() = text;
-            // under the pointer, kept within the window
+            // under the pointer, kept within the window; measured without its last place (its margins are in
+            // its size)
+            t2.set_margin_start(0);
+            t2.set_margin_top(0);
             let (_, nat) = t2.preferred_size();
             let left = (x as i32 + 8).min(win.width() - nat.width() - 8).max(0);
             t2.set_margin_start(left);
@@ -322,8 +325,10 @@ pub fn bubble(over: &gtk4::Widget, frac: f64, text: Option<&str>) {
     let b = &host.bubble;
     let (Some(text), Some(at)) = (text, over.compute_bounds(&host.win)) else { return b.set_visible(false) };
     b.set_text(text);
-    // measured shown: a hidden widget asks for nothing
+    // measured shown (a hidden widget asks for nothing) and without its last place (its margins are in its size)
     b.set_visible(true);
+    b.set_margin_start(0);
+    b.set_margin_top(0);
     let (_, nat) = b.preferred_size();
     // the knob's travel inside the track's rounded ends
     let inset = (at.height() / 2.0).max(4.0) as f64;
