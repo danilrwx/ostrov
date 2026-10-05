@@ -196,6 +196,22 @@ impl Bar {
                 }
         });
         cx.host.win.add_controller(click);
+        // a right click on the bar beside its blocks: its editor
+        let right = gtk4::GestureClick::new();
+        right.set_button(3);
+        let b = Rc::downgrade(&bar);
+        right.connect_released(move |g, _, x, y| {
+            let (Some(b), Some(w)) = (b.upgrade(), g.widget().filter(|_| y < crate::popup::bar() as f64)) else { return };
+            let hit = w.pick(x, y, gtk4::PickFlags::DEFAULT);
+            let on_block = b.blocks.borrow().iter().any(|(_, k)| hit.as_ref().is_some_and(|h| h.is_ancestor(&k.widget) || *h == k.widget));
+            if !on_block
+                && edit::is_open().is_none()
+                && let Err(e) = edit::start()
+            {
+                eprintln!("ostrov: bar: {e}");
+            }
+        });
+        cx.host.win.add_controller(right);
         bar
     }
 

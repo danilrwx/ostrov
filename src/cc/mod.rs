@@ -627,6 +627,25 @@ impl Panel {
         }
         widget.root.set_can_target(!self.editing.get());
 
+        // a gear in its menu's head to its settings, a widget's that has some
+        let plugin = key.strip_prefix("plugin.").and_then(|r| r.split('.').next()).map(|p| format!("plugin.{p}"));
+        let entry = [Some(format!("widget.{key}")), plugin].into_iter().flatten().find(|e| crate::settings::entry(e).is_some());
+        if let (Some(card), Some(entry)) = (widget.menu.as_ref(), entry)
+            && let Some(head) = card.first_child().and_downcast::<gtk4::Box>()
+        {
+            let gear = gtk4::Button::from_icon_name("emblem-system-symbolic");
+            gear.add_css_class("flat-round");
+            gear.set_tooltip_text(Some(t("Settings")));
+            gear.set_hexpand(true);
+            gear.set_halign(Align::End);
+            let me = Rc::downgrade(self);
+            gear.connect_clicked(move |_| {
+                if let Some(p) = me.upgrade() {
+                    p.open_page("settings", Some(&entry));
+                }
+            });
+            head.append(&gear);
+        }
         let menu = widget.menu.as_ref().map(|card| {
             let r = gtk4::Revealer::new();
             r.set_transition_type(gtk4::RevealerTransitionType::SlideDown);
@@ -1122,6 +1141,11 @@ impl Panel {
             }
         }
         self.gallery.append(&width);
+        // its name and icon
+        let own = gtk4::Expander::new(Some(t("Panel Settings")));
+        let schema = crate::settings::panel_schema(&self.spec.id, &self.spec.name, &self.spec.icon, None);
+        own.set_child(Some(&crate::settings::form::form(&schema)));
+        self.gallery.append(&own);
         self.gallery.append(&label(t("Add Widgets"), "title"));
         let mut on: Vec<String> = self.items.borrow().iter().map(|i| i.key.clone()).collect();
         on.extend(hidden);
@@ -1248,6 +1272,25 @@ thread_local! {
 }
 
 /// A panel built, by its id.
+/// A bar's block's settings: a panel's (its name, icon and width), a widget's own (a module's, a KDL file's, its
+/// plugin's); None for one without (the workspaces, the tray).
+pub fn block_settings(name: &str) -> Option<crate::settings::Schema> {
+    let name = match name {
+        "status" => "panel.control",
+        "clock" => "panel.calendar",
+        "layout" => "widget.keymap",
+        n => n,
+    };
+    if let Some(id) = name.strip_prefix("panel.") {
+        let spec = Spec::of(id);
+        let cols = panel(id).map_or_else(|| cols_of(&spec), |p| p.cols.get());
+        return Some(crate::settings::panel_schema(id, &spec.name, &spec.icon, Some(cols)));
+    }
+    let w = name.strip_prefix("widget.")?;
+    let plugin = w.strip_prefix("plugin.").and_then(|r| r.split('.').next()).map(|p| format!("plugin.{p}"));
+    crate::settings::entry(&format!("widget.{w}")).or_else(|| plugin.and_then(|p| crate::settings::entry(&p))).map(|e| e.schema)
+}
+
 pub fn panel(id: &str) -> Option<Rc<Panel>> {
     PANELS.with(|p| p.borrow().iter().find(|p| p.spec.id == id).cloned())
 }
@@ -1402,6 +1445,15 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     p.faces();
     p.drags();
     PANELS.with(|ps| ps.borrow_mut().push(p.clone()));
+    // its width set in a form (the bar's editor's, Settings') taken at once
+    let w = Rc::downgrade(&p);
+    crate::style::on_config(move || {
+        let Some(p) = w.upgrade() else { return };
+        let set = crate::config::load().panels.get(&p.spec.id).and_then(|c| c.cols).map(|n| n.clamp(MIN_COLS, MAX_COLS));
+        if let Some(n) = set.filter(|n| *n != p.cols.get()) {
+            p.set_cols(n);
+        }
+    });
 
     let me = Rc::downgrade(&p);
     edit_button.connect_clicked(move |_| {

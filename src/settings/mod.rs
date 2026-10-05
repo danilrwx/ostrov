@@ -400,12 +400,7 @@ fn own() -> Vec<Entry> {
     let bar = crate::config::Bar::default();
     vec![
         e("appearance", "Appearance", "preferences-desktop-appearance-symbolic", appearance()),
-        e("bar", "Bar", "view-continuous-symbolic", vec![Section::new("bar", "Bar", vec![
-            Field::new("left", "Left", Kind::List).default(bar.left).help(blocks),
-            Field::new("center", "Middle", Kind::List).default(bar.center),
-            Field::new("right", "Right", Kind::List).default(bar.right),
-        ])
-        .help("The bar's blocks from left to right; taken at ostrov's start.")]),
+        e("bar", "Bar", "view-continuous-symbolic", bar_schema(&bar, blocks).sections),
         e("idle", "Idle", "preferences-system-time-symbolic", vec![Section::new("idle", "Idle", vec![
             Field::new("lock", "Lock after", Kind::Duration)
                 .default(600)
@@ -462,10 +457,6 @@ pub fn appearance() -> Vec<Section> {
             .default("")
             .help("Under everything that opens; empty: the theme's."),
         Field::new("opacity", "Surface opacity", slider(0.05, 1.0, 0.05)).default(0.75),
-        Field::new("bar_color", "Bar colour", Kind::Color).default("").help("Empty: the theme's."),
-        Field::new("bar_opacity", "Bar opacity", slider(0.0, 1.0, 0.05))
-            .default(crate::modules::wallpaper::service::bar_alpha())
-            .help("Unset, 0.65 over a wallpaper and solid over none."),
         Field::new("radius", "Corner radius", slider(0.0, 20.0, 1.0))
             .default(theme.radius.unwrap_or(10))
             .help("A surface's; what is on it 4 less."),
@@ -493,11 +484,57 @@ pub fn appearance() -> Vec<Section> {
             .default(11.0)
             .help("In points; the rest sized from it."),
         Field::new("icon_size", "Icon size", slider(10.0, 32.0, 1.0)).default(16),
-        Field::new("bar_icon_size", "Bar's icon size", slider(10.0, 32.0, 1.0)).default(14),
-        Field::new("bar_padding", "Bar's block padding", slider(0.0, 24.0, 1.0)).default(10),
-        Field::new("bar_spacing", "Bar's icon gap", slider(0.0, 24.0, 1.0)).default(7),
-        Field::new("bar_height", "Bar's height", slider(18.0, 48.0, 1.0)).default(25),
     ])]
+}
+
+/// The bar's settings: how it looks ([appearance]'s bar_*), the monitors it is on, its blocks (the bar's editor
+/// lays those out by dragging; here as lists).
+pub fn bar_schema(bar: &crate::config::Bar, blocks: &str) -> Schema {
+    let mut s = bar_look();
+    s.sections[1].title = "Monitors and blocks".into();
+    s.sections[1].fields.extend([
+        Field::new("left", "Left", Kind::List).default(bar.left.clone()).help(blocks),
+        Field::new("center", "Middle", Kind::List).default(bar.center.clone()),
+        Field::new("right", "Right", Kind::List).default(bar.right.clone()),
+    ]);
+    s
+}
+
+/// The bar's look and its monitors, without its blocks (the editor's to lay out).
+pub fn bar_look() -> Schema {
+    let slider = |min, max, step| Kind::Number { min, max, step, slider: true };
+    let opt = |v: &str, l: &str| Opt::Labeled { value: v.into(), label: l.into() };
+    Schema { sections: vec![
+        Section::new("appearance", "Look", vec![
+            Field::new("bar_height", "Height", slider(18.0, 48.0, 1.0)).default(25),
+            Field::new("bar_padding", "Block padding", slider(0.0, 24.0, 1.0)).default(10),
+            Field::new("bar_spacing", "Icon gap", slider(0.0, 24.0, 1.0)).default(7),
+            Field::new("bar_icon_size", "Icon size", slider(10.0, 32.0, 1.0)).default(14),
+            Field::new("bar_color", "Colour", Kind::Color).default("").help("Empty: the theme's."),
+            Field::new("bar_opacity", "Opacity", slider(0.0, 1.0, 0.05))
+                .default(crate::modules::wallpaper::service::bar_alpha())
+                .help("Unset, 0.65 over a wallpaper and solid over none."),
+        ]),
+        Section::new("bar", "Monitors", vec![
+            Field::new("monitors", "On", Kind::Choice { options: vec![opt("all", "Every monitor"), opt("primary", "The primary alone")] })
+                .default("all")
+                .help("Taken at ostrov's start."),
+        ]),
+    ] }
+}
+
+/// A panel's settings, [panels.ID]: its name and icon in the bar (at ostrov's start), its width in cells (at once).
+/// cols: its width too (not where Edit's Width row is).
+pub fn panel_schema(id: &str, name: &str, icon: &str, cols: Option<u8>) -> Schema {
+    let key = format!("panels.{id}");
+    let mut fields = vec![
+        Field::new("name", "Name", Kind::String).default(name).help("Its tooltip and title; at ostrov's start."),
+        Field::new("icon", "Icon", Kind::String).default(icon).help("An icon's name, view-grid-symbolic; at ostrov's start."),
+    ];
+    if let Some(c) = cols {
+        fields.push(Field::new("cols", "Width in cells", Kind::Number { min: 4.0, max: 12.0, step: 1.0, slider: true }).default(c));
+    }
+    Schema { sections: vec![Section::new(&key, name, fields)] }
 }
 
 #[cfg(test)]

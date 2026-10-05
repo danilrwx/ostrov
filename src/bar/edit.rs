@@ -135,6 +135,25 @@ fn current() -> Option<Rc<Edit>> {
     EDIT.with(|e| e.borrow().clone())
 }
 
+/// Whether the editor is open.
+pub fn is_open() -> Option<()> {
+    current().map(drop)
+}
+
+/// The editor opened with a block picked, its inspector shown (`ostrov bar edit BLOCK`).
+pub fn start_at(block: &str) -> Result<(), String> {
+    if current().is_none() {
+        start()?;
+    }
+    let e = current().ok_or("the bar's editor did not open")?;
+    if !e.layout.borrow().iter().flatten().any(|n| n == block) {
+        return Err(format!("no block {block} in the bar"));
+    }
+    *e.picked.borrow_mut() = Some(block.to_string());
+    e.redraw();
+    Ok(())
+}
+
 /// The editor opened on the focused monitor's bar; open already, cancelled.
 pub fn start() -> Result<(), String> {
     if current().is_some() {
@@ -398,11 +417,66 @@ impl Edit {
         self.apply(new);
     }
 
+    /// A picked block's inspector: its title, its settings (a panel's name, icon and width; a widget's own), off the
+    /// bar, a panel edited; back to the gallery.
+    fn inspect(&self, name: &str) {
+        let (title, icon) = named(name);
+        let head = gtk4::Box::new(Orientation::Horizontal, 8);
+        let back = gtk4::Button::from_icon_name("go-previous-symbolic");
+        back.add_css_class("flat-round");
+        back.set_tooltip_text(Some(t("Back")));
+        back.connect_clicked(|_| {
+            if let Some(e) = current() {
+                *e.picked.borrow_mut() = None;
+                e.redraw();
+            }
+        });
+        head.append(&back);
+        head.append(&gtk4::Image::from_icon_name(&icon));
+        head.append(&label(&title, "title"));
+        self.shelf.append(&head);
+        match crate::cc::block_settings(name) {
+            Some(schema) => self.shelf.append(&crate::settings::form::form(&schema)),
+            None => self.shelf.append(&label(t("Nothing to set"), "dim")),
+        }
+        let acts = gtk4::Box::new(Orientation::Horizontal, 6);
+        let off = gtk4::Button::with_label(t("Take Off the Bar"));
+        off.add_css_class("chip");
+        let n = name.to_string();
+        off.connect_clicked(move |_| {
+            if let Some(e) = current() {
+                *e.picked.borrow_mut() = None;
+                let layout = e.layout.borrow().clone();
+                e.apply(moved(&layout, &n, None));
+            }
+        });
+        acts.append(&off);
+        let panel = match name {
+            "status" => Some("control"),
+            "clock" => Some("calendar"),
+            n => n.strip_prefix("panel."),
+        };
+        if let Some(id) = panel.map(String::from) {
+            let edit = gtk4::Button::with_label(t("Edit the Panel"));
+            edit.add_css_class("chip");
+            edit.connect_clicked(move |_| {
+                finish(true);
+                if let Some(p) = crate::cc::panel(&id) {
+                    p.open_menu("edit");
+                }
+            });
+            acts.append(&edit);
+        }
+        self.shelf.append(&acts);
+    }
+
     /// The keys: Tab picks the next block, Shift+arrows move it, Delete takes it off, Enter Done, Escape Cancel.
     /// Left to an entry while one has the focus (the new panel's name).
     fn key(&self, key: gdk::Key, mods: gdk::ModifierType) -> glib::Propagation {
         let focus = gtk4::prelude::GtkWindowExt::focus(&self.host.win);
-        if focus.is_some_and(|f: gtk4::Widget| f.is::<gtk4::Text>() || f.is::<gtk4::Entry>()) {
+        // the gallery's or an inspector's form worked as forms are, Escape aside
+        let in_form = focus.as_ref().is_some_and(|f| f.is_ancestor(&self.shelf));
+        if key != gdk::Key::Escape && (in_form || focus.is_some_and(|f: gtk4::Widget| f.is::<gtk4::Text>() || f.is::<gtk4::Entry>())) {
             return glib::Propagation::Proceed;
         }
         let layout = self.layout.borrow().clone();
@@ -459,6 +533,14 @@ impl Edit {
             }
         }
         crate::style::clear(&self.shelf);
+        // a block picked: its settings in the gallery's place
+        if let Some(name) = picked {
+            return self.inspect(&name);
+        }
+        // the bar's own settings, folded
+        let look = gtk4::Expander::new(Some(t("Bar Settings")));
+        look.set_child(Some(&crate::settings::form::form(&crate::settings::bar_look())));
+        self.shelf.append(&look);
         let placed = |id: &str| layout.iter().flatten().any(|p| p == id || named(p).0 == named(id).0);
         for (title, ids) in every() {
             let ids: Vec<String> = ids.into_iter().filter(|id| !placed(id)).collect();

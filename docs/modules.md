@@ -139,9 +139,15 @@ where free unless `[hyprland] rules`/`binds` say no; `[hyprland.keys]` moves one
 
 ## Outside the modules
 
-- **The bar's editor** (`ostrov bar edit`, or Bar in Settings): the bar's parts outlined and a gallery of the
-  blocks not in it under the bar; drag a block into a part, along it or off the bar, Tab, Shift+arrows and Delete
-  from the keyboard; Done writes `[bar]` and every bar follows at once, Cancel or Escape puts it back.
+- **The bar's editor** (`ostrov bar edit`, a right click on the bar beside its blocks, or Bar in Settings): the
+  bar's parts outlined and a gallery of the blocks not in it under the bar, the bar's own settings folded above it
+  (height, padding, icon gap and size, colour, opacity, monitors); drag a block into a part, along it or off the
+  bar, Tab, Shift+arrows and Delete from the keyboard. A click on a block (or `ostrov bar edit BLOCK`) shows its
+  settings in the gallery's place: a panel's name, icon and width, with Edit the Panel; a widget's own (the
+  keyboard layout's flag or letters); Take Off the Bar. Done writes `[bar]` and every bar follows at once, Cancel
+  or Escape puts it back.
+- **Settings from where they are**: a widget's menu has a gear in its head to its settings; a panel's Edit has its
+  settings (name, icon) folded over the gallery and a tile's own in its inspector.
 - **Launcher** (`ostrov run`): apps, arithmetic calculated as typed, `:` emoji, `/` files, `s ` a web search
   (`[launcher] search`, DuckDuckGo by default), engines by prefix (`[launcher] engines`), plugins' modes.
 - **Clipboard** (`ostrov clip`): text and pictures, password managers' entries left out.

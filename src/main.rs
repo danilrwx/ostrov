@@ -65,7 +65,7 @@ const FORMS: &[&str] = &[
     "panel", "menu NAME", "settings [SECTION]", "appearance", "calendar", "run", "clip",
     "lock", "dnd [on|off]", "notifications clear", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region",
     "share-pick [--allow-token]",
-    "bar toggle|peek|unpeek|edit", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
+    "bar toggle|peek|unpeek|edit", "bar edit BLOCK", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
     "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID", "plugin catalogue",
     "theme list", "theme set ID", "theme install PATH|GIT-URL", "theme remove ID",
     "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor", "welcome",
@@ -170,6 +170,7 @@ fn activate(app: &gtk4::Application) {
                 ["capture", path] => shot::capture(path.to_string()),
                 ["key", name] => keys.key(name)?,
                 ["bar", "edit"] => bar::edit::start()?,
+                ["bar", "edit", block] => bar::edit::start_at(block)?,
                 ["bar", what @ ("toggle" | "peek" | "unpeek")] => {
                     let docked = !host.docked.get();
                     for (h, ..) in bars.all.borrow().iter() {
