@@ -3,6 +3,7 @@
 //! until it lets go, gtk4-session-lock) and ostrov's PAM profile (login's auth). ostrov lock: $mod+Shift+x,
 //! the quick settings' button (loginctl lock-session), idle.rs on idle and before sleep.
 
+use std::cell::{Cell, RefCell};
 use std::ffi::{c_char, c_int, c_void, CString};
 use std::rc::Rc;
 
@@ -12,10 +13,47 @@ use gtk4_session_lock::Instance;
 
 pub struct Lock {
     inst: Instance,
+    /// a lock asked and waiting for the screen to be taken first
+    pending: Cell<bool>,
+}
+
+thread_local! {
+    /// the screen as it was as the lock came, its ground with [lock] background = "blur"; let go at the unlock
+    static SHOT: RefCell<Option<gtk4::gdk::Texture>> = const { RefCell::new(None) };
 }
 
 impl Lock {
-    pub fn lock(&self) {
+    pub fn lock(self: &Rc<Self>) {
+        if self.inst.is_locked() || self.pending.get() {
+            return;
+        }
+        if crate::config::load().lock.background != "blur" {
+            return self.now();
+        }
+        // the screen taken off GTK's thread, the lock coming once it is (a second at most: else on black)
+        self.pending.set(true);
+        let (tx, rx) = async_channel::bounded(1);
+        std::thread::spawn(move || {
+            let f = crate::shot::Screen::open().and_then(|mut s| s.frame(None, false));
+            let _ = tx.send_blocking(f);
+        });
+        let me = self.clone();
+        glib::spawn_future_local(async move {
+            let timeout = glib::timeout_future(std::time::Duration::from_secs(1));
+            let frame = futures_util::future::select(Box::pin(rx.recv()), timeout).await;
+            if let futures_util::future::Either::Left((Ok(Ok(f)), _)) = frame {
+                let tex = f.crop((0, 0, f.width, f.height)).map(|rows| {
+                    gtk4::gdk::MemoryTexture::new(f.width as i32, f.height as i32, f.format, &glib::Bytes::from_owned(rows), (f.width * 4) as usize)
+                        .upcast::<gtk4::gdk::Texture>()
+                });
+                SHOT.with(|s| *s.borrow_mut() = tex);
+            }
+            me.pending.set(false);
+            me.now();
+        });
+    }
+
+    fn now(&self) {
         if !self.inst.is_locked() {
             let _ = std::fs::write(marker(), "");
             self.inst.lock();
@@ -46,12 +84,25 @@ pub fn build(app: &gtk4::Application) -> Rc<Lock> {
         ground.set_vexpand(true);
         let f = face(inst);
         f.set_vexpand(true);
-        ground.append(&f);
+        // the screen as it was, blurred and darkened, under the face ([lock] background = "blur")
+        match SHOT.with(|s| s.borrow().clone()) {
+            Some(tex) => {
+                let over = gtk4::Overlay::new();
+                let pic = gtk4::Picture::for_paintable(&tex);
+                pic.set_content_fit(gtk4::ContentFit::Cover);
+                pic.add_css_class("lock-shot");
+                over.set_child(Some(&pic));
+                over.add_overlay(&f);
+                over.set_vexpand(true);
+                ground.append(&over);
+            }
+            None => ground.append(&f),
+        }
         win.set_child(Some(&ground));
         inst.assign_window_to_monitor(&win, monitor);
         win.present();
     });
-    let lock = Rc::new(Lock { inst });
+    let lock = Rc::new(Lock { inst, pending: Cell::new(false) });
     if marker().exists() {
         lock.lock();
     }
@@ -64,7 +115,10 @@ pub fn build(app: &gtk4::Application) -> Rc<Lock> {
 fn opaque() {
     let Some(display) = gtk4::gdk::Display::default() else { return };
     let css = gtk4::CssProvider::new();
-    css.load_from_string("window.lock, .lock-ground { background-color: #000000; background-image: none; opacity: 1; }");
+    css.load_from_string(
+        "window.lock, .lock-ground { background-color: #000000; background-image: none; opacity: 1; }\n\
+         .lock-shot { filter: blur(40px) brightness(0.55); }",
+    );
     gtk4::style_context_add_provider_for_display(&display, &css, gtk4::STYLE_PROVIDER_PRIORITY_USER + 100);
 }
 
@@ -109,6 +163,7 @@ fn face(inst: &Instance) -> gtk4::Box {
             if ok {
                 error.set_text("");
                 inst.unlock();
+                SHOT.with(|s| s.borrow_mut().take());
                 crate::events::emit("unlock", serde_json::json!({}));
                 let _ = std::fs::remove_file(marker());
             } else {

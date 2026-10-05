@@ -101,3 +101,8 @@
 "The directory whose JPEG, PNG and WebP pictures the menu lists." = "Каталог, чьи изображения JPEG, PNG и WebP показывает меню."
 "On a change, run" = "При смене запускать"
 "A command run after every pick, the picture in $OSTROV_WALLPAPER (empty: none), for what else follows it." = "Команда после каждого выбора, изображение — в $OSTROV_WALLPAPER (пусто — ничего); для того, что подстраивается под обои."
+"Lock screen" = "Экран блокировки"
+"Ground" = "Фон"
+"Black" = "Чёрный"
+"The screen, blurred" = "Экран, размытый"
+"Blurred: the screen as it was taken as the lock comes, darkened under the clock." = "Размытый: экран, каким он был в момент блокировки, затемнённый под часами."

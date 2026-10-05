@@ -407,7 +407,15 @@ fn own() -> Vec<Entry> {
                 .help("Idle time to the lock screen; 0 never."),
             Field::new("screens_off", "Screens off after", Kind::Duration).default(900).help("0 never."),
         ])
-        .help("Taken at ostrov's start.")]),
+        .help("Taken at ostrov's start."),
+        Section::new("lock", "Lock screen", vec![
+            Field::new("background", "Ground", Kind::Choice { options: vec![
+                Opt::Labeled { value: "black".into(), label: "Black".into() },
+                Opt::Labeled { value: "blur".into(), label: "The screen, blurred".into() },
+            ] })
+            .default("black")
+            .help("Blurred: the screen as it was taken as the lock comes, darkened under the clock."),
+        ])]),
         e("notifications", "Notifications", "preferences-system-notifications-symbolic", vec![Section::new(
             "notifications",
             "Notifications",

@@ -18,3 +18,5 @@
 | SEC-1 | Secrets (a plugin's token) SHALL go to the Secret Service, never to the config file (2026-10-04) | ✅ | `src/settings/secret.rs` |
 | SEC-2 | The power menu SHALL suspend, restart, power off and log out (2026-10-04) | ✅ | `src/modules/system/widget.rs` |
 | SEC-3 | WHEN restart, power off or log out is picked, ostrov SHALL ask first in its dialog: open apps close, unsaved work is lost (2026-10-05) | ✅ | `src/modules/system/widget.rs` `confirm()`; switching the user was not asked for |
+| LOCK-3 | The lock screen SHALL be opaque whatever the theme, palette or [colors] say (2026-10-05: «лок скрин был прозрачный») | ✅ | its own black ground and a top-priority style (`lock.rs` opaque); the cause seen once not found |
+| LOCK-4 | WHERE `[lock] background = "blur"`, the lock's ground SHALL be the screen as it was, blurred and darkened; black where the screen cannot be taken in a second (2026-10-05) | ✅ | `lock.rs` SHOT, `.lock-shot` |

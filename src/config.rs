@@ -212,6 +212,20 @@ pub struct Config {
     pub panels: BTreeMap<String, PanelSpec>,
     pub hyprland: Hyprland,
     pub polkit: Polkit,
+    pub lock: LockCfg,
+}
+
+/// The lock screen's ground: black, or the screen as it was, blurred and darkened under the clock.
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct LockCfg {
+    pub background: String,
+}
+
+impl Default for LockCfg {
+    fn default() -> LockCfg {
+        LockCfg { background: "black".into() }
+    }
 }
 
 /// Whether ostrov is the session's polkit agent (polkit.rs): false leaves it to another (hyprpolkitagent, ...).
@@ -279,6 +293,7 @@ mod tests {
         assert_eq!((c.appearance.theme, c.appearance.opacity, c.appearance.radius), (d.appearance.theme, 0.75, None));
         assert_eq!(c.notifications.games, d.notifications.games);
         assert_eq!(c.launcher.search, d.launcher.search);
+        assert_eq!(c.lock.background, d.lock.background);
         assert!(c.hyprland.rules && c.hyprland.binds && c.hyprland.keys.is_empty() && c.panels.is_empty());
     }
 

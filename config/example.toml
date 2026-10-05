@@ -29,6 +29,9 @@ lock = 600
 screens_off = 900
 
 # The look. Applied as the file is saved; the Appearance page (the palette beside Edit) edits it.
+[lock]
+background = "black"    # the lock screen's ground: black, or blur (the screen as it was, blurred and darkened)
+
 [appearance]
 theme = "dark"          # dark, light, graphite, nord, solarized, or an installed one (`ostrov theme list`)
 accent = ""             # a colour (#5e81ac, rgb(94, 129, 172), a name); "" the theme's own
