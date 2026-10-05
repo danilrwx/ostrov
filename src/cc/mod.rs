@@ -334,9 +334,9 @@ fn toward(sizes: &[(u8, u8)], (w, h): (u8, u8), (dw, dh): (f64, f64)) -> (u8, u8
     best.0
 }
 
-/// A panel's layout as panel.toml has it (widgets unknown dropped, sizes not allowed made the nearest allowed),
-/// else its spec's; the widgets in the bar alone, where they were; and when its badges show where it says.
-fn load(reg: &[Meta], spec: &Spec, cols: u8) -> (Vec<Item>, Vec<Item>, HashMap<String, Show>) {
+/// A panel's layout of eight as panel.toml has it (widgets unknown dropped, sizes not allowed made the nearest
+/// allowed), else its spec's; the widgets in the bar alone, where they were; and when its badges show where it says.
+fn load(reg: &[Meta], spec: &Spec) -> (Vec<Item>, Vec<Item>, HashMap<String, Show>) {
     let mut saved = read_saved().unwrap_or_default();
     let placed = saved.remove(&spec.id).or_else(|| if spec.id == "control" { saved.remove("widget") } else { None });
     let mut shows = HashMap::new();
@@ -346,7 +346,7 @@ fn load(reg: &[Meta], spec: &Spec, cols: u8) -> (Vec<Item>, Vec<Item>, HashMap<S
             .into_iter()
             .filter_map(|p| {
                 let m = reg.iter().find(|m| m.id == p.id)?;
-                let (w, h) = nearest(&grid::fit(m.sizes, cols), p.w as i32, p.h as i32);
+                let (w, h) = nearest(m.sizes, p.w as i32, p.h as i32);
                 if let Some(b) = p.bar {
                     shows.insert(p.id.clone(), b);
                 }
@@ -361,14 +361,14 @@ fn load(reg: &[Meta], spec: &Spec, cols: u8) -> (Vec<Item>, Vec<Item>, HashMap<S
         // the spec's, of the widgets there are (a plugin or a KDL file gone, its place empty no more)
         None => {
             let mut l: Vec<Item> = spec.layout.iter().filter(|i| reg.iter().any(|m| m.id == i.key)).cloned().collect();
-            grid::rescale(&mut l, spec.cols, cols);
+            grid::rescale(&mut l, spec.cols, BASE);
             l
         }
     };
     let mut seen = std::collections::HashSet::new();
     items.retain(|i| seen.insert(i.key.clone()));
     hidden.retain(|i| seen.insert(i.key.clone()));
-    grid::settle(&mut items, cols);
+    grid::settle(&mut items, BASE);
     (items, hidden, shows)
 }
 
@@ -430,8 +430,9 @@ pub struct Panel {
     picked: RefCell<String>,
     edit_button: gtk4::Button,
     items: RefCell<Vec<Item>>,
-    /// its grid's width in cells
+    /// its grid's width in cells, and its layout as one of eight, what any width is laid out from
     cols: Cell<u8>,
+    base: RefCell<Vec<Item>>,
     /// the widgets in the bar alone, kept where they were on the grid (their badges' order)
     hidden: RefCell<Vec<Item>>,
     tiles: RefCell<HashMap<String, Tile>>,
@@ -473,7 +474,7 @@ impl Panel {
         *self.items.borrow_mut() = items;
         self.layout();
         self.faces();
-        save(&self.spec.id, &self.items.borrow(), &self.hidden.borrow(), &self.shows.borrow());
+        self.keep();
         Ok(())
     }
 
@@ -739,42 +740,49 @@ impl Panel {
     }
 
     /// The grid made n cells wide: its layout rescaled, the panel as wide, both saved.
-    fn set_cols(self: &Rc<Self>, n: u8) {
+    pub fn set_cols(self: &Rc<Self>, n: u8) {
         let n = n.clamp(MIN_COLS, MAX_COLS);
         let from = self.cols.replace(n);
         if from == n {
             return;
         }
-        grid::rescale(&mut self.items.borrow_mut(), from, n);
-        // sizes the grid's cells allow now
-        let fitted: Vec<(String, (u8, u8))> = self
-            .items
-            .borrow()
-            .iter()
-            .filter_map(|i| {
-                let m = self.reg.iter().find(|m| m.id == i.key)?;
-                Some((i.key.clone(), nearest(&self.sizes(m), i.w as i32, i.h as i32)))
-            })
-            .collect();
-        for it in self.items.borrow_mut().iter_mut() {
-            if let Some((_, (w, h))) = fitted.iter().find(|(k, _)| *k == it.key) {
-                (it.w, it.h) = (*w, *h);
-            }
+        // laid out anew from the layout of eight, the last one edited: back and forth, nothing drifts
+        let mut base = self.base.borrow().clone();
+        let mut was = base.clone();
+        grid::rescale(&mut was, BASE, from);
+        if was != *self.items.borrow() {
+            base = self.items.borrow().clone();
+            grid::rescale(&mut base, from, BASE);
+            *self.base.borrow_mut() = base.clone();
         }
-        grid::settle(&mut self.items.borrow_mut(), n);
+        grid::rescale(&mut base, BASE, n);
+        *self.items.borrow_mut() = base;
         self.popup.set_width(self.spec.width_for(n));
         if let Err(e) = crate::settings::write(&format!("panels.{}", self.spec.id), "cols", Some(&serde_json::json!(n)), true) {
             eprintln!("ostrov: panel: {e}");
         }
-        save(&self.spec.id, &self.items.borrow(), &self.hidden.borrow(), &self.shows.borrow());
+        save(&self.spec.id, &self.base.borrow(), &self.hidden.borrow(), &self.shows.borrow());
         self.layout();
         self.faces();
         self.fill_gallery();
     }
 
+    /// The layout as edited kept: as the layout of eight it is laid out from, and in panel.toml.
+    fn keep(&self) {
+        let mut base = self.items.borrow().clone();
+        grid::rescale(&mut base, self.cols.get(), BASE);
+        *self.base.borrow_mut() = base;
+        save(&self.spec.id, &self.base.borrow(), &self.hidden.borrow(), &self.shows.borrow());
+        // its width kept with it: a saved layout without one is taken for one from before widths, eight
+        let cols = serde_json::json!(self.cols.get());
+        if let Err(e) = crate::settings::write(&format!("panels.{}", self.spec.id), "cols", Some(&cols), true) {
+            eprintln!("ostrov: panel: {e}");
+        }
+    }
+
     fn set_editing(self: &Rc<Self>, on: bool) {
         if !on && self.editing.get() {
-            save(&self.spec.id, &self.items.borrow(), &self.hidden.borrow(), &self.shows.borrow());
+            self.keep();
         }
         self.editing.set(on);
         self.set_open("");
@@ -1167,6 +1175,8 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     pages.set_transition_type(gtk4::StackTransitionType::SlideLeftRight);
     pages.set_transition_duration(120);
     pages.set_vhomogeneous(false);
+    // as wide as the page shown: the grid's cells, not the widest page (Appearance's chips)
+    pages.set_hhomogeneous(false);
     pages.set_interpolate_size(true);
     col.append(&pages);
 
@@ -1182,7 +1192,8 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     let scroll = gtk4::ScrolledWindow::new();
     scroll.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::Automatic);
     scroll.set_propagate_natural_height(true);
-    scroll.set_propagate_natural_width(true);
+    // as wide as the panel's cells (the popup's width), not the widest tile's or gallery row's natural width
+    scroll.set_propagate_natural_width(false);
     scroll.set_child(Some(&body));
     page.append(&scroll);
     body.append(&grid);
@@ -1254,7 +1265,9 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     let cols = cols_of(&spec);
     let popup = Popup::new(host, tab, side, spec.width_for(cols), &col);
     let reg = registry();
-    let (items, hidden, shows) = load(&reg, &spec, cols);
+    let (base, hidden, shows) = load(&reg, &spec);
+    let mut items = base.clone();
+    grid::rescale(&mut items, BASE, cols);
     let face_icon = gtk4::Image::from_icon_name(&spec.icon);
     face_icon.set_tooltip_text(Some(&spec.name));
     let p = Rc::new(Panel {
@@ -1275,6 +1288,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         edit_button: edit_button.clone(),
         items: RefCell::new(items),
         cols: Cell::new(cols),
+        base: RefCell::new(base),
         hidden: RefCell::new(hidden),
         tiles: RefCell::default(),
         open: RefCell::default(),

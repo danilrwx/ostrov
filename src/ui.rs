@@ -32,7 +32,10 @@ pub fn row(icon: &str, text: &str, note: &str, on: bool, pick: impl Fn() + 'stat
     t.set_ellipsize(gtk4::pango::EllipsizeMode::End);
     bx.append(&t);
     if !note.is_empty() {
-        bx.append(&label(note, "dim"));
+        let n = label(note, "dim");
+        // a long note (a widget's sizes in the gallery) cut rather than widening what it is in
+        n.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+        bx.append(&n);
     }
     if on {
         bx.append(&gtk4::Image::from_icon_name("object-select-symbolic"));

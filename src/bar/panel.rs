@@ -10,7 +10,7 @@ use gtk4::prelude::*;
 use super::{pill, slot, Block, Ctx};
 use crate::popup::Side;
 
-const FORMS: &[&str] = &["menu NAME", "settings [SECTION]", "appearance", "size NAME W H", "edit [NAME]"];
+const FORMS: &[&str] = &["menu NAME", "settings [SECTION]", "appearance", "size NAME W H", "cols N", "edit [NAME]"];
 
 pub fn build(cx: &Rc<Ctx>, id: &str, side: Side) -> Block {
     let face = pill();
@@ -58,6 +58,11 @@ pub fn build(cx: &Rc<Ctx>, id: &str, side: Side) -> Block {
             ["size", key, w, h] => {
                 let (Ok(w), Ok(h)) = (w.parse(), h.parse()) else { return Err(crate::forms::usage("panel.ID", FORMS)) };
                 p.resize(key, w, h)?;
+                Ok(String::new())
+            }
+            // its grid's width in cells, as Edit's Width sets it
+            ["cols", n] => {
+                p.set_cols(n.parse().map_err(|_| crate::forms::usage("panel.ID", FORMS))?);
                 Ok(String::new())
             }
             // in the editing, the widget picked: its inspector, its settings

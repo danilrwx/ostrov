@@ -23,17 +23,17 @@ pub fn base(w: u8, cols: u8) -> u8 {
     if w >= cols { BASE } else { ((w as u32 * BASE as u32 + cols as u32 / 2) / cols as u32).max(1) as u8 }
 }
 
-/// A layout laid out for one width on another: across and wide in proportion, a whole-width item the whole width
-/// again; then settled.
+/// A layout laid out for one width on another: each item's left and right edges moved in proportion, so items side
+/// by side stay side by side (two halves two halves, on an odd width too); then settled.
 pub fn rescale(items: &mut Vec<Item>, from: u8, to: u8) {
     if from == to || from == 0 {
         return;
     }
-    let share = |v: u8| ((v as u32 * to as u32 + from as u32 / 2) / from as u32) as u8;
+    let edge = |v: u8| ((v as u32 * to as u32 + from as u32 / 2) / from as u32) as u8;
     for it in items.iter_mut() {
-        let whole = it.w >= from;
-        it.w = if whole { to } else { share(it.w).max(1) };
-        it.x = if whole { 0 } else { share(it.x) };
+        let (x, end) = (edge(it.x), edge((it.x + it.w).min(from)));
+        it.x = x.min(to - 1);
+        it.w = end.saturating_sub(x).max(1);
     }
     settle(items, to);
 }
@@ -174,6 +174,11 @@ mod tests {
         assert_eq!(g, vec![it("wifi", 0, 0, 3, 1), it("bt", 3, 0, 3, 1), it("bright", 0, 1, 6, 1)]);
         rescale(&mut g, 6, 8);
         assert_eq!(g, vec![it("wifi", 0, 0, 4, 1), it("bt", 4, 0, 4, 1), it("bright", 0, 1, 8, 1)]);
+        // an odd width: the halves split unevenly, side by side still, and back again
+        rescale(&mut g, 8, 5);
+        assert_eq!(g, vec![it("wifi", 0, 0, 3, 1), it("bt", 3, 0, 2, 1), it("bright", 0, 1, 5, 1)]);
+        rescale(&mut g, 5, 8);
+        assert_eq!(g, vec![it("wifi", 0, 0, 5, 1), it("bt", 5, 0, 3, 1), it("bright", 0, 1, 8, 1)]);
     }
 
     #[test]
