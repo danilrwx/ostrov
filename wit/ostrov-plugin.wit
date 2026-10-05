@@ -1,5 +1,5 @@
 /// ostrov's plugin protocol, written once (docs/plugins.md). A plugin running as a process speaks it as JSON
-/// lines over its stdin and stdout, one message a call; a WebAssembly component would speak it as it is. The
+/// lines over its stdin and stdout, one message a call. The
 /// same names (kebab-case here, snake_case as the JSON's "type"), the same fields; the JSON carries a JSON
 /// argument (json: string) as the value itself rather than as text.
 package ostrov:plugin@1.0.0;

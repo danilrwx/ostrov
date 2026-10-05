@@ -9,8 +9,7 @@
 //! share/ostrov/plugins/<id>/ (beside its executable's share/, then XDG_DATA_DIRS's), their binaries beside
 //! ostrov's; off until `[plugin.<id>] enabled = true`, and a plugin of the user's by the same id is the one read.
 //! Any plugin turns on and off as `enabled` changes, without a restart (its widgets come and go at the next).
-//! Its transport is a Backend (backend.rs) that Draws besides: a process talking JSON lines now (process.rs), a
-//! WebAssembly component the same way another time. Its widgets are trees of ui.rs's kit (node.rs), pulled with
+//! Its transport is a Backend (backend.rs) that Draws besides: a process talking JSON lines (process.rs). Its widgets are trees of ui.rs's kit (node.rs), pulled with
 //! render once it kicks, or pushed; they join the control centre's registry as plugin.<id>.<widget>. Its
 //! permissions are kept to where ostrov can: "run" for ostrov's commands, "dialogs" for ask, "network" for
 //! http-get, "secrets" for secret, "state" for the desktop's state, "events" for ostrov's events, "keys" for its

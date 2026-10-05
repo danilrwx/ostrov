@@ -2,9 +2,8 @@
 
 A plugin is a program, in any language, that puts widgets on ostrov's control centre, or modes in its launcher. It is written against one
 protocol, `wit/ostrov-plugin.wit` (package `ostrov:plugin@1.0.0`, world `ostrov-plugin`): the plugin's
-**exports**, called by ostrov, and ostrov's **imports**, called by the plugin. Today a plugin runs as a process
-and the calls go as JSON lines over its stdin and stdout; a WebAssembly component could speak the same WIT later,
-with the same behaviour.
+**exports**, called by ostrov, and ostrov's **imports**, called by the plugin. A plugin runs as a process and
+the calls go as JSON lines over its stdin and stdout.
 
 Besides plugins, ostrov has a D-Bus face for scripts: see [D-Bus](#d-bus) at the end.
 
@@ -169,9 +168,8 @@ Two systematic differences from the WIT:
 
 ### Pull and push
 
-The one place the transports may differ. A WebAssembly plugin can only be pulled: it calls `kick()` when
-something changed, and ostrov calls `state()` and `render(widget)` for each of its widgets. A process plugin may
-do the same (and should: it behaves identically under either transport), or push unasked:
+A plugin may be pulled: it calls `kick()` when something changed, and ostrov calls `state()` and
+`render(widget)` for each of its widgets. Or it pushes unasked:
 
 | push (process only)                                   | is the same as                       |
 |-------------------------------------------------------|--------------------------------------|
@@ -414,8 +412,7 @@ Declared in the manifest, shown by `ostrov plugins`, and kept to where ostrov ca
 
 `ostrov plugin install` shows them in its dialog before it installs anything.
 
-A process is not sandboxed: it can do whatever its user can, whatever its manifest says. Under WebAssembly the
-permissions would be which imports the component is linked with.
+A process is not sandboxed: it can do whatever its user can, whatever its manifest says.
 
 ## SDK
 
