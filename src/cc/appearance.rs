@@ -110,6 +110,8 @@ fn fill(body: &gtk4::Box, keep: &'static [&'static str]) {
     for (i, c) in ACCENTS.iter().enumerate() {
         let b = gtk4::Button::new();
         b.add_css_class("swatch");
+        b.set_halign(gtk4::Align::Center);
+        b.set_valign(gtk4::Align::Center);
         b.add_css_class(&format!("swatch-{i}"));
         b.set_tooltip_text(Some(c));
         if a.accent.eq_ignore_ascii_case(c) {

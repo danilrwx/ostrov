@@ -165,6 +165,8 @@ pub struct Appearance {
     /// the bar's colour ("" the theme's) and how solid it is (unset: 0.65 over a wallpaper, solid over none)
     pub bar_color: String,
     pub bar_opacity: Option<f64>,
+    /// how a slider's track looks: "bar" (thick, filled), "thin" (a line and a round knob)
+    pub sliders: String,
 }
 
 impl Default for Appearance {
@@ -191,6 +193,7 @@ impl Default for Appearance {
             bar_spacing: 7,
             bar_color: String::new(),
             bar_opacity: None,
+            sliders: "bar".into(),
         }
     }
 }

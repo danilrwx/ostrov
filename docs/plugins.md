@@ -290,7 +290,7 @@ take their defaults (empty, false, 0).
 | type        | fields                                              | events (`value`)                            |
 |-------------|-----------------------------------------------------|---------------------------------------------|
 | `toggle`    | `icon`, `title`, `sub`, `on`, `menu` (a node)       | `toggle` (`"true"`/`"false"`: the new state) |
-| `slider`    | `icon`, `value` (0 to 1)                            | `change` (the value, `"0.42"`)              |
+| `slider`    | `icon`, `value` (0 to 1), `steps` (0: any value; up to 12: kept to them, a dot on each) | `change` (the value, `"0.42"`)              |
 | `button`    | `icon`, `label`                                     | `click` (`""`)                              |
 | `round`     | `icon`, `label` (its tooltip)                       | `click`                                     |
 | `label`     | `text`, `class` (`dim`, `bold`, `title`, `error`)   | –                                           |

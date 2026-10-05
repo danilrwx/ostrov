@@ -128,6 +128,12 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 /* a line of a panel's own in its Edit (its width), as a menu's row is set */
 .gallery-line { padding: 0 10px; min-height: 34px; }
 /* a hover in an open popup, drawn in the bar's window (popup.rs), as GTK's tooltips look */
+.bubble { background: @surface-solid; color: @fg; border: 1px solid @rule; border-radius: 6px; padding: 2px 8px;
+          font-weight: bold; }
+/* the dots on a slider's steps, over its track */
+.slider-dots { color: alpha(@fg, 0.55); }
+.slider-dots.filled { color: alpha(@ink, 0.6); }
+.slider-value { min-width: 36px; }
 .hover-tip { background: @surface-solid; color: @fg; border: 1px solid @rule; border-radius: 6px; padding: 4px 8px; }
 .tile.dragged > :first-child { box-shadow: 0 0 0 2px @accent; border-radius: 6px; }
 button.tile-remove { background: @urgent; border-radius: 9px; min-width: 18px; min-height: 18px; margin: -4px; }
@@ -228,6 +234,15 @@ window.lock { background: @lock; }
 .lock-entry:disabled { border-color: @dim; }
 "#;
 
+/// [appearance] sliders = "thin": the track a line, its knob round on it.
+const THIN: &str = "
+scale trough { min-height: 4px; border-radius: 999px; }
+scale trough highlight { min-height: 4px; border-radius: 999px; }
+scale slider { min-width: 16px; min-height: 16px; margin: -6px 0; border-radius: 999px; background: @accent; }
+.slider-dots { color: @dim; }
+.slider-dots.filled { color: @accent; }
+";
+
 thread_local! {
     /// What follows the config as it changes, past the CSS (the control centre's density, the Settings' forms).
     static WATCHERS: std::cell::RefCell<Vec<Box<dyn Fn()>>> = Default::default();
@@ -278,7 +293,8 @@ pub fn load() {
             } else {
                 ""
             };
-            let all = format!("{palette}{look}{rules}{unblurred}{previews}{}", theme.css);
+            let sliders = if cfg.appearance.sliders == "thin" { THIN } else { "" };
+            let all = format!("{palette}{look}{rules}{unblurred}{sliders}{previews}{}", theme.css);
             css.load_from_string(&all.replace("ALPHA", &alpha.to_string()));
             crate::look::apply(&cfg.appearance, &theme);
             WATCHERS.with(|w| w.borrow().iter().for_each(|f| f()));

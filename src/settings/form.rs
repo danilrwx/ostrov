@@ -226,24 +226,13 @@ fn control(f: &Field, cur: &Value, secret_key: &str, put: Put, err: &gtk4::Label
             let put = settled(put);
             let n = cur.as_f64().unwrap_or(min);
             if slider {
-                let sc = gtk4::Scale::with_range(Orientation::Horizontal, min, max, step);
-                sc.set_value(n);
-                sc.set_draw_value(true);
-                sc.set_value_pos(gtk4::PositionType::Right);
+                // dragged, it keeps to its step and shows so: 10, not 9.95
                 let digits = if step.fract() == 0.0 { 0 } else { 2 };
-                sc.set_digits(digits);
-                // dragged, it moves by its step and shows so: 10, not 9.95
-                sc.set_round_digits(digits);
-                sc.connect_change_value(move |s, _, v| {
-                    s.set_value(((v / step).round() * step).clamp(min, max));
-                    glib::Propagation::Stop
-                });
-                sc.set_hexpand(true);
-                // on the step, without a float's tail (0.85, not 0.8500000000000001)
-                sc.connect_value_changed(move |s| {
-                    put((((s.value() / step).round() * step * 1e6).round() / 1e6).into());
-                });
-                (sc.upcast(), true)
+                let words = Rc::new(move |v: f64| format!("{v:.digits$}"));
+                let sl = crate::ui::Slider::with_range("", min, max, step, words, move |v| put(v.into())).with_value();
+                sl.set(n, "");
+                sl.root.set_hexpand(true);
+                (sl.root.upcast(), true)
             } else {
                 let sp = gtk4::SpinButton::with_range(min, max, step);
                 sp.set_value(n);

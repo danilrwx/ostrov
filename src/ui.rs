@@ -334,8 +334,10 @@ impl Toggle {
     }
 }
 
-/// A slider: an icon button (mute), a scale that runs moved with its value as the user moves it, an arrow.
-/// The state's value comes back in through set, but not while the user is at it.
+/// A slider: an icon button (mute; none for ""), a scale that runs moved with its value as the user moves it, an
+/// arrow. The state's value comes back in through set, but not while the user is at it. Moved, its value shows in a
+/// bubble over it (popup.rs); with few values (12 steps or fewer) a dot marks each and the scale keeps to them.
+/// How its track looks is [appearance] sliders' (style.rs), the same for every slider.
 pub struct Slider {
     pub root: gtk4::Box,
     pub icon: gtk4::Button,
@@ -343,28 +345,117 @@ pub struct Slider {
     pub face: gtk4::Image,
     scale: gtk4::Scale,
     touched: Rc<RefCell<Instant>>,
+    /// its value as words: the bubble's, the value beside it (with_value)
+    words: Rc<dyn Fn(f64) -> String>,
 }
+
+/// The most steps a slider marks with dots and keeps to.
+const DOTS: f64 = 12.0;
 
 impl Slider {
     pub fn new(icon: &str, moved: impl Fn(f64) + 'static) -> Slider {
+        Slider::with_range(icon, 0.0, 1.0, 0.01, Rc::new(|v| format!("{}%", (v * 100.0).round())), moved)
+    }
+
+    /// From min to max by step, its value as words says.
+    pub fn with_range(icon: &str, min: f64, max: f64, step: f64, words: Rc<dyn Fn(f64) -> String>, moved: impl Fn(f64) + 'static) -> Slider {
         let root = gtk4::Box::new(Orientation::Horizontal, 6);
         root.add_css_class("slider");
-        let ib = gtk4::Button::from_icon_name(icon);
+        let ib = gtk4::Button::from_icon_name(if icon.is_empty() { "image-missing-symbolic" } else { icon });
         ib.add_css_class("flat-round");
-        let scale = gtk4::Scale::with_range(Orientation::Horizontal, 0.0, 1.0, 0.01);
+        ib.set_visible(!icon.is_empty());
+        let scale = gtk4::Scale::with_range(Orientation::Horizontal, min, max, step);
         scale.set_draw_value(false);
         scale.set_hexpand(true);
+        let span = max - min;
+        let steps = if step > 0.0 { (span / step).round() } else { 0.0 };
+        let dotted = (2.0..=DOTS).contains(&steps);
+        // its value on a step (10, not 9.95; 0.85, not 0.8500000000000001)
+        let on_step = move |v: f64| {
+            let v = if step > 0.0 { min + ((v - min) / step).round() * step } else { v };
+            ((v.clamp(min, max)) * 1e6).round() / 1e6
+        };
         let touched = Rc::new(RefCell::new(Instant::now() - Duration::from_secs(10)));
-        let t = touched.clone();
-        scale.connect_change_value(move |_, _, v| {
+        let hide: Rc<RefCell<Option<glib::SourceId>>> = Rc::default();
+        let (t, w) = (touched.clone(), words.clone());
+        scale.connect_change_value(move |sc, _, v| {
             *t.borrow_mut() = Instant::now();
-            moved(v.clamp(0.0, 1.0));
-            glib::Propagation::Proceed
+            let v = on_step(v);
+            sc.set_value(v);
+            moved(v);
+            // the bubble over its knob, gone a moment after the last move
+            if let Some(knob) = knob(sc) {
+                crate::popup::bubble(&knob, Some(&w(v)));
+                if let Some(id) = hide.borrow_mut().take() {
+                    id.remove();
+                }
+                let (h, k) = (hide.clone(), knob.downgrade());
+                *hide.borrow_mut() = Some(glib::timeout_add_local_once(Duration::from_millis(900), move || {
+                    h.borrow_mut().take();
+                    if let Some(k) = k.upgrade() {
+                        crate::popup::bubble(&k, None);
+                    }
+                }));
+            }
+            glib::Propagation::Stop
         });
         root.append(&ib);
-        root.append(&scale);
+        if dotted {
+            // a dot on each step, drawn over the track where GTK lays it (the knob's travel): those under the
+            // filled part in its ink, the rest dim
+            let over = gtk4::Overlay::new();
+            over.set_hexpand(true);
+            over.set_child(Some(&scale));
+            for filled in [true, false] {
+                let dots = gtk4::DrawingArea::new();
+                dots.add_css_class("slider-dots");
+                if filled {
+                    dots.add_css_class("filled");
+                }
+                dots.set_can_target(false);
+                let sc = scale.downgrade();
+                scale.connect_value_changed({
+                    let d = dots.downgrade();
+                    move |_| if let Some(d) = d.upgrade() { d.queue_draw() }
+                });
+                dots.set_draw_func(move |area, cr, _, _| {
+                    let Some(sc) = sc.upgrade() else { return };
+                    let (Some(trough), Some(k)) = (sc.first_child(), knob(&sc)) else { return };
+                    let (Some(tb), Some(kb)) = (trough.compute_bounds(area), k.compute_bounds(area)) else { return };
+                    let (kw, y) = (kb.width() as f64, (tb.y() + tb.height() / 2.0) as f64);
+                    let r = (tb.height() as f64 / 2.0 - 3.0).clamp(1.5, 3.0);
+                    let c = area.color();
+                    cr.set_source_rgba(c.red() as f64, c.green() as f64, c.blue() as f64, c.alpha() as f64);
+                    let at = sc.value();
+                    for i in 0..=steps as i32 {
+                        if (min + span * i as f64 / steps <= at + 1e-9) != filled {
+                            continue;
+                        }
+                        // the ends' dots inside the track's rounding
+                        let inset = (kw / 2.0).max(r + 3.0);
+                        let x = tb.x() as f64 + inset + (tb.width() as f64 - 2.0 * inset) * i as f64 / steps;
+                        cr.arc(x, y, r, 0.0, std::f64::consts::TAU);
+                        let _ = cr.fill();
+                    }
+                });
+                over.add_overlay(&dots);
+            }
+            root.append(&over);
+        } else {
+            root.append(&scale);
+        }
         let face = gtk4::Image::from_icon_name(icon);
-        Slider { root, icon: ib, face, scale, touched }
+        Slider { root, icon: ib, face, scale, touched, words }
+    }
+
+    /// Its value in words beside it, always (the Settings' sliders).
+    pub fn with_value(self) -> Slider {
+        let l = label(&(self.words)(self.scale.value()), "dim");
+        l.add_css_class("slider-value");
+        self.root.append(&l);
+        let w = self.words.clone();
+        self.scale.connect_value_changed(move |s| l.set_text(&w(s.value())));
+        self
     }
 
     pub fn set(&self, v: f64, icon: &str) {
@@ -375,8 +466,21 @@ impl Slider {
             self.icon.set_icon_name(icon);
             self.face.set_icon_name(Some(icon));
         }
-        self.face.set_tooltip_text(Some(&format!("{}%", (v * 100.0).round())));
+        self.face.set_tooltip_text(Some(&(self.words)(v)));
     }
+}
+
+/// A scale's knob: GTK's slider node in its trough.
+fn knob(scale: &gtk4::Scale) -> Option<gtk4::Widget> {
+    let trough = scale.first_child()?;
+    let mut c = trough.first_child();
+    while let Some(w) = c {
+        if w.css_name() == "slider" {
+            return Some(w);
+        }
+        c = w.next_sibling();
+    }
+    None
 }
 
 /// What each part of a widget was last drawn from, so a list is drawn again only when that changes.

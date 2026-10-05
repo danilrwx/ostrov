@@ -44,6 +44,8 @@ pub struct Host {
     screen: Cell<(i32, i32)>,
     open: RefCell<Option<Weak<Popup>>>,
     grab: RefCell<Option<crate::wm::Grab>>,
+    /// a slider's value over its knob while it moves (bubble)
+    bubble: gtk4::Label,
 }
 
 impl Host {
@@ -91,6 +93,7 @@ impl Host {
             screen: Cell::new(screen),
             open: RefCell::default(),
             grab: RefCell::default(),
+            bubble: gtk4::Label::new(None),
         });
         *me.borrow_mut() = Rc::downgrade(&host);
         HOSTS.with(|h| h.borrow_mut().push(Rc::downgrade(&host)));
@@ -107,6 +110,12 @@ impl Host {
         });
         win.add_controller(keys);
         hover_tips(&host);
+        host.bubble.add_css_class("bubble");
+        host.bubble.set_halign(Align::Start);
+        host.bubble.set_valign(Align::Start);
+        host.bubble.set_can_target(false);
+        host.bubble.set_visible(false);
+        host.layer.add_overlay(&host.bubble);
         let click = gtk4::GestureClick::new();
         let h = Rc::downgrade(&host);
         click.connect_released(move |_, _, _, y| {
@@ -302,6 +311,22 @@ fn hover_tips(host: &Rc<Host>) {
         t.set_visible(false);
     });
     host.win.add_controller(motion);
+}
+
+/// Over a widget in a bar's window (a slider's knob), centred, the text in a bubble; None: the bubble gone. Drawn
+/// in the window itself, over what clips the widget (a tile), as the hovers are.
+pub fn bubble(over: &gtk4::Widget, text: Option<&str>) {
+    let hosts: Vec<Rc<Host>> = HOSTS.with(|h| h.borrow().iter().filter_map(Weak::upgrade).collect());
+    let Some(root) = over.root() else { return };
+    let Some(host) = hosts.into_iter().find(|h| h.win.upcast_ref::<gtk4::Widget>() == root.upcast_ref::<gtk4::Widget>()) else { return };
+    let b = &host.bubble;
+    let (Some(text), Some(at)) = (text, over.compute_bounds(&host.win)) else { return b.set_visible(false) };
+    b.set_text(text);
+    let (_, nat) = b.preferred_size();
+    let x = (at.x() + at.width() / 2.0) as i32 - nat.width() / 2;
+    b.set_margin_start(x.clamp(0, (host.win.width() - nat.width()).max(0)));
+    b.set_margin_top((at.y() as i32 - nat.height() - 6).max(0));
+    b.set_visible(true);
 }
 
 /// A monitor's size, a guess without one.

@@ -44,6 +44,9 @@ pub enum Kind {
         icon: String,
         #[serde(default)]
         value: f64,
+        /// its value kept to so many steps from 0 to 1, each a dot (12 or fewer); 0: any
+        #[serde(default)]
+        steps: u32,
     },
     Button {
         #[serde(default)]
@@ -120,7 +123,7 @@ impl El {
                     **m = El::default();
                 }
             }
-            Kind::Slider { icon, value } => {
+            Kind::Slider { icon, value, .. } => {
                 icon.clear();
                 *value = 0.0;
             }
@@ -201,12 +204,14 @@ fn build(el: &El, emit: &Emit, flip: Option<Rc<dyn Fn()>>, d: &mut Drawn) -> gtk
             };
             (t.root.upcast(), Box::new(up))
         }
-        Kind::Slider { icon, value } => {
-            let sl = Rc::new(Slider::new(icon, move |v| em("change", v.to_string())));
+        Kind::Slider { icon, value, steps } => {
+            let step = if *steps > 0 { 1.0 / *steps as f64 } else { 0.01 };
+            let words = Rc::new(|v: f64| format!("{}%", (v * 100.0).round()));
+            let sl = Rc::new(Slider::with_range(icon, 0.0, 1.0, step, words, move |v| em("change", v.to_string())));
             sl.set(*value, icon);
             let s2 = sl.clone();
             let up = move |n: &El| {
-                if let Kind::Slider { icon, value } = &n.kind {
+                if let Kind::Slider { icon, value, .. } = &n.kind {
                     s2.set(*value, icon);
                 }
             };
@@ -325,7 +330,7 @@ mod tests {
         let Some(El { kind: Kind::Box { children, orientation }, .. }) = t.menu() else { panic!() };
         assert_eq!(orientation, "");
         assert_eq!(children.len(), 10);
-        assert_eq!(children[1].kind, Kind::Slider { icon: String::new(), value: 1.0 });
+        assert_eq!(children[1].kind, Kind::Slider { icon: String::new(), value: 1.0, steps: 0 });
         assert_eq!(children[2].kind, Kind::Chips { options: vec!["a".into(), "b".into()], on: Some(1) });
     }
 

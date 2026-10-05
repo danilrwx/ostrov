@@ -471,6 +471,9 @@ pub fn appearance() -> Vec<Section> {
         Field::new("density", "Density", Kind::Choice { options: opts(&[("compact", "Compact"), ("normal", "Normal"), ("comfortable", "Comfortable")]) })
             .default(theme.density.unwrap_or("normal".into()))
             .help("The control centre's rows."),
+        Field::new("sliders", "Sliders", Kind::Choice { options: opts(&[("bar", "Bar"), ("thin", "Thin")]) })
+            .default("bar")
+            .help("A slider's track: thick and filled, or a line with a round knob."),
         Field::new("language", "Language", Kind::Choice { options: opts(&[("", "System"), ("en", "English"), ("ru", "Русский")]) })
             .default("")
             .help("Empty: the locale's. Taken as ostrov starts again."),
