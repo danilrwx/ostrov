@@ -536,6 +536,25 @@ automount = false       # a drive's volumes mounted as it is plugged in
 open_on_mount = false   # and opened in the file manager, as Mount's are
 ```
 
+### updates
+
+The system's pending updates as GNOME's Software tells them (`plugins/updates`): the packages waiting, as the
+package manager found here lists them without root — `apt list --upgradable` (its lists kept fresh by apt-daily on
+Debian and Ubuntu), `checkupdates` (pacman-contrib) on Arch, `dnf check-update` on Fedora — looked at when it
+starts and every `every` minutes. Its tile `plugin.updates.updates` says how many wait and names them in its menu,
+with Update and Check Now; a badge in the bar while some wait. Update runs the manager's update (`sudo apt
+upgrade`, `sudo pacman -Syu`, `sudo dnf upgrade`) in `$TERMINAL` (`x-terminal-emulator` without it), where sudo
+asks for the password, the window left open until Enter. `ostrov plugin updates list` prints the packages, a line
+each; `check` looks again; `update` runs the update.
+
+```toml
+[plugin.updates]
+enabled = true
+every = 60              # minutes between looks, 10 to 1440
+check = ""              # a command of your own printing the packages, a line each, the name first
+update = ""             # a command of your own run in the terminal
+```
+
 ## D-Bus
 
 ostrov owns `dev.ostrov.Shell` on the session bus, object `/dev/ostrov/Shell`, interface `dev.ostrov.Shell`:

@@ -1,0 +1,11 @@
+[package]
+name = "ostrov-plugin-updates"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+description = "ostrov's system updates: the packages waiting, from apt, pacman or dnf, and the update run in a terminal"
+license = "MIT"
+publish = false
+
+[dependencies]
+ostrov-plugin = { path = "../../sdk" }

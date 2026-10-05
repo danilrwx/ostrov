@@ -91,4 +91,7 @@ assets = [
     ["target/release/ostrov-plugin-drives", "usr/bin/", "755"],
     ["plugins/drives/manifest.toml", "usr/share/ostrov/plugins/drives/", "644"],
     ["plugins/drives/i18n/*", "usr/share/ostrov/plugins/drives/i18n/", "644"],
+    ["target/release/ostrov-plugin-updates", "usr/bin/", "755"],
+    ["plugins/updates/manifest.toml", "usr/share/ostrov/plugins/updates/", "644"],
+    ["plugins/updates/i18n/*", "usr/share/ostrov/plugins/updates/i18n/", "644"],
 ]

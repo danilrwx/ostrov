@@ -1,0 +1,29 @@
+# The system's updates, as GNOME's Software tells them: the packages waiting (apt's list, pacman's checkupdates,
+# dnf's check-update), looked at every hour; the update itself run in a terminal, where sudo asks for the password
+id = "updates"
+name = "Updates"
+version = "0.1.0"
+api = 1
+exec = "ostrov-plugin-updates"
+icon = "software-update-available-symbolic"
+description = "The system's pending updates, and the update run in a terminal."
+permissions = []
+
+[[widgets]]
+id = "updates"
+name = "Updates"
+sizes = [[4, 1], [2, 1], [8, 1]]
+badge = true
+bar = "active"
+
+[[commands]]
+name = "list"
+help = "the packages waiting, one a line"
+
+[[commands]]
+name = "check"
+help = "looked at again now"
+
+[[commands]]
+name = "update"
+help = "the update run in a terminal"

@@ -225,6 +225,7 @@ enabled = true
 | `games` | The performance power profile while a game has the focus | `classes`, `profile` |
 | `night` | The night light through Hyprland's screen shader: always, by the clock, or sunset to sunrise | `ostrov plugin night on\|off\|toggle \| mode off\|on\|time\|sun \| time FROM TO \| warmth K` |
 | `record` | Screen recording of a region with wf-recorder, optionally with audio | `ostrov plugin record toggle [--audio]` |
+| `updates` | The system's pending updates (apt, pacman's checkupdates, dnf), a badge in the bar while some wait, the update run in a terminal | `every`, `check`, `update`; `ostrov plugin updates list \| check \| update` |
 
 Each one's details are in [docs/plugins.md, "Official plugins"](docs/plugins.md#official-plugins). Their widgets
 join the gallery after `ostrov restart`.
