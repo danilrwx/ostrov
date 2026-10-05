@@ -19,6 +19,7 @@
 | BAT-1 | The battery widget SHALL show the charge, its state and the time left (2026-10-03) | ✅ | `src/modules/battery/` |
 | BAT-2 | The charge limit SHALL be a toggle (80% or full) with a menu of limits, needing a udev rule installed once (2026-10-04) | ✅ | `src/modules/battery/limit.rs` |
 | BRI-1 | Brightness SHALL be a slider through logind, without brightnessctl | ✅ | `src/modules/brightness/` |
+| BRI-2 | The night light SHALL be inside the brightness slider's menu (its switch, modes, warmth), as it was, not a tile of its own (2026-10-05: «иначе выглядит стрёмно») | ✅ | a plugin widget's `attach = "brightness"`, `plugins::attached` |
 | KBD-1 | The keyboard layout SHALL be shown and switched (2026-10-03) | ✅ | `src/modules/keymap/` |
 | MED-1 | The player (MPRIS) SHALL be a widget with its controls, the media keys acting on it (2026-10-03) | ✅ | `src/modules/media/` |
 | WTH-1 | The weather SHALL be in the core, by a location set by city or coordinates (2026-10-04: «погода пусть будет в ядре») | ✅ | `src/modules/weather/`, `ostrov location` |

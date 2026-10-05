@@ -30,3 +30,4 @@ goes to someone's API on the internet.
 | EXT-16 | Waybar-format scripts (JSON `text`/`alt`/`tooltip`) as blocks | 🚫 | 2026-10-05: «не уверен зачем он нам»; KDL `listen` covers it |
 | EXT-17 | A headless `ostrov-ctl` for dwl's bar | 🚫 | removed with dwl (2026-10-05) |
 | EXT-18 | Settings done by separate small utilities instead of the shell ("a settings manager") | 🚫 | not needed (2026-10-05) |
+| EXT-19 | A plugin's widget SHALL be able to go inside one of ostrov's widgets' menus instead of the grid (`attach`) (2026-10-05) | ✅ | `WidgetDecl.attach`, docs/plugins.md Manifest |
