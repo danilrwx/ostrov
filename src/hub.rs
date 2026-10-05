@@ -84,6 +84,7 @@ fn merge(into: &mut Value, over: &Value) {
 
 unsafe extern "C" {
     fn malloc_trim(pad: usize) -> i32;
+    fn mallopt(param: i32, value: i32) -> i32;
 }
 
 /// The heap's free memory given back to the system. glibc keeps what a big buffer freed (a window's or a screen's
@@ -92,6 +93,20 @@ unsafe extern "C" {
 pub fn trim_heap() {
     // SAFETY: malloc_trim only walks glibc's own arenas
     unsafe { malloc_trim(0) };
+}
+
+/// A bar's memory, not a browser's, set before any thread or GPU device starts: glibc's arenas two at most
+/// (each thread its own one by default, 38 threads' free memory each kept apart), and Vulkan's software device
+/// (lavapipe, its 40 MB LLVM loaded as GTK enumerates devices) left out unless asked for; a machine without a
+/// GPU still draws, through GL.
+pub fn lean() {
+    const M_ARENA_MAX: i32 = -8;
+    // SAFETY: mallopt only sets glibc's malloc parameters; called as ostrov starts, one thread running
+    unsafe { mallopt(M_ARENA_MAX, 2) };
+    if std::env::var_os("VK_LOADER_DRIVERS_DISABLE").is_none() && std::env::var_os("VK_DRIVER_FILES").is_none() {
+        // SAFETY: as above, no other thread reads the environment yet
+        unsafe { std::env::set_var("VK_LOADER_DRIVERS_DISABLE", "*lvp*") };
+    }
 }
 
 pub fn home() -> PathBuf {
