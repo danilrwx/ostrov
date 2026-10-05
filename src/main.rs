@@ -60,7 +60,7 @@ thread_local! {
 /// ARGS).
 const FORMS: &[&str] = &[
     "panel", "menu NAME", "settings [SECTION]", "appearance", "calendar", "run", "clip",
-    "lock", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region",
+    "lock", "dnd [on|off]", "notifications clear", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region",
     "share-pick [--allow-token]",
     "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
     "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID",
@@ -156,6 +156,13 @@ fn activate(app: &gtk4::Application) {
                 ["hyprland"] => return Ok(modules::hyprland::conf()),
                 ["screenshot"] => shot.take(),
                 ["awake"] => idle::set_awake(!idle::awake()),
+                ["dnd"] => {
+                    let n = notes::get().ok_or("no notifications here")?;
+                    n.set_dnd(!n.dnd());
+                }
+                ["dnd", "on"] => notes::get().ok_or("no notifications here")?.set_dnd(true),
+                ["dnd", "off"] => notes::get().ok_or("no notifications here")?.set_dnd(false),
+                ["notifications", "clear"] => notes::get().ok_or("no notifications here")?.clear(),
                 ["capture", path] => shot::capture(path.to_string()),
                 ["key", name] => keys.key(name)?,
                 ["bar", what @ ("toggle" | "peek" | "unpeek")] => {
