@@ -314,7 +314,8 @@ impl Toggle {
 
     /// Fitted to w cells: its words and arrow from four on, its icon alone below.
     pub fn size(&self, w: u8, _h: u8) {
-        let full = w >= 4;
+        // its words from three cells, about 146 points: room for a title and a subtitle
+        let full = w >= 3;
         self.col.set_visible(full);
         self.inner.set_halign(if full { Align::Fill } else { Align::Center });
         if let Some(a) = &self.side {

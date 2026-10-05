@@ -18,11 +18,6 @@ pub fn fit(sizes: &[(u8, u8)], cols: u8) -> Vec<(u8, u8)> {
     out
 }
 
-/// A width of cells on a grid cols wide as cells of BASE: its share of the width, at least 1.
-pub fn base(w: u8, cols: u8) -> u8 {
-    if w >= cols { BASE } else { ((w as u32 * BASE as u32 + cols as u32 / 2) / cols as u32).max(1) as u8 }
-}
-
 /// A layout laid out for one width on another: each item's left and right edges moved in proportion, so items side
 /// by side stay side by side (two halves two halves, on an odd width too); then settled.
 pub fn rescale(items: &mut Vec<Item>, from: u8, to: u8) {
@@ -168,7 +163,6 @@ mod tests {
         // a toggle's sizes on 6: half, a third, a cell, the whole width
         assert_eq!(fit(&[(4, 1), (2, 1), (1, 1), (8, 1)], 6), [(3, 1), (2, 1), (1, 1), (6, 1)]);
         assert_eq!(fit(&[(4, 1), (8, 1)], 8), [(4, 1), (8, 1)]);
-        assert_eq!((base(3, 6), base(6, 6), base(1, 6), base(2, 6)), (4, 8, 1, 3));
         let mut g = vec![it("wifi", 0, 0, 4, 1), it("bt", 4, 0, 4, 1), it("bright", 0, 1, 8, 1)];
         rescale(&mut g, 8, 6);
         assert_eq!(g, vec![it("wifi", 0, 0, 3, 1), it("bt", 3, 0, 3, 1), it("bright", 0, 1, 6, 1)]);

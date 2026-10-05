@@ -129,10 +129,10 @@ fn sysinfo(_: &Ctx) -> Widget {
     let has_temp = temp_box.is_visible();
     Widget {
         face: Some(Face::new(&badge)),
-        // two cells the load and the memory, four the temperature too, the whole width the network as well
+        // two cells the load and the memory, four the temperature too, six the network as well
         size: Box::new(move |w, _| {
             temp_box.set_visible(has_temp && w >= 4);
-            net_box.set_visible(w >= 8);
+            net_box.set_visible(w >= 6);
         }),
         ..Widget::new(&row, None, |_| ())
     }

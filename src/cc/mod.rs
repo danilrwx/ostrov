@@ -589,7 +589,9 @@ impl Panel {
         // the tile as tall as its cells and no taller: what it holds clipped to them (scrolled, a scroll of its
         // own aside), never a row pushed taller than its neighbours
         let clip = gtk4::ScrolledWindow::new();
-        clip.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::External);
+        // across too: what it holds asks no width of the grid, which its cells alone set (a tile's text wider than
+        // its cells cut, never the panel made wider, a width of 6 wider than one of 7)
+        clip.set_policy(gtk4::PolicyType::External, gtk4::PolicyType::External);
         clip.set_propagate_natural_width(true);
         clip.set_child(Some(&widget.root));
         // a card's ground on the tile itself, its cells' size whatever it holds: what is cut off is inside it
@@ -726,8 +728,9 @@ impl Panel {
             if let Some(t) = tiles.get(&it.key) {
                 t.wrap.set_size_request(-1, it.h as i32 * row + (it.h as i32 - 1) * gap);
                 self.grid.attach(&t.wrap, it.x as i32, it.y as i32 + above(it.y, true), it.w as i32, it.h as i32);
-                // told in cells of 8, the width widgets choose what to show by (a toggle's words from 4)
-                (t.widget.size)(grid::base(it.w, self.cols.get()), it.h);
+                // told its cells, each as wide on any panel: what it shows chosen by its width (a toggle's words
+                // from 3)
+                (t.widget.size)(it.w, it.h);
             }
         }
         for (b, bx) in &bands {
