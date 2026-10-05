@@ -1,0 +1,22 @@
+# 01 — The bar
+
+| ID | Requirement | Status | Where / gap |
+|---|---|---|---|
+| BAR-1 | The bar SHALL have three zones, left, centre, right, each a list of blocks the user picks: a panel, the tray, the window's title, the keyboard layout, the privacy indicator, workspaces (2026-10-04: «панель по центру тоже должны быть сборной ... слева, справа, по центру») | ✅ | `src/bar/layout.rs`, `[bar] left/center/right`; the bar editor `src/cc/bar_editor.rs` |
+| BAR-2 | By default the bar SHALL have the workspaces and the window's title at the left (like i3), the calendar panel's face (date and time, like GNOME) in the centre, privacy, layout, tray and the control centre at the right (2026-10-03) | ✅ | `config/example.toml` `[bar]` |
+| BAR-3 | A panel SHALL be a block of the bar: its face is made of its widgets' badges (icons, text: the clock's time, the weather), each widget saying whether its badge shows always, while active, or never, the user able to change it (2026-10-04) | ✅ | `src/bar/panel.rs`, `Show` in `src/cc/mod.rs` |
+| BAR-4 | WHEN a block is clicked, its panel or menu SHALL open joined to the bar, as one surface, not a separate window (2026-10-03: «не отдельным окном ... чтобы раскрытие были слитным») | ✅ | `src/popup.rs` (the popup is part of the bar's window) |
+| BAR-5 | WHEN the bar or a block opens something, the bar's icons SHALL NOT move or jump (2026-10-03) | ✅ | `src/popup.rs` |
+| BAR-6 | WHEN a click lands outside an open panel, it SHALL close (2026-10-03) | ✅ | Hyprland's focus grab, `src/wm.rs` |
+| BAR-7 | WHEN the same block is clicked again, without moving the pointer, its panel SHALL close (2026-10-03) | ✅ | `src/popup.rs` |
+| BAR-8 | Super+B SHALL hide and show the bar; WHILE hidden and Super is held (or before switching workspaces), the bar SHALL show (peek), as i3's did (2026-10-01, 2026-10-03) | ✅ | `ostrov bar toggle|peek|unpeek`, `src/bar/mod.rs`, binds in `src/modules/hyprland.rs` |
+| BAR-9 | IF the bar was peeked and the workspace changed, THEN it SHALL hide again once Super is released, never stay stuck (2026-10-03: «после смены столов бар залипает») | ✅ | `src/bar/mod.rs` |
+| BAR-10 | ostrov SHALL put a bar on every monitor, or the primary alone, or the ones named, following monitors plugged and unplugged (2026-10-03: «мультимонитор хочется») | ✅ | `src/bars.rs`, `[bar] monitors` |
+| BAR-11 | The tray SHALL show StatusNotifier items with their menus; a right click SHALL open the item's menu (Discord's too), with the bar's padding (2026-10-01, 2026-10-03) | ✅ | `src/bar/tray.rs` |
+| BAR-12 | The keyboard layout block SHALL be white like the other texts, and switch the layout on click (2026-10-03) | ✅ | `src/bar/mod.rs` |
+| BAR-13 | The privacy block SHALL show while the mic or the camera is in use or the screen is shared; its menu SHALL mute the mic, turn an app's camera off, stop a share (2026-10-04) | ✅ | `src/bar/privacy.rs` |
+| BAR-14 | WHEN the battery is below 30%, its icon SHALL turn gradually red, fully red at 10% (2026-10-03) | ❌ | gap: the bar shows UPower's icon as is (`src/modules/battery/widget.rs`); only `ostrov-ctl status` reddens under 15% |
+| BAR-15 | WHEN the pointer is over the battery, its tooltip SHALL say the time left, as UPower reckons it (2026-10-03) | ✅ | `src/modules/battery/widget.rs`, `ui::battery_time` |
+| BAR-16 | No underline or marker SHALL be drawn under a block whose panel is open (2026-10-03: «может убрать эту полоску») | ✅ | removed |
+| BAR-17 | The bar's height, padding, spacing and icon size SHALL be settings; the bar SHALL leave room at its sides for the panel's rounded corners (2026-10-01) | ✅ | `[appearance] bar_height, bar_padding, bar_spacing, bar_icon_size` |
+| BAR-18 | WHERE a plugin wants it, it SHALL be able to put a block of its own in the bar, not only a badge in a panel | ❌ | gap from 2026-10-04's API list («свои блоки бара»); plugins reach the bar only through a panel's face today |
