@@ -32,3 +32,11 @@ pub async fn events(kick: Kick) {
     })
     .await;
 }
+
+#[cfg(test)]
+mod tests {
+    #[tokio::test]
+    async fn keymap_state() {
+        println!("keymap {}", serde_json::json!(super::keymap().await));
+    }
+}
