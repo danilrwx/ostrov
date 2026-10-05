@@ -12,11 +12,11 @@
 | PUB-1 | The history SHALL carry the owner's personal address, nothing of the employer or Yandex (2026-10-04) | ✅ | 176 commits by the GitHub noreply address |
 | PUB-2 | Publishing SHALL wait for the owner (2026-10-04: «давай пока без публикации») | ❓ | the GitHub org (`ostrov-shell` placeholder) and the employer's consent are the owner's to settle |
 | DOC-1 | The README SHALL show what ostrov is, with screenshots made in a sandbox, nothing personal in them (2026-10-04) | ✅ | `README.md`, `docs/screenshots/make.sh` |
-| DOC-2 | The README SHALL not describe what is gone: the dwl status line of `ostrov-ctl` (dwl dropped 2026-10-05) | ❌ | gap: README's ostrov-ctl bullet (see EXT-17) |
-| DOC-3 | Docs SHALL have a page per module and widget with its config keys (ashell has one per module, 2026-10-05) | ❌ | gap: only `config/example.toml` and README |
-| DOC-4 | Docs SHALL have troubleshooting: what `ostrov doctor` reports and how to fix it (2026-10-05) | ❌ | gap |
-| DOC-5 | Docs SHALL have a requirements matrix: what works without NetworkManager, BlueZ, power-profiles-daemon, UPower, and what needs which Hyprland version (2026-10-05) | ❌ | gap |
-| DOC-6 | Docs SHALL have a contributor's architecture: the hub, services, modules, the popup host, the plugin host (2026-10-05) | 🟡 | `CONTRIBUTING.md` "Where things go"; no data-flow description |
+| DOC-2 | The README SHALL not describe what is gone: the dwl status line of `ostrov-ctl` (dwl dropped 2026-10-05) | ✅ | removed |
+| DOC-3 | Docs SHALL have a page per module and widget with its config keys (ashell has one per module, 2026-10-05) | ✅ | `docs/modules.md` |
+| DOC-4 | Docs SHALL have troubleshooting: what `ostrov doctor` reports and how to fix it (2026-10-05) | ✅ | `docs/troubleshooting.md` |
+| DOC-5 | Docs SHALL have a requirements matrix: what works without NetworkManager, BlueZ, power-profiles-daemon, UPower, and what needs which Hyprland version (2026-10-05) | ✅ | `docs/requirements.md` |
+| DOC-6 | Docs SHALL have a contributor's architecture: the hub, services, modules, the popup host, the plugin host (2026-10-05) | ✅ | `docs/architecture.md` |
 | A11Y-1 | Panels and the launcher SHALL be fully usable from the keyboard (2026-10-04's GNOME comparison: «важно для публичного шелла») | 🟡 | the launcher, dialogs and welcome are; panels' widgets are not navigable by keys |
-| A11Y-2 | ostrov SHALL work with Orca: widgets with accessible names and roles | ❌ | gap: no accessible roles set |
+| A11Y-2 | ostrov SHALL work with Orca | 🚫 | not wanted (2026-10-05) |
 | I18N-1 | Adding a language SHALL be a directory of catalogues, a test checking them (2026-10-04) | ✅ | `i18n/`, `src/i18n.rs` |

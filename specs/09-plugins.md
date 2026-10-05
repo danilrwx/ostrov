@@ -12,5 +12,5 @@ Moved out of the core 2026-10-04 («caldav в плагин да, ночной с
 | PLG-5 | displays: Super+P for laptop only, external only, extend, mirror, kanshi's profiles, through hyprctl and kanshi (2026-10-04) | ✅ | `plugins/displays` |
 | PLG-6 | drives: removable drives mounted and ejected through udisks, no udiskie (2026-10-04) | ✅ | `plugins/drives` |
 | PLG-7 | hello: the example a plugin author starts from | ✅ | `plugins/hello`, `examples/plugins/hello-python` |
-| PLG-8 | updates: pending system updates and a button to update (ashell's, 2026-10-05) | ❌ | gap |
+| PLG-8 | updates: the packages waiting (apt, pacman's checkupdates, dnf), a badge in the bar while some wait, Update run in `$TERMINAL` (2026-10-05) | ✅ | `plugins/updates` |
 | PLG-9 | google, claude launcher engines as plugins | 🚫 | replaced by `[launcher] engines` (2026-10-04) |

@@ -16,7 +16,7 @@ The owner's words (2026-10-04): «модульность, как в макоси
 | PNL-8 | Sliders SHALL step in whole numbers (2026-10-04) | ✅ | `src/ui.rs` |
 | PNL-9 | A list that unfolds (outputs, inputs, networks) SHALL unfold under an arrow, hidden by default, without the panel jumping (2026-10-03) | ✅ | `src/ui.rs` menus |
 | PNL-10 | The control centre and the calendar SHALL be panels like any other; the calendar's month, the player, the agenda, notifications, the weather, the clock are widgets (2026-10-04) | ✅ | `src/modules/*/widget.rs` |
-| PNL-11 | WHEN F10 is pressed again with Settings open, Settings SHALL close (2026-10-04: «повторное нажатие их не скрывает») | ❓ | to check: F9 did nothing, F10 opened Settings, F11 toggled the centre panel at the time |
+| PNL-11 | WHEN F10 is pressed again with Settings open, Settings SHALL close (2026-10-04: «повторное нажатие их не скрывает») | ✅ | confirmed by the owner (2026-10-05) |
 | PNL-12 | A widget's settings SHALL be reachable from its place in Edit, not only from Settings (2026-10-04: «не понимаю как ... перейти в настройки этих виджетов») | ✅ | the inspector in Edit |
 | PNL-13 | Panels SHALL be declared in a markup language pleasant to write by hand (2026-10-04: «красивый язык разметки для панелей») | ✅ | KDL for widgets (`src/widgets/`); the grid itself in `panel.toml` written by Edit |
 | PNL-14 | The UI kit SHALL hold every element a widget needs: toggles, sliders, round buttons, rows, menus, cards, badges, dialogs (2026-10-04) | ✅ | `src/ui.rs`, `src/prompt.rs` |

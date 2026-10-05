@@ -20,4 +20,9 @@ What was tried or proposed and decided against. Not to be proposed again without
 | 2026-10-05 | Umbriel + Noctalia tried and removed | not wanted |
 | 2026-10-05 | sway instead of Hyprland not done | Steam blurry at 2× on sway (no zero-scaling for Xwayland), tearing and scroll already fine on Hyprland |
 | 2026-10-05 | Waybar-format script blocks not added | KDL `listen` already covers them |
+| 2026-10-05 | `ostrov-ctl` removed | dwl, its only user, dropped |
+| 2026-10-05 | The battery's icon reddening below 30% not brought back | the owner is fine with UPower's icon |
+| 2026-10-05 | No Dock | not wanted |
+| 2026-10-05 | No Orca support | not wanted |
+| 2026-10-05 | No settings manager of small utilities | not needed |
 | 2026-10-05 | Rewriting ostrov in another language (TypeScript+Astal, Python, C) not decided | the cost of a rewrite against faster builds in Rust; open if build times or verbosity hurt |

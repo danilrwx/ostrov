@@ -17,4 +17,4 @@
 | SHARE-3 | Browsers' own "… is sharing your screen" bars SHALL stay out of sight (2026-10-05) | ✅ | not ostrov: a Hyprland rule in the owner's dotfiles; could be a recommendation in `ostrov hyprland` |
 | SEC-1 | Secrets (a plugin's token) SHALL go to the Secret Service, never to the config file (2026-10-04) | ✅ | `src/settings/secret.rs` |
 | SEC-2 | The power menu SHALL suspend, restart, power off and log out (2026-10-04) | ✅ | `src/modules/system/widget.rs` |
-| SEC-3 | The power menu SHALL ask before logging out and SHALL offer switching the user (GNOME has both, 2026-10-04's comparison) | ❌ | gap |
+| SEC-3 | WHEN restart, power off or log out is picked, ostrov SHALL ask first in its dialog: open apps close, unsaved work is lost (2026-10-05) | ✅ | `src/modules/system/widget.rs` `confirm()`; switching the user was not asked for |

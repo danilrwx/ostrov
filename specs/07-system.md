@@ -25,5 +25,5 @@
 | CAL-1 | The calendar SHALL show the month and what is coming up, its events from plugins and .ics (2026-10-03) | ✅ | `src/modules/calendar/`; CalDAV is a plugin (09) |
 | WALL-1 | ostrov SHALL draw the wallpaper itself, without swaybg; plain black by default (2026-09-29, 2026-10-03) | ✅ | `src/wallpaper.rs` |
 | SYS-1 | The processor's load, memory, temperature and the network's speed SHALL be a widget (2026-10-05) | ✅ | `src/modules/sysinfo.rs` |
-| SYS-2 | Pending system updates SHALL be shown (ashell has it, 2026-10-05; GNOME comparison) | ❌ | gap: planned as an official plugin over apt or PackageKit |
-| SYS-3 | ostrov SHALL work without NetworkManager, through iwd, and say what is missing without either | 🟡 | iwd is supported; a table of what works with which backend is missing (10-distribution-docs) |
+| SYS-2 | Pending system updates SHALL be shown (ashell has it, 2026-10-05; GNOME comparison) | ✅ | the official plugin `updates` (09) |
+| SYS-3 | ostrov SHALL work without NetworkManager, through iwd, and say what is missing without either | ✅ | iwd supported; `docs/requirements.md` says what each service brings |
