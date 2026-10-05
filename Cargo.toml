@@ -45,7 +45,10 @@ zbus = { version = "5", default-features = false, features = ["tokio"] }
 # /usr/share/ostrov/plugins/ID/; plugins/README.md), the shells' completions, the lock screen's PAM profile and the
 # docs; the libraries' packages ($auto) found from the binary, the programs it runs named here.
 [package.metadata.deb]
+maintainer = "ostrov contributors <22664775+danilrwx@users.noreply.github.com>"
 section = "x11"
+# the share picker's name, a link to ostrov made on install
+maintainer-scripts = "packaging/debian/"
 priority = "optional"
 extended-description = """\
 ostrov is a desktop shell for Hyprland: the bar, panels of widgets (Wi-Fi, Bluetooth, sound, power, the \
