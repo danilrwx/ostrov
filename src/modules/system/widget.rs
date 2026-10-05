@@ -29,25 +29,49 @@ pub fn lock(c: &Ctx) -> Widget {
     Widget::new(&b, None, |_| ())
 }
 
-/// The power menu's button: suspend, restart, power off, log out under it.
+/// The power menu's button: suspend, restart, power off, log out under it; the three ending the session asked
+/// first in ostrov's dialog, the open windows lost with it.
 pub fn session(c: &Ctx) -> Widget {
     let flip = c.flip.clone();
     let b = round("system-shutdown-symbolic", move || flip());
     b.set_tooltip_text(Some(t("Power Off")));
     let (card, items) = menu("system-shutdown-symbolic", t("Power Off"));
-    for (icon, text, cmd) in [
-        ("weather-clear-night-symbolic", "Suspend", vec!["systemctl", "suspend"]),
-        ("view-refresh-symbolic", "Restart…", vec!["systemctl", "reboot"]),
-        ("system-shutdown-symbolic", "Power Off…", vec!["systemctl", "poweroff"]),
-        ("system-log-out-symbolic", "Log Out", vec!["hyprctl", "dispatch", "exit"]),
+    for (icon, text, ask, button, cmd) in [
+        ("weather-clear-night-symbolic", "Suspend", "", "", vec!["systemctl", "suspend"]),
+        ("view-refresh-symbolic", "Restart…", "Restart now?", "Restart", vec!["systemctl", "reboot"]),
+        ("system-shutdown-symbolic", "Power Off…", "Power off now?", "Shut Down", vec!["systemctl", "poweroff"]),
+        ("system-log-out-symbolic", "Log Out…", "Log out now?", "Log Out", vec!["hyprctl", "dispatch", "exit"]),
     ] {
         let close = c.close.clone();
         items.append(&row(icon, t(text), "", false, move || {
             close();
-            run(&cmd);
+            if ask.is_empty() {
+                return run(&cmd);
+            }
+            confirm(icon, ask, button, cmd.clone());
         }));
     }
     Widget::new(&b, Some(&card), |_| ())
+}
+
+/// Restart, power off or log out asked first: unsaved work in the open windows goes with the session.
+fn confirm(icon: &'static str, title: &str, button: &str, cmd: Vec<&'static str>) {
+    let Some(prompts) = crate::prompts() else { return run(&cmd) };
+    let (reply, answer) = async_channel::bounded(1);
+    let mut ask = crate::prompt::Ask::new(
+        icon,
+        t(title),
+        t("Open apps will be closed, unsaved work lost."),
+        crate::prompt::Kind::Confirm,
+        reply,
+    );
+    ask.ok = t(button).into();
+    prompts.ask(ask);
+    gtk4::glib::spawn_future_local(async move {
+        if answer.recv().await.ok().flatten().is_some() {
+            run(&cmd);
+        }
+    });
 }
 
 /// Keep Awake: idle neither locks nor turns the screens off while it is on (idle.rs).
