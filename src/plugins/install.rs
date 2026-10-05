@@ -105,20 +105,24 @@ fn manifest(at: &Path) -> Result<Manifest, String> {
     parse_manifest(&text, &id.id).map_err(|e| format!("manifest.toml: {e}"))
 }
 
-/// `ostrov plugin install SOURCE`: a git URL cloned, then installed as a path is.
+/// `ostrov plugin install SOURCE`: a git URL cloned (`#path` a directory in it), then installed as a path is.
 pub async fn install(src: String) -> Result<String, String> {
     if !is_url(&src) {
         return from(PathBuf::from(src)).await;
     }
+    let (url, sub) = src.split_once('#').map_or((src.as_str(), ""), |(u, p)| (u, p));
+    if sub.split('/').any(|p| p == "..") {
+        return Err(format!("{sub}: a path inside the repository"));
+    }
     let tmp = dir().with_file_name(format!(".clone-{}", std::process::id()));
-    let (url, at) = (src.clone(), tmp.clone());
+    let (url, at) = (url.to_string(), tmp.clone());
     let r = match blocking(move || {
         let _ = std::fs::remove_dir_all(&at);
         clone(&url, &at)
     })
     .await
     {
-        Ok(()) => from(tmp.clone()).await,
+        Ok(()) => from(tmp.join(sub)).await,
         Err(e) => Err(e),
     };
     let _ = std::fs::remove_dir_all(&tmp);

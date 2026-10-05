@@ -1,0 +1,16 @@
+# ostrov's plugin catalogue: plugins installable by their id (`ostrov plugin install ID`), listed by `ostrov plugin
+# catalogue` and on the Settings page "Plugins". An entry: its id (its manifest's), name, a line of what it does,
+# and its source, a git URL, `#path` a directory in the repository. ostrov's official plugins are not here: they
+# come with it, `ostrov plugin install ID` turns one on. A plugin of yours: a pull request adding its entry.
+
+[[plugin]]
+id = "hello-python"
+name = "Hello (Python)"
+description = "The Python SDK's example: a counter widget, commands, an event, a key."
+source = "https://github.com/ostrov-shell/ostrov#examples/plugins/hello-python"
+
+[[plugin]]
+id = "calendar-demo"
+name = "Calendar Demo"
+description = "A calendar of one event, today at noon: how a plugin feeds the calendar."
+source = "https://github.com/ostrov-shell/ostrov#examples/plugins/calendar-demo"

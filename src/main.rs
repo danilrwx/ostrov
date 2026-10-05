@@ -63,7 +63,7 @@ const FORMS: &[&str] = &[
     "lock", "dnd [on|off]", "notifications clear", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region",
     "share-pick [--allow-token]",
     "bar toggle|peek|unpeek", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
-    "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID",
+    "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID", "plugin catalogue",
     "theme list", "theme set ID", "theme install PATH|GIT-URL", "theme remove ID",
     "help", "complete [WORD...]", "completions zsh|bash|fish", "doctor", "welcome",
 ];
@@ -397,12 +397,14 @@ fn main() -> glib::ExitCode {
     app.connect_activate(activate);
     app.connect_command_line(|app, cl| {
         let mut args: Vec<String> = cl.arguments().iter().skip(1).map(|a| a.to_string_lossy().into_owned()).collect();
-        // a plugin's path to install from is the asking shell's, relative to its directory
+        // a plugin's path to install from is the asking shell's, relative to its directory; a bare word not there
+        // is an id, the catalogue's or an official plugin's
         if let [p, i, src] = &mut args[..]
             && p == "plugin"
             && i == "install"
             && !plugins::is_url(src)
             && let Some(cwd) = cl.cwd()
+            && (src.contains('/') || cwd.join(&*src).exists())
         {
             *src = cwd.join(&*src).to_string_lossy().into_owned();
         }

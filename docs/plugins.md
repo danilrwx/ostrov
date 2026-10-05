@@ -34,6 +34,24 @@ Any plugin is turned off with `enabled = false` in its `[plugin.<id>]` section (
 `true` or the line gone: it stops or starts as the config is saved, its widgets leaving or joining the gallery at
 the next `ostrov restart`. [Official plugins](#official-plugins) are off until `enabled = true`.
 
+### The catalogue
+
+`catalogue.toml` in ostrov's repository lists plugins by id, each with its source: a git URL, `#path` a directory
+in the repository. `ostrov plugin install ID` installs the catalogue's plugin of that id from its source, as a URL
+is; an official plugin's id turns it on instead (`[plugin.<id>] enabled = true`). `ostrov plugin catalogue` lists
+every plugin found (official or installed, on or off) and the catalogue's not installed yet. In the control
+centre, Settings has a page **Plugins**: each plugin found with its switch, the catalogue's with Install, and a
+field installing any plugin by its URL or path. A plugin of yours goes in the catalogue by a pull request adding
+its entry:
+
+```toml
+[[plugin]]
+id = "weather-radar"          # its manifest's id
+name = "Weather Radar"
+description = "The rain radar's map for the next two hours."
+source = "https://github.com/you/ostrov-weather-radar"
+```
+
 ## Manifest
 
 ```toml

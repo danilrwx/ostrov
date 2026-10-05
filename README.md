@@ -253,7 +253,8 @@ the Secret Service, never to the file. The look is applied as the file is saved;
   `examples/widgets/`.
 - **Plugins in any language**: a program in `~/.local/share/ostrov/plugins/<id>/` puts widgets, commands, keys,
   launcher modes and calendars into ostrov over JSON lines (the protocol is `wit/ostrov-plugin.wit`).
-  `ostrov plugin install PATH|GIT-URL` installs one after showing its permissions. SDKs: Python in `sdk/python`,
+  `ostrov plugin install PATH|GIT-URL|ID` installs one after showing its permissions, by its id from the catalogue
+  (`ostrov plugin catalogue`, Settings → Plugins). SDKs: Python in `sdk/python`,
   Rust in `sdk/` (the crate `ostrov-plugin`, the official plugins' too). See [docs/plugins.md](docs/plugins.md),
   `plugins/hello`, `examples/plugins/hello-python`, the calendar `examples/plugins/calendar-demo` and the
   launcher modes `examples/plugins/claude` (`?question`) and `examples/plugins/google` (`g words`).

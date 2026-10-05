@@ -272,7 +272,7 @@ mod tests {
         assert_eq!(words(&c(&["status", "menu", "w"])), ["wifi"]);
         assert_eq!(words(&c(&["settings", ""])), ["bar"]);
         assert_eq!(words(&c(&["key", "vol-m"])), ["vol-mute"]);
-        assert_eq!(words(&c(&["plugin", ""])), ["hello", "install", "remove"]);
+        assert_eq!(words(&c(&["plugin", ""])), ["hello", "install", "remove", "catalogue"]);
         assert_eq!(c(&["plugin", "remove", ""]), [("hello".into(), "Hello".into())]);
         assert!(c(&["plugin", "install", ""]).is_empty());
         assert_eq!(c(&["plugin", "hello", ""]), [

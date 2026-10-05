@@ -16,6 +16,7 @@
 //! http-get, "secrets" for secret, "state" for the desktop's state, "events" for ostrov's events, "keys" for its
 //! keys, "calendar" for its calendar; the rest are said, for the user.
 
+mod catalogue;
 mod install;
 pub mod node;
 mod process;
@@ -169,7 +170,7 @@ fn word(s: &str) -> bool {
 }
 
 /// `ostrov plugin`'s words of its own, no plugin's id.
-const RESERVED: &[&str] = &["install", "remove"];
+const RESERVED: &[&str] = &["install", "remove", "catalogue"];
 
 /// A manifest read and checked: its id its directory's name (so one plugin to an id), of [a-z0-9-] (it goes
 /// into the command line, the widgets' ids and the config's section) and none of RESERVED, an API this ostrov
@@ -718,6 +719,7 @@ pub fn start(hub: &Rc<Hub>) {
     let on = found().into_iter().filter(|(_, m, official)| enabled(&cfg, &m.id, *official));
     let plugins: Vec<Rc<Plugin>> = on.map(|(dir, m, official)| load(dir, m, official, &cfg)).collect();
     PLUGINS.with(|ps| *ps.borrow_mut() = plugins);
+    catalogue::page();
     bind_keys(None);
     hub.on(|st| {
         if !st.is_null() {
@@ -862,10 +864,17 @@ pub fn help() -> String {
 pub fn run(args: &[String], input: Option<String>) -> crate::Reply {
     let ready = |r| -> crate::Reply { Box::pin(std::future::ready(r)) };
     match args {
-        [w, src] if w == "install" => return Box::pin(install::install(src.clone())),
+        [w, src] if w == "install" => {
+            return match catalogue::resolve(src) {
+                Ok(catalogue::Target::Official(id)) => ready(catalogue::turn_on(&id)),
+                Ok(catalogue::Target::Source(src)) => Box::pin(install::install(src)),
+                Err(e) => ready(Err(e)),
+            };
+        }
+        [w] if w == "catalogue" => return ready(Ok(catalogue::list())),
         [w, id] if w == "remove" => return ready(install::remove(id)),
         [w, ..] if RESERVED.contains(&w.as_str()) => {
-            return ready(Err("ostrov plugin install SOURCE | remove ID".into()));
+            return ready(Err("ostrov plugin install SOURCE|ID | remove ID | catalogue".into()));
         }
         _ => {}
     }
