@@ -59,7 +59,7 @@ fn icon(item: &StatusNotifierItem) -> gtk4::Image {
     }
     if let Some(px) = item.icon_pixmap.as_ref().and_then(|v| v.iter().max_by_key(|p| p.width)) {
         let mut rgba = Vec::with_capacity(px.pixels.len());
-        for c in px.pixels.chunks_exact(4) {
+        for c in px.pixels.as_chunks::<4>().0 {
             rgba.extend_from_slice(&[c[1], c[2], c[3], c[0]]);
         }
         let tex = gdk::MemoryTexture::new(

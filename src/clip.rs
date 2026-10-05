@@ -54,7 +54,7 @@ fn entries() -> Vec<Entry> {
             Some(Entry { id: id.parse().ok()?, hash: hash.into(), kind: kind.into(), path: f.path() })
         })
         .collect();
-    v.sort_by(|a, b| b.id.cmp(&a.id));
+    v.sort_by_key(|e| std::cmp::Reverse(e.id));
     v
 }
 
