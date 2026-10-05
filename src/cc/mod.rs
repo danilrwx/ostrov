@@ -253,7 +253,6 @@ impl Spec {
                 self.width = w;
                 self.fixed = true;
             }
-            self.cols = c.cols.map_or(self.cols, |n| n.clamp(MIN_COLS, MAX_COLS));
         }
         self
     }
@@ -739,7 +738,8 @@ impl Panel {
         for (b, bx) in &bands {
             fit_band(bx.upcast_ref());
             self.grid.attach(bx, 0, *b as i32 + above(*b, false), self.cols.get() as i32, 1);
-        }    }
+        }
+    }
 
     /// One widget's menu unfolded, the others folded ("" all).
     fn set_open(&self, key: &str) {
@@ -992,19 +992,30 @@ impl Panel {
             });
             line("In the bar", chips.upcast_ref());
         }
-        // on the panel always, or only while its widget is active
+        // on the panel always, only while its widget is active, or never (its badge in the bar alone)
         let has_face = self.tiles.borrow().get(&key).is_some_and(|t| t.widget.face.is_some());
-        if !off && has_face {
-            let now = usize::from(self.lively.borrow().contains(&key));
+        if has_face {
+            let now = if off { 2 } else { usize::from(self.lively.borrow().contains(&key)) };
             let (me, k) = (Rc::downgrade(self), key.clone());
-            let chips = crate::ui::chips(&[t("Always"), t("While active")], Some(now), move |i| {
+            let chips = crate::ui::chips(&[t("Always"), t("While active"), t("Never")], Some(now), move |i| {
                 let Some(p) = me.upgrade() else { return };
-                if i == 1 {
-                    p.lively.borrow_mut().insert(k.clone());
+                let hidden = p.hidden.borrow().iter().any(|h| h.key == k);
+                if i == 2 {
+                    if !hidden {
+                        p.hide(&k);
+                    }
                 } else {
-                    p.lively.borrow_mut().remove(&k);
+                    if hidden {
+                        p.unhide(&k);
+                    }
+                    if i == 1 {
+                        p.lively.borrow_mut().insert(k.clone());
+                    } else {
+                        p.lively.borrow_mut().remove(&k);
+                    }
                 }
-                p.inspect();
+                // still picked, the inspector as it is now
+                p.pick(&k);
             });
             line("On the panel", chips.upcast_ref());
         }
@@ -1035,12 +1046,6 @@ impl Panel {
             });
             crate::ui::flow_in(&acts, &b);
         };
-        let k = key.clone();
-        if off {
-            act("Back on the Panel", Box::new(move |p| p.unhide(&k)));
-        } else if self.tiles.borrow().get(&key).is_some_and(|t| t.widget.face.is_some()) {
-            act("In the Bar Only", Box::new(move |p| p.hide(&k)));
-        }
         let k = key.clone();
         act("Remove", Box::new(move |p| p.remove(&k)));
         self.inspector.append(&acts);

@@ -8,14 +8,14 @@
 "Settings" = "Настройки"
 "Appearance" = "Оформление"
 "Size" = "Размер"
-"In the bar" = "В панели"
+"In the bar" = "В баре"
 "Always" = "Всегда"
 "While active" = "Когда активен"
 "Never" = "Никогда"
 "Back on the Panel" = "Вернуть обратно"
-"In the Bar Only" = "Только в панели"
+"In the Bar Only" = "Только в баре"
 "Remove" = "Убрать"
-"In the bar only" = "Только в панели"
+"In the bar only" = "Только в баре"
 "Add Widgets" = "Добавить виджеты"
 "Every widget is on the panel" = "Все виджеты уже добавлены"
 
@@ -27,7 +27,7 @@
 "Accent" = "Акцент"
 
 # the bar's editor
-"Bar" = "Панель"
+"Bar" = "Бар"
 "Workspaces" = "Рабочие столы"
 "Window Title" = "Заголовок окна"
 "Keyboard Layout" = "Раскладка"

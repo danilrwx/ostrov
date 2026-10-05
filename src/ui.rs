@@ -389,17 +389,19 @@ impl Slider {
             let v = on_step(v);
             sc.set_value(v);
             moved(v);
-            // the bubble over its knob, gone a moment after the last move
-            if let Some(knob) = knob(sc) {
-                crate::popup::bubble(&knob, Some(&w(v)));
+            // the bubble over its knob (where the value puts it along the track: GTK's knob node has no bounds of
+            // its own to go by), gone a moment after the last move
+            if let Some(trough) = sc.first_child() {
+                let frac = if max > min { (v - min) / (max - min) } else { 0.0 };
+                crate::popup::bubble(&trough, frac, Some(&w(v)));
                 if let Some(id) = hide.borrow_mut().take() {
                     id.remove();
                 }
-                let (h, k) = (hide.clone(), knob.downgrade());
+                let (h, k) = (hide.clone(), trough.downgrade());
                 *hide.borrow_mut() = Some(glib::timeout_add_local_once(Duration::from_millis(900), move || {
                     h.borrow_mut().take();
                     if let Some(k) = k.upgrade() {
-                        crate::popup::bubble(&k, None);
+                        crate::popup::bubble(&k, 0.0, None);
                     }
                 }));
             }

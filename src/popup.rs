@@ -313,17 +313,21 @@ fn hover_tips(host: &Rc<Host>) {
     host.win.add_controller(motion);
 }
 
-/// Over a widget in a bar's window (a slider's knob), centred, the text in a bubble; None: the bubble gone. Drawn
-/// in the window itself, over what clips the widget (a tile), as the hovers are.
-pub fn bubble(over: &gtk4::Widget, text: Option<&str>) {
+/// Over a widget in a bar's window (a slider's track), at frac of its width from its left, the text in a bubble;
+/// None: the bubble gone. Drawn in the window itself, over what clips the widget (a tile), as the hovers are.
+pub fn bubble(over: &gtk4::Widget, frac: f64, text: Option<&str>) {
     let hosts: Vec<Rc<Host>> = HOSTS.with(|h| h.borrow().iter().filter_map(Weak::upgrade).collect());
     let Some(root) = over.root() else { return };
     let Some(host) = hosts.into_iter().find(|h| h.win.upcast_ref::<gtk4::Widget>() == root.upcast_ref::<gtk4::Widget>()) else { return };
     let b = &host.bubble;
     let (Some(text), Some(at)) = (text, over.compute_bounds(&host.win)) else { return b.set_visible(false) };
     b.set_text(text);
+    // measured shown: a hidden widget asks for nothing
+    b.set_visible(true);
     let (_, nat) = b.preferred_size();
-    let x = (at.x() + at.width() / 2.0) as i32 - nat.width() / 2;
+    // the knob's travel inside the track's rounded ends
+    let inset = (at.height() / 2.0).max(4.0) as f64;
+    let x = (at.x() as f64 + inset + (at.width() as f64 - 2.0 * inset) * frac.clamp(0.0, 1.0)) as i32 - nat.width() / 2;
     b.set_margin_start(x.clamp(0, (host.win.width() - nat.width()).max(0)));
     b.set_margin_top((at.y() as i32 - nat.height() - 6).max(0));
     b.set_visible(true);

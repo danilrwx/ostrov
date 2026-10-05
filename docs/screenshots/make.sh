@@ -119,7 +119,7 @@ crops = {
     "hero": (0, 0, 2560, 1600), "calendar": (340, 0, 2220, 1310), "launcher": (0, 0, 2560, 120),
     "edit": (1440, 0, 2560, 1540), "appearance": (1440, 0, 2560, 1320), "welcome": (680, 300, 1880, 1300),
     "toast": (1760, 0, 2560, 250), "lock": (680, 440, 1880, 1120), "bar": (0, 0, 2560, 760),
-    "night": (1720, 0, 2560, 1120), "kit": (1440, 0, 2560, 1600),
+    "night": (1440, 0, 2560, 1600), "kit": (1440, 0, 2560, 1600),
 }
 for name, box in crops.items():
     img = Image.open(f"{raw}/{name}.png").convert("RGB").crop(box)
@@ -178,5 +178,6 @@ o welcome
 shot welcome
 o lock
 shot lock 2
-kill $shell $www
+# whatever has gone already, the nested Hyprland always told to go
+kill $shell $www 2>/dev/null || true
 hyprctl dispatch exit

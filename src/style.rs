@@ -150,7 +150,7 @@ button.tile-remove image { color: @fg; -gtk-icon-size: 12px; }
 .clock { padding: 0 14px; }
 .surface label.clock-time { font-size: 20pt; font-weight: 600; }
 /* the tiles as tall as the density's rows (look.rs), not their own */
-.cc .toggle, .cc button.round { min-height: 0; }
+.cc .tile .toggle, .cc .tile button.round { min-height: 0; min-width: 0; }
 
 /* the control centre's pages (Appearance, Settings): a header with its back arrow; a form's fields, the title
    over its help, the control beside or under them; the themes' cards, the accents' swatches */
