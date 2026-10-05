@@ -1405,6 +1405,8 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
         pages.add_named(&settings.root, Some("settings"));
         let pg = pages.clone();
         pages.add_named(&appearance::page(move || pg.set_visible_child_name("grid")), Some("appearance"));
+        let pg = pages.clone();
+        pages.add_named(&crate::ui::gallery(move || pg.set_visible_child_name("grid")), Some("kit"));
         settings
     });
 

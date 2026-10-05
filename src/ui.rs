@@ -560,3 +560,113 @@ pub fn battery_time(b: &Value) -> String {
         },
     }
 }
+
+/// The kit itself, every piece in its states on one page (`ostrov kit`): to see a change to the kit or a theme
+/// everywhere at once, and the screenshots' check. Nothing on it does anything but show itself.
+pub fn gallery(back: impl Fn() + 'static) -> gtk4::Box {
+    let root = gtk4::Box::new(Orientation::Vertical, 6);
+    root.append(&header(t("Kit"), back).0);
+    let body = gtk4::Box::new(Orientation::Vertical, 8);
+    body.add_css_class("page-body");
+    let part = |title: &str, w: &gtk4::Widget| {
+        body.append(&label(title, "dim"));
+        body.append(w);
+    };
+
+    // toggles: on with its menu, off, its glyph, its icon alone
+    let grid = gtk4::Grid::new();
+    grid.set_column_spacing(6);
+    grid.set_row_spacing(6);
+    grid.set_column_homogeneous(true);
+    let none: Option<Rc<dyn Fn()>> = None;
+    let on = Toggle::new("network-wireless-symbolic", "Wi-Fi", || (), Some(Rc::new(|| ())));
+    on.set(true, "network-wireless-symbolic", "Home");
+    let off = Toggle::new("bluetooth-symbolic", "Bluetooth", || (), Some(Rc::new(|| ())));
+    off.set(false, "bluetooth-disabled-symbolic", "Off");
+    let glyph = Toggle::new("input-keyboard-symbolic", "Keyboard", || (), none.clone());
+    glyph.glyph("EN");
+    glyph.set(false, "", "English");
+    let small = Toggle::new("weather-clear-night-symbolic", "Night", || (), none);
+    small.set(true, "", "");
+    small.size(1, 1);
+    grid.attach(&on.root, 0, 0, 2, 1);
+    grid.attach(&off.root, 2, 0, 2, 1);
+    grid.attach(&glyph.root, 0, 1, 2, 1);
+    grid.attach(&small.root, 2, 1, 1, 1);
+    grid.attach(&round("system-lock-screen-symbolic", || ()), 3, 1, 1, 1);
+    part(t("Toggles and round buttons"), grid.upcast_ref());
+
+    // sliders: any value, a few steps with their dots, its value beside it
+    let sliders = gtk4::Box::new(Orientation::Vertical, 6);
+    let any = Slider::new("audio-volume-high-symbolic", |_| ());
+    any.set(0.6, "");
+    any.root.append(&arrow(Rc::new(|| ())));
+    let words: Rc<dyn Fn(f64) -> String> = Rc::new(|v| format!("{}%", (v * 100.0).round()));
+    let steps = Slider::with_range("display-brightness-symbolic", 0.0, 1.0, 0.25, words, |_| ());
+    steps.set(0.5, "");
+    let n: Rc<dyn Fn(f64) -> String> = Rc::new(|v| format!("{v:.0}"));
+    let valued = Slider::with_range("", 0.0, 20.0, 1.0, n, |_| ()).with_value();
+    valued.set(10.0, "");
+    for s in [&any.root, &steps.root, &valued.root] {
+        sliders.append(s);
+    }
+    part(t("Sliders"), sliders.upcast_ref());
+
+    // chips: one of them, any of them; buttons beside
+    let chips = gtk4::Box::new(Orientation::Vertical, 6);
+    chips.append(&options(&["Compact", "Normal", "Comfortable"], &[false, true, false], false, |_, _| ()));
+    chips.append(&options(&["Mon", "Tue", "Wed", "Thu", "Fri"], &[true, true, false, true, false], true, |_, _| ()));
+    let buttons = chip_flow();
+    flow_in(&buttons, &chip("Cancel"));
+    flow_in(&buttons, &primary("Connect"));
+    let dis = chip("Disabled");
+    dis.set_sensitive(false);
+    flow_in(&buttons, &dis);
+    chips.append(&buttons);
+    part(t("Chips and buttons"), chips.upcast_ref());
+
+    // a menu's card: its rows, the one on ticked, a fold
+    let (card, items) = menu("network-wireless-symbolic", "Wi-Fi");
+    items.append(&row("network-wireless-signal-excellent-symbolic", "Home", "", true, || ()));
+    items.append(&row("network-wireless-signal-good-symbolic", "Office", "secured", false, || ()));
+    items.append(&gtk4::Separator::new(Orientation::Horizontal));
+    items.append(&fold("More", &label("What a fold holds", "dim")));
+    part(t("Menu"), card.upcast_ref());
+
+    // a form's fields: a switch, a number, words, a choice
+    let form = gtk4::Box::new(Orientation::Vertical, 0);
+    let sw = gtk4::Switch::new();
+    sw.set_active(true);
+    form.append(&setting("A switch", "Its help under its title.", &sw, false));
+    form.append(&setting("A number", "", &gtk4::SpinButton::with_range(0.0, 10.0, 1.0), false));
+    let entry = gtk4::Entry::new();
+    entry.set_placeholder_text(Some("Words"));
+    form.append(&setting("Words", "Across the width.", &entry, true));
+    part(t("Settings"), form.upcast_ref());
+
+    // words and the rest: their classes, a card, a progress, a badge
+    let words = gtk4::Box::new(Orientation::Vertical, 4);
+    for (text, class) in [("A title", "title"), ("Bold", "bold"), ("Plain", ""), ("Dim, said second", "dim"), ("An error", "error")] {
+        words.append(&label(text, class));
+    }
+    let progress = gtk4::ProgressBar::new();
+    progress.add_css_class("progress");
+    progress.set_fraction(0.4);
+    words.append(&progress);
+    let c = gtk4::Box::new(Orientation::Horizontal, 10);
+    c.add_css_class("card");
+    let badge = gtk4::Image::from_icon_name("audio-speakers-symbolic");
+    badge.add_css_class("badge");
+    c.append(&badge);
+    c.append(&label("A card, its badge", ""));
+    words.append(&c);
+    part(t("Words and cards"), words.upcast_ref());
+
+    let scroll = gtk4::ScrolledWindow::new();
+    scroll.set_hscrollbar_policy(gtk4::PolicyType::Never);
+    scroll.set_propagate_natural_height(true);
+    scroll.set_max_content_height(640);
+    scroll.set_child(Some(&body));
+    root.append(&scroll);
+    root
+}

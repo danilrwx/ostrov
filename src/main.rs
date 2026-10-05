@@ -62,7 +62,7 @@ thread_local! {
 /// ostrov's own commands, in forms.rs's grammar; besides them a bar block's (BLOCK ARGS) and a module's (MODULE
 /// ARGS).
 const FORMS: &[&str] = &[
-    "panel", "menu NAME", "settings [SECTION]", "appearance", "calendar", "run", "clip",
+    "panel", "menu NAME", "settings [SECTION]", "appearance", "kit", "calendar", "run", "clip",
     "lock", "dnd [on|off]", "notifications clear", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region",
     "share-pick [--allow-token]",
     "bar toggle|peek|unpeek|edit", "bar edit BLOCK", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
@@ -152,6 +152,8 @@ fn activate(app: &gtk4::Application) {
                 // Appearance page
                 ["settings", ref entry @ ..] => panel("control")?.toggle_page("settings", entry.first().copied()),
                 ["appearance"] => panel("control")?.toggle_page("appearance", None),
+                // every piece of the kit on one page
+                ["kit"] => panel("control")?.toggle_page("kit", None),
                 ["run"] => launcher.toggle(false),
                 ["clip"] => launcher.toggle(true),
                 ["lock"] => lock.lock(),
