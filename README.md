@@ -61,7 +61,13 @@ One look, one config, one place to change it.
 
 ## Install
 
-**1. Build it** (Rust 1.93+, GTK 4, gtk4-layer-shell 1.2+):
+**1. Get it.** A package from the [latest release](https://github.com/danilrwx/ostrov/releases/latest): `.deb`
+for Ubuntu 26.04+ and Debian sid, `.rpm` for Fedora 43+, `.pkg.tar.zst` for Arch, the official plugins in each:
+
+    sudo apt install ./ostrov_*.deb        # or: sudo dnf install ./ostrov-*.rpm, sudo pacman -U ./ostrov-*.pkg.tar.zst
+    mkdir -p ~/.local/state/ostrov && touch ~/.local/state/ostrov/hyprland.conf
+
+Or build it (Rust 1.93+, GTK 4, gtk4-layer-shell 1.2+):
 
     # Arch:   sudo pacman -S rust gtk4 gtk4-layer-shell pam pkgconf
     # Fedora: sudo dnf install cargo gtk4-devel gtk4-layer-shell-devel pam-devel wayland-devel
@@ -76,7 +82,7 @@ One look, one config, one place to change it.
 
 **3. Log in again.** That's it: the welcome takes it from there, and `ostrov doctor` says if anything is missing.
 
-Package recipes (Arch, Debian, Nix), the official plugins and the details: [docs/install.md](docs/install.md).
+Nix, building the packages yourself, and the details: [docs/install.md](docs/install.md).
 
 ## Keys
 
