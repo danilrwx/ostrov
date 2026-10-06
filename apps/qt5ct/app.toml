@@ -1,0 +1,9 @@
+name = "Qt 5 (qt5ct)"
+detect = ["qt5ct"]
+template = "ostrov-qt5.conf"
+
+# a colour scheme of qt5ct's: Appearance, Palette: custom, Color scheme: ostrov;
+# Qt apps take it with QT_QPA_PLATFORMTHEME=qt5ct
+[include]
+link = "~/.config/qt5ct/colors/ostrov.conf"
+

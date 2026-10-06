@@ -30,6 +30,11 @@ const BUILT_IN: &[(&str, &str, &str, &str)] = &[
     ("hyprland", include_str!("../apps/hyprland/app.toml"), "hyprland.conf", include_str!("../apps/hyprland/hyprland.conf")),
     ("zathura", include_str!("../apps/zathura/app.toml"), "zathurarc", include_str!("../apps/zathura/zathurarc")),
     ("fzf", include_str!("../apps/fzf/app.toml"), "fzf.sh", include_str!("../apps/fzf/fzf.sh")),
+    ("zed", include_str!("../apps/zed/app.toml"), "ostrov-zed.json", include_str!("../apps/zed/ostrov-zed.json")),
+    ("vscode", include_str!("../apps/vscode/app.toml"), "ostrov-vscode.json", include_str!("../apps/vscode/ostrov-vscode.json")),
+    ("qt6ct", include_str!("../apps/qt6ct/app.toml"), "ostrov-qt.conf", include_str!("../apps/qt6ct/ostrov-qt.conf")),
+    ("qt5ct", include_str!("../apps/qt5ct/app.toml"), "ostrov-qt5.conf", include_str!("../apps/qt5ct/ostrov-qt5.conf")),
+    ("pywal", include_str!("../apps/pywal/app.toml"), "wal-colors.json", include_str!("../apps/pywal/wal-colors.json")),
 ];
 
 /// How an app's config is made to read ostrov's file.
@@ -49,6 +54,13 @@ pub struct Include {
     /// a link made to the file instead (k9s's skins/ostrov.yaml)
     #[serde(default)]
     pub link: String,
+}
+
+/// A file of the integration's own, its text in app.toml, put where an app looks.
+#[derive(Deserialize, Clone, Debug, Default)]
+pub struct Copy {
+    pub to: String,
+    pub text: String,
 }
 
 /// How an app is told to read it again: a signal to its processes by name, or a command.
@@ -81,6 +93,9 @@ pub struct App {
     pub text: String,
     pub include: Option<Include>,
     pub reload: Option<Reload>,
+    /// files put as they are when it is connected, taken away when it is not (VS Code's extension's package.json)
+    #[serde(default)]
+    pub copy: Vec<Copy>,
     #[serde(skip)]
     pub built_in: bool,
 }
@@ -189,6 +204,13 @@ impl App {
     /// Its config made to read ostrov's file.
     pub fn connect(&self) -> Result<(), String> {
         let Some(inc) = &self.include else { return Err(format!("{}: nothing to connect, its file is to open", self.name)) };
+        for c in &self.copy {
+            let to = expand(&c.to);
+            if let Some(d) = to.parent() {
+                std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
+            }
+            std::fs::write(&to, &c.text).map_err(|e| format!("{}: {e}", to.display()))?;
+        }
         if self.connected() {
             return Ok(());
         }
@@ -207,6 +229,9 @@ impl App {
     /// The line (or link) taken out again.
     pub fn disconnect(&self) -> Result<(), String> {
         let Some(inc) = &self.include else { return Ok(()) };
+        for c in &self.copy {
+            let _ = std::fs::remove_file(expand(&c.to));
+        }
         if !inc.link.is_empty() {
             let link = expand(&inc.link);
             return if self.connected() { std::fs::remove_file(&link).map_err(|e| e.to_string()) } else { Ok(()) };
@@ -546,7 +571,7 @@ mod tests {
         let ids: Vec<_> = all().into_iter().filter(|a| a.built_in).map(|a| a.id).collect();
         assert_eq!(ids, [
             "alacritty", "kitty", "foot", "ghostty", "k9s", "telegram", "shell", "wezterm", "btop", "tmux", "nvim", "helix",
-            "vesktop", "hyprland", "zathura", "fzf",
+            "vesktop", "hyprland", "zathura", "fzf", "zed", "vscode", "qt6ct", "qt5ct", "pywal",
         ]);
         // each its own file
         let mut files: Vec<_> = all().into_iter().map(|a| a.template).collect();

@@ -1,0 +1,7 @@
+name = "Zed"
+detect = ["zed", "zeditor"]
+template = "ostrov-zed.json"
+
+# a theme of its own: "theme": "ostrov" in settings.json; Zed reads its themes again as they change
+[include]
+link = "~/.config/zed/themes/ostrov.json"

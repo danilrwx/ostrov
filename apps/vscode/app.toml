@@ -1,0 +1,33 @@
+name = "VS Code"
+detect = ["code"]
+template = "ostrov-vscode.json"
+
+# an extension of ostrov's own with its theme in it: the color theme "ostrov" (Preferences: Color Theme)
+[include]
+link = "~/.vscode/extensions/ostrov.ostrov-theme-0.0.1/themes/ostrov.json"
+
+[[copy]]
+to = "~/.vscode/extensions/ostrov.ostrov-theme-0.0.1/package.json"
+text = '''
+{
+  "name": "ostrov-theme",
+  "displayName": "ostrov",
+  "publisher": "ostrov",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Themes"
+  ],
+  "contributes": {
+    "themes": [
+      {
+        "label": "ostrov",
+        "uiTheme": "vs-dark",
+        "path": "./themes/ostrov.json"
+      }
+    ]
+  }
+}
+'''

@@ -1,0 +1,9 @@
+name = "Qt 6 (qt6ct)"
+detect = ["qt6ct"]
+template = "ostrov-qt.conf"
+
+# a colour scheme of qt6ct's: Appearance, Palette: custom, Color scheme: ostrov;
+# Qt apps take it with QT_QPA_PLATFORMTHEME=qt6ct
+[include]
+link = "~/.config/qt6ct/colors/ostrov.conf"
+

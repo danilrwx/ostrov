@@ -32,6 +32,10 @@ Built in:
 | zathura | `include` in zathurarc | as it starts |
 | Discord (Vesktop) | Vencord's `themes/ostrov.theme.css` linked | on in its Themes; at once |
 | Hyprland's borders | `source` in hyprland.conf | the running one's set at once |
+| Zed | `themes/ostrov.json` linked | `"theme": "ostrov"`; at once |
+| VS Code | an extension of its own, `ostrov.ostrov-theme` | the color theme ostrov |
+| Qt 6, Qt 5 (qt6ct, qt5ct) | `colors/ostrov.conf` linked | Palette: custom, Color scheme: ostrov (QT_QPA_PLATFORMTHEME=qt6ct) |
+| pywal's colours | `~/.cache/wal/colors.json` linked | Firefox and Thunderbird through pywalfox, told at once; whatever else reads pywal |
 | Telegram | none: its palette to open once as a theme | |
 | Shell scripts | none: `colors.sh`, `colors.json` | |
 
@@ -56,6 +60,10 @@ line = 'color_theme = "~/.local/state/ostrov/colors/ostrov.theme"'
 signal = "USR1"                    # a signal to the processes of that name
 process = "btop"
 # command = "..."                  # or a command (the palette's {{tokens}} filled in)
+
+# [[copy]]                         # files put as they are as it is connected, taken away as it is not
+# to = "~/.vscode/extensions/ostrov.ostrov-theme-0.0.1/package.json"
+# text = "..."
 # osc = true                       # or the colours sent into the terminals of the processes named (foot's way)
 ```
 

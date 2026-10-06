@@ -1,0 +1,10 @@
+name = "pywal's colours (Firefox through pywalfox)"
+detect = ["pywalfox", "wal"]
+template = "wal-colors.json"
+
+# where pywal keeps its palette, which pywalfox (Firefox, Thunderbird) and others read
+[include]
+link = "~/.cache/wal/colors.json"
+
+[reload]
+command = "command -v pywalfox >/dev/null && pywalfox update >/dev/null 2>&1; true"
