@@ -117,3 +117,5 @@
 "Blur contrast" = "Контраст размытия"
 "Blur brightness" = "Яркость размытия"
 "Blur grain" = "Зерно размытия"
+"Blur the bar" = "Размывать бар"
+"Off: the bar a plain see-through strip, the panels alone blurred (no dark rim under it)." = "Выключено: бар — просто полупрозрачная полоса, размываются только панели (без тёмной каймы под баром)."

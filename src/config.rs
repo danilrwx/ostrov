@@ -153,6 +153,8 @@ pub struct Appearance {
     /// the blur's other keywords, set only when given: the wallpaper alone under it (xray), its colours' strength
     /// (vibrancy), its contrast, brightness and grain (noise)
     pub blur_xray: Option<bool>,
+    /// the bar itself blurred (unset: yes); no, its ground unblurred on a layer of its own, the popups alone blurred
+    pub blur_bar: Option<bool>,
     pub blur_vibrancy: Option<f64>,
     pub blur_contrast: Option<f64>,
     pub blur_brightness: Option<f64>,
@@ -192,6 +194,7 @@ impl Default for Appearance {
             blur_size: None,
             blur_passes: None,
             blur_xray: None,
+            blur_bar: None,
             blur_vibrancy: None,
             blur_contrast: None,
             blur_brightness: None,

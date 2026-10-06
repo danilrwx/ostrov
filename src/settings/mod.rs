@@ -495,6 +495,10 @@ pub fn appearance() -> Vec<Section> {
         Field::new("blur_passes", "Blur passes", slider(1.0, 4.0, 1.0))
             .default(live("passes", 1))
             .visible_if("blur", true),
+        Field::new("blur_bar", "Blur the bar", Kind::Bool)
+            .default(true)
+            .help("Off: the bar a plain see-through strip, the panels alone blurred (no dark rim under it).")
+            .visible_if("blur", true),
         Field::new("blur_xray", "Wallpaper only", Kind::Bool)
             .default(true)
             .help("The blur sees the wallpaper alone, not the windows under it: lighter, the same everywhere.")

@@ -46,6 +46,9 @@ pub struct Host {
     grab: RefCell<Option<crate::wm::Grab>>,
     /// a slider's value over its knob while it moves (bubble)
     bubble: gtk4::Label,
+    /// the bar's dark ground on a layer of its own under it, unblurred, while [appearance] blur_bar = false: the
+    /// bar's window itself clear there, its blur (the popups') no longer ending in a dark rim under the strip
+    ground: gtk4::Window,
 }
 
 impl Host {
@@ -69,15 +72,15 @@ impl Host {
         let m2 = me.clone();
         crate::style::on_config(move || {
             let now = height();
+            let Some(h) = m2.borrow().upgrade() else { return };
             if HEIGHT.with(|h| h.replace(now)) != now {
                 s.set_size_request(-1, now);
-                if let Some(h) = m2.borrow().upgrade() {
-                    if let Some(p) = h.popup() {
-                        p.reveal.set_margin_top(now);
-                    }
-                    h.apply();
+                if let Some(p) = h.popup() {
+                    p.reveal.set_margin_top(now);
                 }
             }
+            // its height, and its ground on a layer of its own or not ([appearance] blur_bar)
+            h.apply();
         });
         let layer = gtk4::Overlay::new();
         layer.set_child(Some(&col));
@@ -94,6 +97,7 @@ impl Host {
             open: RefCell::default(),
             grab: RefCell::default(),
             bubble: gtk4::Label::new(None),
+            ground: ground(app, monitor),
         });
         *me.borrow_mut() = Rc::downgrade(&host);
         HOSTS.with(|h| h.borrow_mut().push(Rc::downgrade(&host)));
@@ -151,6 +155,7 @@ impl Host {
             return false;
         }
         self.win.set_monitor(Some(monitor));
+        self.ground.set_monitor(Some(monitor));
         self.screen.set(size(Some(monitor)));
         self.layer.set_size_request(-1, self.screen.get().1);
         self.apply();
@@ -166,6 +171,7 @@ impl Host {
     pub fn destroy(&self) {
         HOSTS.with(|h| h.borrow_mut().retain(|w| w.upgrade().is_some_and(|h| !std::ptr::eq(&*h, self))));
         self.win.destroy();
+        self.ground.destroy();
     }
 
     /// A widget laid over the window, drawn but taking no input (the launcher's preview).
@@ -185,6 +191,15 @@ impl Host {
     /// not, input where it is drawn.
     pub fn apply(&self) {
         let popup = self.popup();
+        // the ground under the docked bar, its window clear over it; peeking over the windows it is its own again
+        let grounded = self.docked.get() && crate::config::load().appearance.blur_bar == Some(false);
+        if grounded {
+            self.win.add_css_class("grounded");
+        } else {
+            self.win.remove_css_class("grounded");
+        }
+        self.ground.set_size_request(-1, bar());
+        self.ground.set_visible(grounded);
         if self.docked.get() {
             self.win.set_layer(Layer::Top);
             self.win.set_exclusive_zone(bar());
@@ -403,6 +418,30 @@ fn remap() {
 /// How long a popup takes to come out of the bar and to go back.
 const OPEN_MS: u32 = 240;
 const CLOSE_MS: u32 = 150;
+
+/// The bar's ground alone: a strip of its colour on the layer under the windows, across the monitor's top, over
+/// no one's reserved space (its own window's), taking no input.
+fn ground(app: &gtk4::Application, monitor: Option<&gtk4::gdk::Monitor>) -> gtk4::Window {
+    let w = gtk4::Window::new();
+    w.set_application(Some(app));
+    w.init_layer_shell();
+    w.set_namespace(Some("ostrov-ground"));
+    w.set_layer(Layer::Bottom);
+    for e in [Edge::Top, Edge::Left, Edge::Right] {
+        w.set_anchor(e, true);
+    }
+    w.set_exclusive_zone(-1);
+    w.set_keyboard_mode(KeyboardMode::None);
+    w.set_monitor(monitor);
+    w.add_css_class("bar-ground");
+    w.set_can_target(false);
+    w.connect_map(|w| {
+        if let Some(s) = w.surface() {
+            s.set_input_region(Some(&gtk4::cairo::Region::create()));
+        }
+    });
+    w
+}
 
 /// A monitor's size, a guess without one.
 fn size(monitor: Option<&gtk4::gdk::Monitor>) -> (i32, i32) {

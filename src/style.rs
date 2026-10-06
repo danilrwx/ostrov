@@ -228,6 +228,11 @@ calendar > grid > label.day-number:selected { background: @accent; color: @ink; 
    blur), and the black left round its corners is its shadow, clipped to the slot. A block keeps its border
    (transparent) and margins either way, so nothing in the bar moves as a popup opens */
 .bar-bg, .slot { background: @bar; }
+/* [appearance] blur_bar = false: the bar's ground its own layer under it (popup.rs), unblurred; the bar's window
+   clear there, a hovered block and a tab its surface alone over that ground */
+window.bar-ground { background: @bar; }
+window.grounded .bar-bg, window.grounded .slot, window.grounded .slot:hover, window.grounded .slot.tab { background: transparent; }
+window.grounded .slot:hover > .pill, window.grounded .slot.tab > .pill { box-shadow: none; }
 .slot:hover, .slot.tab { background: transparent; }
 .pill { padding: 0 8px; margin: 2px 0 0 0; border: 1px solid transparent; border-bottom-width: 0;
         border-radius: 6px 6px 0 0; }

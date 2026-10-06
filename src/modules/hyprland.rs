@@ -68,7 +68,8 @@ pub fn rule() -> String {
     if a.blur.or(crate::theme::get(&a.theme).blur) == Some(false) {
         return "blur off, ignore_alpha 0, match:namespace ^ostrov$".into();
     }
-    let least = a.opacity.min(crate::modules::wallpaper::service::bar_alpha());
+    // the bar's own ground in it unless it lies on its own layer (blur_bar = false), the window clear there
+    let least = if a.blur_bar == Some(false) { a.opacity } else { a.opacity.min(crate::modules::wallpaper::service::bar_alpha()) };
     // the wallpaper alone under it unless [appearance] blur_xray says no: Hyprland's own xray is the windows'
     let xray = if a.blur_xray.unwrap_or(true) { "on" } else { "off" };
     format!("blur on, ignore_alpha {:.2}, xray {xray}, match:namespace ^ostrov$", (least - 0.05).clamp(0.01, 0.7))
