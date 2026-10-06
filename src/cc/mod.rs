@@ -702,7 +702,10 @@ impl Panel {
             .filter(|i| showing(&i.key) && (!lively.contains(&i.key) || active(&i.key)))
             .cloned()
             .collect();
-        grid::compact(&mut items, self.cols.get());
+        // those gone leave no holes, beside or above
+        if items.len() != self.items.borrow().len() {
+            grid::flow(&mut items, self.cols.get());
+        }
         items
     }
 

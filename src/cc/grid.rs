@@ -91,6 +91,30 @@ pub fn compact(items: &mut [Item], cols: u8) {
     }
 }
 
+/// The items laid again in their reading order, each at the first place it fits from the row the one before it
+/// went to: a hole left by one gone (a widget showing nothing) taken by those after it, beside as well as above.
+pub fn flow(items: &mut [Item], cols: u8) {
+    clamp(items, cols);
+    let mut order: Vec<usize> = (0..items.len()).collect();
+    order.sort_by_key(|&i| (items[i].y, items[i].x));
+    let mut placed: Vec<Item> = Vec::new();
+    let mut row = 0;
+    for i in order {
+        let it = &mut items[i];
+        'find: for y in row.. {
+            for x in 0..=cols - it.w {
+                let cand = Item { key: String::new(), x, y, w: it.w, h: it.h };
+                if !placed.iter().any(|p| p.overlaps(&cand)) {
+                    (it.x, it.y) = (x, y);
+                    break 'find;
+                }
+            }
+        }
+        row = it.y;
+        placed.push(it.clone());
+    }
+}
+
 /// The item key put at (x, y) and size (w, h), those in its way pushed down below it (and those in theirs, on),
 /// then the whole grid compacted. The moved item keeps its place over the others.
 #[allow(clippy::too_many_arguments)]
@@ -148,6 +172,20 @@ pub fn below(items: &[Item], y: u8, h: u8) -> u8 {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn flow_fills_a_hole_beside() {
+        let it = |k: &str, x, y, w| Item { key: k.into(), x, y, w, h: 1 };
+        // awake and the headset side by side, the headset gone: airplane comes up beside awake
+        let mut items = vec![it("wifi", 0, 0, 3), it("bt", 3, 0, 3), it("awake", 0, 1, 3), it("air", 0, 2, 3)];
+        flow(&mut items, 6);
+        assert_eq!((items[3].x, items[3].y), (3, 1));
+        // nothing gone: as it was
+        let mut same = vec![it("a", 0, 0, 6), it("b", 0, 1, 3), it("c", 3, 1, 3)];
+        let was = same.clone();
+        flow(&mut same, 6);
+        assert_eq!(same, was);
+    }
     use super::*;
 
     fn it(key: &str, x: u8, y: u8, w: u8, h: u8) -> Item {

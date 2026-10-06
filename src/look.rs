@@ -153,8 +153,8 @@ pub fn previews(themes: &[Theme]) -> String {
 }
 
 thread_local! {
-    /// Hyprland's blur as last set from here: enabled, size, passes.
-    static BLUR: RefCell<(Option<bool>, Option<u32>, Option<u32>)> = const { RefCell::new((None, None, None)) };
+    /// Hyprland's blur as last set from here: its keywords' values.
+    static BLUR: RefCell<Vec<(&'static str, Option<String>)>> = const { RefCell::new(Vec::new()) };
     static RULE: RefCell<String> = const { RefCell::new(String::new()) };
 }
 
@@ -173,21 +173,25 @@ pub fn apply(a: &Appearance, t: &Theme) {
     if RULE.with(|r| r.replace(rule.clone())) != rule && crate::config::load().hyprland.rules {
         drop(crate::wm::hyprctl(&format!("keyword layerrule {rule}")));
     }
-    let now = (a.blur.or(t.blur), a.blur_size, a.blur_passes);
-    let last = BLUR.with(|b| b.replace(now));
-    let set = |k: &str, v: String| drop(crate::wm::hyprctl(&format!("keyword decoration:blur:{k} {v}")));
-    if now.0 != last.0
-        && let Some(on) = now.0 {
-            set("enabled", (on as u8).to_string());
+    let flag = |b: Option<bool>| b.map(|b| (b as u8).to_string());
+    let num = |n: Option<f64>| n.map(|n| format!("{n:.4}"));
+    let now: Vec<(&'static str, Option<String>)> = vec![
+        ("enabled", flag(a.blur.or(t.blur))),
+        ("size", a.blur_size.map(|n| n.to_string())),
+        ("passes", a.blur_passes.map(|n| n.to_string())),
+        ("xray", flag(a.blur_xray)),
+        ("vibrancy", num(a.blur_vibrancy)),
+        ("contrast", num(a.blur_contrast)),
+        ("brightness", num(a.blur_brightness)),
+        ("noise", num(a.blur_noise)),
+    ];
+    let last = BLUR.with(|b| b.replace(now.clone()));
+    for (k, v) in &now {
+        let was = last.iter().find(|(l, _)| l == k).and_then(|(_, v)| v.as_ref());
+        if let Some(v) = v.as_ref().filter(|v| Some(*v) != was) {
+            drop(crate::wm::hyprctl(&format!("keyword decoration:blur:{k} {v}")));
         }
-    if now.1 != last.1
-        && let Some(n) = now.1 {
-            set("size", n.to_string());
-        }
-    if now.2 != last.2
-        && let Some(n) = now.2 {
-            set("passes", n.to_string());
-        }
+    }
 }
 
 #[cfg(test)]

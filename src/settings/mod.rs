@@ -453,6 +453,11 @@ pub fn appearance() -> Vec<Section> {
         let v = crate::wm::hyprctl(&format!("j/getoption decoration:blur:{k}"));
         serde_json::from_str::<Value>(&v).ok().and_then(|v| v["int"].as_i64()).unwrap_or(or)
     };
+    let live_f = |k: &str, or: f64| {
+        let v = crate::wm::hyprctl(&format!("j/getoption decoration:blur:{k}"));
+        let f = serde_json::from_str::<Value>(&v).ok().and_then(|v| v["float"].as_f64()).unwrap_or(or);
+        (f * 100.0).round() / 100.0
+    };
     // the theme's suggestions the defaults, what the file leaving them out gives
     let theme = crate::theme::get(&crate::config::load().appearance.theme);
     vec![Section::new("appearance", "Appearance", vec![
@@ -489,6 +494,23 @@ pub fn appearance() -> Vec<Section> {
             .visible_if("blur", true),
         Field::new("blur_passes", "Blur passes", slider(1.0, 4.0, 1.0))
             .default(live("passes", 1))
+            .visible_if("blur", true),
+        Field::new("blur_xray", "Wallpaper only", Kind::Bool)
+            .default(live("xray", 0) != 0)
+            .help("The blur sees the wallpaper alone, not the windows under it: lighter, the same everywhere.")
+            .visible_if("blur", true),
+        Field::new("blur_vibrancy", "Vibrancy", slider(0.0, 1.0, 0.05))
+            .default(live_f("vibrancy", 0.17))
+            .help("How strong the colours under the blur come through: frosted glass.")
+            .visible_if("blur", true),
+        Field::new("blur_contrast", "Blur contrast", slider(0.0, 2.0, 0.05))
+            .default(live_f("contrast", 0.89))
+            .visible_if("blur", true),
+        Field::new("blur_brightness", "Blur brightness", slider(0.0, 2.0, 0.05))
+            .default(live_f("brightness", 0.82))
+            .visible_if("blur", true),
+        Field::new("blur_noise", "Blur grain", slider(0.0, 0.2, 0.01))
+            .default(live_f("noise", 0.01))
             .visible_if("blur", true),
         Field::new("font", "Font", Kind::String).default("").help("A family (Inter, Iosevka…); empty: GTK's own."),
         Field::new("font_size", "Text size", slider(8.0, 16.0, 1.0))

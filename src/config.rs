@@ -150,6 +150,13 @@ pub struct Appearance {
     pub blur: Option<bool>,
     pub blur_size: Option<u32>,
     pub blur_passes: Option<u32>,
+    /// the blur's other keywords, set only when given: the wallpaper alone under it (xray), its colours' strength
+    /// (vibrancy), its contrast, brightness and grain (noise)
+    pub blur_xray: Option<bool>,
+    pub blur_vibrancy: Option<f64>,
+    pub blur_contrast: Option<f64>,
+    pub blur_brightness: Option<f64>,
+    pub blur_noise: Option<f64>,
     /// the text's family ("" GTK's own), its size in points, what the rest is sized from
     pub font: String,
     /// the language its texts are in ("" the locale's): en, ru
@@ -184,6 +191,11 @@ impl Default for Appearance {
             blur: None,
             blur_size: None,
             blur_passes: None,
+            blur_xray: None,
+            blur_vibrancy: None,
+            blur_contrast: None,
+            blur_brightness: None,
+            blur_noise: None,
             font: String::new(),
             font_size: 10.0,
             icon_size: 16,
