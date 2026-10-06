@@ -333,6 +333,16 @@ pub fn load() {
     load();
     RELOAD.with(|r| *r.borrow_mut() = Some(std::rc::Rc::new(load.clone())));
     gtk4::style_context_add_provider_for_display(&display, &css, 900);
+    // mode auto: the look again as day turns to night and back, looked at every minute
+    let side = std::cell::Cell::new(crate::theme::light_mode());
+    let again = load.clone();
+    gtk4::glib::timeout_add_seconds_local(60, move || {
+        let now = crate::theme::light_mode();
+        if side.replace(now) != now {
+            again();
+        }
+        gtk4::glib::ControlFlow::Continue
+    });
     for f in [alpha_file, crate::config::path()] {
         if let Ok(mon) = gio::File::for_path(&f).monitor_file(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE) {
             let load = load.clone();

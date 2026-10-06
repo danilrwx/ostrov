@@ -140,8 +140,10 @@ impl Default for Launcher {
 #[serde(default)]
 pub struct Appearance {
     pub theme: String,
-    /// its side: "dark" or "light" ("" as an old theme id says: light for "light", else dark)
+    /// its side: "dark", "light", or "auto" by day ("" as an old theme id says: light for "light", else dark)
     pub mode: String,
+    /// with mode auto, when it is day: "HH:MM-HH:MM", or "sun" (sunrise to sunset where `ostrov location` says)
+    pub day: String,
     pub accent: String,
     pub surface: String,
     pub opacity: f64,
@@ -187,6 +189,7 @@ impl Default for Appearance {
         Appearance {
             theme: "ostrov".into(),
             mode: String::new(),
+            day: "07:00-19:00".into(),
             accent: String::new(),
             surface: String::new(),
             opacity: 0.75,

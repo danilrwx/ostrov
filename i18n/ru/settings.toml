@@ -121,3 +121,7 @@
 "Off: the bar a plain see-through strip, the panels alone blurred (no dark rim under it)." = "Выключено: бар — просто полупрозрачная полоса, размываются только панели (без тёмной каймы под баром)."
 "Other apps" = "Другие приложения"
 "The other apps in this look: the dark or light scheme and the accent, GTK's colours, colour files for terminals and Telegram (~/.local/state/ostrov/colors)." = "Другие приложения в этом же стиле: тёмная или светлая схема и акцент, цвета GTK, файлы цветов для терминалов и Telegram (~/.local/state/ostrov/colors)."
+"Day" = "День"
+"The theme's side: after dark, by day, or each in its time." = "Сторона темы: тёмная, светлая или каждая в своё время."
+"When it is day: from-to, or sun for sunrise to sunset where ostrov location puts you." = "Когда день: с-по, или sun — от рассвета до заката там, где вы (ostrov location)."
+"Mode" = "Режим"

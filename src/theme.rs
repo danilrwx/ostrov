@@ -168,14 +168,63 @@ pub fn all_now() -> Vec<Theme> {
     all().into_iter().map(|t| t.variant(light)).collect()
 }
 
-/// Whether ostrov is by day: [appearance] mode, else (left out) as an old theme id said, "light".
+/// Whether ostrov is by day: [appearance] mode, auto as [appearance] day says now, else (left out) as an old
+/// theme id said, "light".
 pub fn light_mode() -> bool {
     let a = crate::config::load().appearance;
     match a.mode.as_str() {
         "light" => true,
         "dark" => false,
+        "auto" => day_now(&a.day),
         _ => ALIASES.iter().any(|(old, _, light)| *old == a.theme && *light),
     }
+}
+
+/// Whether it is day now as day says: "HH:MM-HH:MM" (local), or "sun", sunrise to sunset where `ostrov location`
+/// put the machine (with none, 07:00 to 19:00).
+fn day_now(day: &str) -> bool {
+    let Ok(now) = gtk4::glib::DateTime::now_local() else { return true };
+    let minute = now.hour() * 60 + now.minute();
+    if day.trim() == "sun" {
+        if let Some(l) = crate::services::location::load() {
+            let utc = now.to_utc().unwrap_or(now.clone());
+            return sun_up(utc.day_of_year(), utc.hour() as f64 * 60.0 + utc.minute() as f64, l.lat, l.lon);
+        }
+        return (7 * 60..19 * 60).contains(&minute);
+    }
+    let clock = |s: &str| {
+        let (h, m) = s.trim().split_once(':')?;
+        Some(h.parse::<i32>().ok()? * 60 + m.parse::<i32>().ok()?)
+    };
+    match day.split_once('-').and_then(|(a, b)| Some((clock(a)?, clock(b)?))) {
+        Some((from, to)) if from <= to => (from..to).contains(&minute),
+        Some((from, to)) => minute >= from || minute < to,
+        None => (7 * 60..19 * 60).contains(&minute),
+    }
+}
+
+/// Whether the sun is up on that day of the year at that minute of the day (UTC), at lat, lon: NOAA's simplified
+/// equations (a minute or two off); a polar day up, a polar night down.
+fn sun_up(day_of_year: i32, minute_utc: f64, lat: f64, lon: f64) -> bool {
+    use std::f64::consts::PI;
+    let rad = PI / 180.0;
+    let g = 2.0 * PI / 365.0 * (day_of_year as f64 - 1.0);
+    let eqtime = 229.18
+        * (0.000075 + 0.001868 * g.cos() - 0.032077 * g.sin() - 0.014615 * (2.0 * g).cos() - 0.040849 * (2.0 * g).sin());
+    let decl = 0.006918 - 0.399912 * g.cos() + 0.070257 * g.sin() - 0.006758 * (2.0 * g).cos() + 0.000907 * (2.0 * g).sin()
+        - 0.002697 * (3.0 * g).cos()
+        + 0.00148 * (3.0 * g).sin();
+    let cos_h = (90.833 * rad).cos() / ((lat * rad).cos() * decl.cos()) - (lat * rad).tan() * decl.tan();
+    if cos_h < -1.0 {
+        return true;
+    }
+    if cos_h > 1.0 {
+        return false;
+    }
+    let ha = cos_h.acos() / rad;
+    let (rise, set) = (720.0 - 4.0 * (lon + ha) - eqtime, 720.0 - 4.0 * (lon - ha) - eqtime);
+    // the day's minutes past midnight, the sun's hours maybe across it
+    [minute_utc - 1440.0, minute_utc, minute_utc + 1440.0].iter().any(|m| (rise..set).contains(m))
 }
 
 /// The theme of that id on the mode's side; ostrov's for an id there is none of (or one that does not read), an
@@ -340,6 +389,16 @@ mod tests {
         let ex = include_str!("../examples/themes/catppuccin-mocha/theme.toml");
         let css = include_str!("../examples/themes/catppuccin-mocha/theme.css");
         assert_eq!(parse(ex, "catppuccin-mocha", css.into()).map(|t| t.name), Ok("Catppuccin Mocha".into()));
+    }
+
+    #[test]
+    fn day_and_night() {
+        // Riga at the equinox: up about 04:20 to 16:30 UTC
+        assert!(sun_up(80, 12.0 * 60.0, 56.95, 24.1));
+        assert!(!sun_up(80, 2.0 * 60.0, 56.95, 24.1));
+        assert!(!sun_up(80, 20.0 * 60.0, 56.95, 24.1));
+        // the far north in June: up at midnight
+        assert!(sun_up(172, 0.0, 78.0, 15.0));
     }
 
     #[test]

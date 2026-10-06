@@ -465,9 +465,13 @@ pub fn appearance() -> Vec<Section> {
             options: crate::theme::all().into_iter().map(|t| Opt::Labeled { value: t.id, label: t.name }).collect(),
         })
         .default("ostrov"),
-        Field::new("mode", "Mode", Kind::Choice { options: opts(&[("dark", "Dark"), ("light", "Light")]) })
+        Field::new("mode", "Mode", Kind::Choice { options: opts(&[("dark", "Dark"), ("light", "Light"), ("auto", "Auto")]) })
             .default(if crate::theme::light_mode() { "light" } else { "dark" })
-            .help("The theme's side: after dark or by day."),
+            .help("The theme's side: after dark, by day, or each in its time."),
+        Field::new("day", "Day", Kind::String)
+            .default("07:00-19:00")
+            .help("When it is day: from-to, or sun for sunrise to sunset where ostrov location puts you.")
+            .visible_if("mode", "auto"),
         Field::new("accent", "Accent", Kind::Color).default("").help("Empty: the theme's own."),
         Field::new("surface", "Surface colour", Kind::Color)
             .default("")

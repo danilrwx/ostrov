@@ -1,8 +1,9 @@
 # Themes
 
 A theme is a directory: a `theme.toml` with its colours and a few suggestions, and, for changes past colours, an
-optional `theme.css`. Each comes in two, after dark and by day: `[appearance] mode = "dark"|"light"` (the Mode
-chips on the Appearance page) picks the side. ostrov's five (Ostrov, its day GitHub's Light; Graphite; Nord, Polar
+optional `theme.css`. Each comes in two, after dark and by day: `[appearance] mode = "dark"|"light"|"auto"` (the
+Mode chips on the Appearance page) picks the side; auto is light by day, `[appearance] day` saying when
+(`"07:00-19:00"`, or `"sun"`: sunrise to sunset where `ostrov location` puts you), the whole desktop turning with it. ostrov's five (Ostrov, its day GitHub's Light; Graphite; Nord, Polar
 Night and Snow Storm; Solarized, dark and light; Catppuccin, Mocha and Latte) are the same files, under `themes/` in
 the source and compiled in; yours live in `~/.local/share/ostrov/themes/<id>/`. The old ids `dark` and `light` are
 Ostrov after dark and by day.
