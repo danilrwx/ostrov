@@ -146,6 +146,14 @@ fn gtk_css(p: &Palette, vars: bool) -> String {
     for (k, v) in defs {
         out += &format!("@define-color {k} {};\n", p.get(v));
     }
+    // GTK 3's selection (Thunar's files, a list's rows) the accent see-through under the text as it is, as
+    // libadwaita's: a light accent solid under light text would not read
+    out += &format!(
+        "@define-color theme_selected_bg_color alpha({a}, 0.35);\n@define-color theme_selected_fg_color {f};\n\
+         @define-color theme_unfocused_selected_bg_color alpha({a}, 0.25);\n@define-color theme_unfocused_selected_fg_color {f};\n",
+        a = p.get("accent"),
+        f = p.get("fg")
+    );
     if !vars {
         return out;
     }
