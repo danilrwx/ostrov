@@ -154,6 +154,7 @@ As the appearance changes, ostrov puts its look into the rest of the desktop (`[
 | | (the terminals' ground is the bar's colour, as solid as the bar: one strip from the bar down) |
 | `kitty.conf` | `include ~/.local/state/ostrov/colors/kitty.conf`; kitty is told to read it again |
 | `foot.ini` | `[main] include=~/.local/state/ostrov/colors/foot.ini`, at foot's start |
+| `ghostty` | `config-file = ~/.local/state/ostrov/colors/ghostty`; ghostty is told to read it again |
 | `telegram.tdesktop-palette` | opened in Telegram Desktop once, as a theme of one's own |
 | `colors.sh`, `colors.json` | scripts |
 

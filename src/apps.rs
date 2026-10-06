@@ -4,7 +4,7 @@
 //! - the palette for GTK 3 and 4 (file managers, GNOME's apps): ostrov.css beside gtk.css in ~/.config/gtk-3.0 and
 //!   gtk-4.0, gtk.css importing it (a line put at its top, the file made if there is none);
 //! - colour files for the rest in ~/.local/state/ostrov/colors (alacritty.toml, kitty.conf, foot.ini,
-//!   telegram.tdesktop-palette, colors.sh, colors.json) and the user's own templates rendered beside them:
+//!   ghostty, telegram.tdesktop-palette, colors.sh, colors.json) and the user's own templates rendered beside them:
 //!   ~/.config/ostrov/templates/NAME, its {{fg}}, {{accent}}... filled in, to colors/NAME. kitty is told to read its
 //!   config again; alacritty reads an import as it changes;
 //! - the browser's frame (Chrome's, Chromium's BrowserThemeColor policy) the colour the bar shows, where a policy
@@ -128,8 +128,9 @@ impl Palette {
     }
 }
 
-/// libadwaita's and adw-gtk3's named colours, Adwaita's GTK 3 ones beside them, and GTK 4.16's variables.
-fn gtk_css(p: &Palette) -> String {
+/// libadwaita's and adw-gtk3's named colours, Adwaita's GTK 3 ones beside them, and (GTK 4, vars) 4.16's variables,
+/// which GTK 3 cannot read.
+fn gtk_css(p: &Palette, vars: bool) -> String {
     let defs = [
         ("accent_bg_color", "accent"), ("accent_color", "accent"), ("accent_fg_color", "ink"),
         ("window_bg_color", "bg"), ("window_fg_color", "fg"), ("view_bg_color", "view"), ("view_fg_color", "fg"),
@@ -144,6 +145,9 @@ fn gtk_css(p: &Palette) -> String {
     for (k, v) in defs {
         out += &format!("@define-color {k} {};\n", p.get(v));
     }
+    if !vars {
+        return out;
+    }
     out += ":root {\n";
     for (k, v) in defs {
         out += &format!("  --{}: {};\n", k.trim_end_matches("_color").replace('_', "-") + "-color", p.get(v));
@@ -154,8 +158,9 @@ fn gtk_css(p: &Palette) -> String {
 /// What ostrov writes for the apps that read a colour file: name → its template.
 const BUILT_IN: &[(&str, &str)] = &[
     ("alacritty.toml", "# ostrov's colours, its ground the bar's, as solid: import = [\"~/.local/state/ostrov/colors/alacritty.toml\"]\n[window]\nopacity = {{bar_alpha}}\n[colors.primary]\nbackground = \"{{bar}}\"\nforeground = \"{{fg}}\"\n[colors.cursor]\ncursor = \"{{accent}}\"\ntext = \"{{ink}}\"\n[colors.selection]\nbackground = \"{{accent}}\"\ntext = \"{{ink}}\"\n[colors.normal]\nblack = \"{{ansi0}}\"\nred = \"{{ansi1}}\"\ngreen = \"{{ansi2}}\"\nyellow = \"{{ansi3}}\"\nblue = \"{{ansi4}}\"\nmagenta = \"{{ansi5}}\"\ncyan = \"{{ansi6}}\"\nwhite = \"{{ansi7}}\"\n[colors.bright]\nblack = \"{{ansi8}}\"\nred = \"{{ansi9}}\"\ngreen = \"{{ansi10}}\"\nyellow = \"{{ansi11}}\"\nblue = \"{{ansi12}}\"\nmagenta = \"{{ansi13}}\"\ncyan = \"{{ansi14}}\"\nwhite = \"{{ansi15}}\"\n"),
-    ("kitty.conf", "# ostrov's colours: include ~/.local/state/ostrov/colors/kitty.conf\nbackground {{bar}}\nbackground_opacity {{bar_alpha}}\nforeground {{fg}}\ncursor {{accent}}\nselection_background {{accent}}\nselection_foreground {{ink}}\nactive_border_color {{accent}}\nactive_tab_background {{accent}}\nactive_tab_foreground {{ink}}\ninactive_tab_background {{card}}\ninactive_tab_foreground {{dim}}\ncolor0 {{ansi0}}\ncolor1 {{ansi1}}\ncolor2 {{ansi2}}\ncolor3 {{ansi3}}\ncolor4 {{ansi4}}\ncolor5 {{ansi5}}\ncolor6 {{ansi6}}\ncolor7 {{ansi7}}\ncolor8 {{ansi8}}\ncolor9 {{ansi9}}\ncolor10 {{ansi10}}\ncolor11 {{ansi11}}\ncolor12 {{ansi12}}\ncolor13 {{ansi13}}\ncolor14 {{ansi14}}\ncolor15 {{ansi15}}\n"),
-    ("foot.ini", "# ostrov's colours: [main] include=~/.local/state/ostrov/colors/foot.ini\n[colors]\nalpha={{bar_alpha}}\nbackground={{bar}}\nforeground={{fg}}\nselection-background={{accent}}\nselection-foreground={{ink}}\nregular0={{ansi0}}\nregular1={{ansi1}}\nregular2={{ansi2}}\nregular3={{ansi3}}\nregular4={{ansi4}}\nregular5={{ansi5}}\nregular6={{ansi6}}\nregular7={{ansi7}}\nbright0={{ansi8}}\nbright1={{ansi9}}\nbright2={{ansi10}}\nbright3={{ansi11}}\nbright4={{ansi12}}\nbright5={{ansi13}}\nbright6={{ansi14}}\nbright7={{ansi15}}\n"),
+    ("kitty.conf", "# ostrov's colours, its ground the bar's, as solid: include ~/.local/state/ostrov/colors/kitty.conf\nbackground {{bar}}\nbackground_opacity {{bar_alpha}}\nforeground {{fg}}\ncursor {{accent}}\nselection_background {{accent}}\nselection_foreground {{ink}}\nactive_border_color {{accent}}\nactive_tab_background {{accent}}\nactive_tab_foreground {{ink}}\ninactive_tab_background {{card}}\ninactive_tab_foreground {{dim}}\ncolor0 {{ansi0}}\ncolor1 {{ansi1}}\ncolor2 {{ansi2}}\ncolor3 {{ansi3}}\ncolor4 {{ansi4}}\ncolor5 {{ansi5}}\ncolor6 {{ansi6}}\ncolor7 {{ansi7}}\ncolor8 {{ansi8}}\ncolor9 {{ansi9}}\ncolor10 {{ansi10}}\ncolor11 {{ansi11}}\ncolor12 {{ansi12}}\ncolor13 {{ansi13}}\ncolor14 {{ansi14}}\ncolor15 {{ansi15}}\n"),
+    ("foot.ini", "# ostrov's colours, its ground the bar's, as solid: [main] include=~/.local/state/ostrov/colors/foot.ini\n[colors]\nalpha={{bar_alpha}}\nbackground={{bar}}\nforeground={{fg}}\nselection-background={{accent}}\nselection-foreground={{ink}}\nregular0={{ansi0}}\nregular1={{ansi1}}\nregular2={{ansi2}}\nregular3={{ansi3}}\nregular4={{ansi4}}\nregular5={{ansi5}}\nregular6={{ansi6}}\nregular7={{ansi7}}\nbright0={{ansi8}}\nbright1={{ansi9}}\nbright2={{ansi10}}\nbright3={{ansi11}}\nbright4={{ansi12}}\nbright5={{ansi13}}\nbright6={{ansi14}}\nbright7={{ansi15}}\n"),
+    ("ghostty", "# ostrov's colours, its ground the bar's, as solid: config-file = ~/.local/state/ostrov/colors/ghostty\nbackground = {{bar}}\nbackground-opacity = {{bar_alpha}}\nforeground = {{fg}}\ncursor-color = {{accent}}\ncursor-text = {{ink}}\nselection-background = {{accent}}\nselection-foreground = {{ink}}\npalette = 0={{ansi0}}\npalette = 1={{ansi1}}\npalette = 2={{ansi2}}\npalette = 3={{ansi3}}\npalette = 4={{ansi4}}\npalette = 5={{ansi5}}\npalette = 6={{ansi6}}\npalette = 7={{ansi7}}\npalette = 8={{ansi8}}\npalette = 9={{ansi9}}\npalette = 10={{ansi10}}\npalette = 11={{ansi11}}\npalette = 12={{ansi12}}\npalette = 13={{ansi13}}\npalette = 14={{ansi14}}\npalette = 15={{ansi15}}\n"),
     ("telegram.tdesktop-palette", "// ostrov's colours for Telegram Desktop: Settings → Chat Settings → the three dots → Create new theme, or open this file in Telegram\nwindowBg: {{bg}};\nwindowFg: {{fg}};\nwindowBgOver: {{card}};\nwindowBgRipple: {{card}};\nwindowSubTextFg: {{dim}};\nwindowActiveTextFg: {{accent}};\nwindowBgActive: {{accent}};\nwindowFgActive: {{ink}};\nactiveButtonBg: {{accent}};\nactiveButtonFg: {{ink}};\ndialogsBg: {{sidebar}};\ndialogsBgOver: {{card}};\ndialogsBgActive: {{accent}};\ndialogsNameFg: {{fg}};\ndialogsTextFg: {{dim}};\ndialogsNameFgActive: {{ink}};\ndialogsTextFgActive: {{ink}};\ntitleBg: {{bg}};\ntitleFg: {{fg}};\nsideBarBg: {{sidebar}};\nhistoryComposeAreaBg: {{view}};\nmsgInBg: {{card}};\nmsgOutBg: {{accent}};\nmsgOutFg: {{ink}};\nmsgInFg: {{fg}};\n"),
     ("colors.sh", "# ostrov's colours for scripts: . ~/.local/state/ostrov/colors/colors.sh\nBG='{{bg}}'\nFG='{{fg}}'\nDIM='{{dim}}'\nACCENT='{{accent}}'\nINK='{{ink}}'\nURGENT='{{urgent}}'\n"),
 ];
@@ -202,6 +207,15 @@ fn gnome(p: &Palette) {
     }
     if schema.has_key("accent-color") && s.string("accent-color") != p.accent_name() {
         let _ = s.set_string("accent-color", p.accent_name());
+    }
+    // GTK 3's theme (the portal hands it on over settings.ini): adw-gtk3 where it is installed, built on the named
+    // colours ostrov.css sets, dark or light as the theme is
+    let adw = if p.dark { "adw-gtk3-dark" } else { "adw-gtk3" };
+    let there = [home().join(".local/share/themes"), home().join(".themes"), PathBuf::from("/usr/share/themes")]
+        .iter()
+        .any(|d| d.join(adw).join("gtk-3.0").is_dir());
+    if there && schema.has_key("gtk-theme") && s.string("gtk-theme") != adw {
+        let _ = s.set_string("gtk-theme", adw);
     }
 }
 
@@ -261,16 +275,17 @@ pub fn apply(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) {
     let p = Palette::of(a, t, colors);
     gnome(&p);
     browsers(&p);
-    let css = gtk_css(&p);
-    for v in ["gtk-3.0", "gtk-4.0"] {
+    for (v, vars) in [("gtk-3.0", false), ("gtk-4.0", true)] {
         let dir = home().join(".config").join(v);
-        put(&dir.join("ostrov.css"), &css);
+        put(&dir.join("ostrov.css"), &gtk_css(&p, vars));
         import(&dir);
     }
     let out = home().join(".local/state/ostrov/colors");
-    let mut kitty = false;
+    let mut changed = Vec::new();
     for (name, text) in BUILT_IN {
-        kitty |= put(&out.join(name), &p.fill(text)) && *name == "kitty.conf";
+        if put(&out.join(name), &p.fill(text)) {
+            changed.push(*name);
+        }
     }
     let json: BTreeMap<_, _> = p.colors.iter().map(|(k, v)| (k.to_string(), v.clone())).collect();
     put(&out.join("colors.json"), &(serde_json::to_string_pretty(&json).unwrap_or_default() + "\n"));
@@ -282,9 +297,11 @@ pub fn apply(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) {
             }
         }
     }
-    // kitty reads its config again on SIGUSR1; alacritty and foot as their files change or at their start
-    if kitty {
-        let _ = std::process::Command::new("pkill").args(["-USR1", "-x", "kitty"]).status();
+    // kitty reads its config again on SIGUSR1, ghostty on SIGUSR2; alacritty as its import changes; foot at its start
+    for (name, signal, app) in [("kitty.conf", "-USR1", "kitty"), ("ghostty", "-USR2", "ghostty")] {
+        if changed.contains(&name) {
+            let _ = std::process::Command::new("pkill").args([signal, "-x", app]).status();
+        }
     }
 }
 
@@ -311,7 +328,8 @@ mod tests {
     fn templates_filled() {
         let p = palette("#8b7cf6");
         assert_eq!(p.fill("a {{accent}} {{nope}}"), "a #8b7cf6 {{nope}}");
-        assert!(gtk_css(&p).contains("@define-color accent_bg_color #8b7cf6;"));
-        assert!(gtk_css(&p).contains("--accent-bg-color: #8b7cf6;"));
+        assert!(gtk_css(&p, false).contains("@define-color accent_bg_color #8b7cf6;"));
+        assert!(gtk_css(&p, true).contains("--accent-bg-color: #8b7cf6;"));
+        assert!(!gtk_css(&p, false).contains(":root"));
     }
 }
