@@ -23,7 +23,8 @@ use crate::theme::Theme;
 pub struct Palette {
     pub dark: bool,
     /// name → colour: bg (a window's ground), view (a list's, a text's), card, sidebar, fg, dim, accent, ink (on the
-    /// accent), urgent, and the terminal's ansi0 to ansi15
+    /// accent), urgent, bar (the bar's colour) and bar_alpha (how solid it is, 0 to 1), and the terminal's ansi0 to
+    /// ansi15
     pub colors: BTreeMap<&'static str, String>,
 }
 
@@ -61,6 +62,11 @@ impl Palette {
         };
         let dark = t.dark;
         let surface = rgb(&a.surface).or_else(|| t.colors.get("surface").and_then(|s| rgb(s))).unwrap_or((0, 0, 0));
+        // with no wallpaper the windows' ground the bar's colour, the desktop one colour from the bar down; over a
+        // picture the panels' surface
+        let bar = rgb(&a.bar_color).or_else(|| t.colors.get("bar").and_then(|b| rgb(&b.replace("ALPHA", "1")))).unwrap_or((0, 0, 0));
+        let surface = if crate::modules::wallpaper::service::pick().on { surface } else { bar };
+        let bar_alpha = crate::modules::wallpaper::service::bar_alpha();
         let fg = pick("fg", if dark { "#ffffff" } else { "#1d1d1f" });
         let dim = pick("dim", if dark { "#888888" } else { "#505055" });
         let (accent, ink) = match rgb(&a.accent) {
@@ -70,6 +76,9 @@ impl Palette {
         let urgent = pick("urgent", "#cd0000");
         let mut c = BTreeMap::new();
         c.insert("bg", hex(surface));
+        // the bar's colour and how solid it is: a terminal's ground, the same as the bar's above it
+        c.insert("bar", hex(bar));
+        c.insert("bar_alpha", format!("{bar_alpha:.2}"));
         c.insert("sidebar", hex(mix(surface, fg, 0.03)));
         c.insert("view", hex(mix(surface, fg, 0.05)));
         c.insert("card", hex(mix(surface, fg, 0.08)));
@@ -142,9 +151,9 @@ fn gtk_css(p: &Palette) -> String {
 
 /// What ostrov writes for the apps that read a colour file: name → its template.
 const BUILT_IN: &[(&str, &str)] = &[
-    ("alacritty.toml", "# ostrov's colours: import = [\"~/.local/state/ostrov/colors/alacritty.toml\"]\n[colors.primary]\nbackground = \"{{bg}}\"\nforeground = \"{{fg}}\"\n[colors.cursor]\ncursor = \"{{accent}}\"\ntext = \"{{ink}}\"\n[colors.selection]\nbackground = \"{{accent}}\"\ntext = \"{{ink}}\"\n[colors.normal]\nblack = \"{{ansi0}}\"\nred = \"{{ansi1}}\"\ngreen = \"{{ansi2}}\"\nyellow = \"{{ansi3}}\"\nblue = \"{{ansi4}}\"\nmagenta = \"{{ansi5}}\"\ncyan = \"{{ansi6}}\"\nwhite = \"{{ansi7}}\"\n[colors.bright]\nblack = \"{{ansi8}}\"\nred = \"{{ansi9}}\"\ngreen = \"{{ansi10}}\"\nyellow = \"{{ansi11}}\"\nblue = \"{{ansi12}}\"\nmagenta = \"{{ansi13}}\"\ncyan = \"{{ansi14}}\"\nwhite = \"{{ansi15}}\"\n"),
-    ("kitty.conf", "# ostrov's colours: include ~/.local/state/ostrov/colors/kitty.conf\nbackground {{bg}}\nforeground {{fg}}\ncursor {{accent}}\nselection_background {{accent}}\nselection_foreground {{ink}}\nactive_border_color {{accent}}\nactive_tab_background {{accent}}\nactive_tab_foreground {{ink}}\ninactive_tab_background {{card}}\ninactive_tab_foreground {{dim}}\ncolor0 {{ansi0}}\ncolor1 {{ansi1}}\ncolor2 {{ansi2}}\ncolor3 {{ansi3}}\ncolor4 {{ansi4}}\ncolor5 {{ansi5}}\ncolor6 {{ansi6}}\ncolor7 {{ansi7}}\ncolor8 {{ansi8}}\ncolor9 {{ansi9}}\ncolor10 {{ansi10}}\ncolor11 {{ansi11}}\ncolor12 {{ansi12}}\ncolor13 {{ansi13}}\ncolor14 {{ansi14}}\ncolor15 {{ansi15}}\n"),
-    ("foot.ini", "# ostrov's colours: [main] include=~/.local/state/ostrov/colors/foot.ini\n[colors]\nbackground={{bg}}\nforeground={{fg}}\nselection-background={{accent}}\nselection-foreground={{ink}}\nregular0={{ansi0}}\nregular1={{ansi1}}\nregular2={{ansi2}}\nregular3={{ansi3}}\nregular4={{ansi4}}\nregular5={{ansi5}}\nregular6={{ansi6}}\nregular7={{ansi7}}\nbright0={{ansi8}}\nbright1={{ansi9}}\nbright2={{ansi10}}\nbright3={{ansi11}}\nbright4={{ansi12}}\nbright5={{ansi13}}\nbright6={{ansi14}}\nbright7={{ansi15}}\n"),
+    ("alacritty.toml", "# ostrov's colours, its ground the bar's, as solid: import = [\"~/.local/state/ostrov/colors/alacritty.toml\"]\n[window]\nopacity = {{bar_alpha}}\n[colors.primary]\nbackground = \"{{bar}}\"\nforeground = \"{{fg}}\"\n[colors.cursor]\ncursor = \"{{accent}}\"\ntext = \"{{ink}}\"\n[colors.selection]\nbackground = \"{{accent}}\"\ntext = \"{{ink}}\"\n[colors.normal]\nblack = \"{{ansi0}}\"\nred = \"{{ansi1}}\"\ngreen = \"{{ansi2}}\"\nyellow = \"{{ansi3}}\"\nblue = \"{{ansi4}}\"\nmagenta = \"{{ansi5}}\"\ncyan = \"{{ansi6}}\"\nwhite = \"{{ansi7}}\"\n[colors.bright]\nblack = \"{{ansi8}}\"\nred = \"{{ansi9}}\"\ngreen = \"{{ansi10}}\"\nyellow = \"{{ansi11}}\"\nblue = \"{{ansi12}}\"\nmagenta = \"{{ansi13}}\"\ncyan = \"{{ansi14}}\"\nwhite = \"{{ansi15}}\"\n"),
+    ("kitty.conf", "# ostrov's colours: include ~/.local/state/ostrov/colors/kitty.conf\nbackground {{bar}}\nbackground_opacity {{bar_alpha}}\nforeground {{fg}}\ncursor {{accent}}\nselection_background {{accent}}\nselection_foreground {{ink}}\nactive_border_color {{accent}}\nactive_tab_background {{accent}}\nactive_tab_foreground {{ink}}\ninactive_tab_background {{card}}\ninactive_tab_foreground {{dim}}\ncolor0 {{ansi0}}\ncolor1 {{ansi1}}\ncolor2 {{ansi2}}\ncolor3 {{ansi3}}\ncolor4 {{ansi4}}\ncolor5 {{ansi5}}\ncolor6 {{ansi6}}\ncolor7 {{ansi7}}\ncolor8 {{ansi8}}\ncolor9 {{ansi9}}\ncolor10 {{ansi10}}\ncolor11 {{ansi11}}\ncolor12 {{ansi12}}\ncolor13 {{ansi13}}\ncolor14 {{ansi14}}\ncolor15 {{ansi15}}\n"),
+    ("foot.ini", "# ostrov's colours: [main] include=~/.local/state/ostrov/colors/foot.ini\n[colors]\nalpha={{bar_alpha}}\nbackground={{bar}}\nforeground={{fg}}\nselection-background={{accent}}\nselection-foreground={{ink}}\nregular0={{ansi0}}\nregular1={{ansi1}}\nregular2={{ansi2}}\nregular3={{ansi3}}\nregular4={{ansi4}}\nregular5={{ansi5}}\nregular6={{ansi6}}\nregular7={{ansi7}}\nbright0={{ansi8}}\nbright1={{ansi9}}\nbright2={{ansi10}}\nbright3={{ansi11}}\nbright4={{ansi12}}\nbright5={{ansi13}}\nbright6={{ansi14}}\nbright7={{ansi15}}\n"),
     ("telegram.tdesktop-palette", "// ostrov's colours for Telegram Desktop: Settings → Chat Settings → the three dots → Create new theme, or open this file in Telegram\nwindowBg: {{bg}};\nwindowFg: {{fg}};\nwindowBgOver: {{card}};\nwindowBgRipple: {{card}};\nwindowSubTextFg: {{dim}};\nwindowActiveTextFg: {{accent}};\nwindowBgActive: {{accent}};\nwindowFgActive: {{ink}};\nactiveButtonBg: {{accent}};\nactiveButtonFg: {{ink}};\ndialogsBg: {{sidebar}};\ndialogsBgOver: {{card}};\ndialogsBgActive: {{accent}};\ndialogsNameFg: {{fg}};\ndialogsTextFg: {{dim}};\ndialogsNameFgActive: {{ink}};\ndialogsTextFgActive: {{ink}};\ntitleBg: {{bg}};\ntitleFg: {{fg}};\nsideBarBg: {{sidebar}};\nhistoryComposeAreaBg: {{view}};\nmsgInBg: {{card}};\nmsgOutBg: {{accent}};\nmsgOutFg: {{ink}};\nmsgInFg: {{fg}};\n"),
     ("colors.sh", "# ostrov's colours for scripts: . ~/.local/state/ostrov/colors/colors.sh\nBG='{{bg}}'\nFG='{{fg}}'\nDIM='{{dim}}'\nACCENT='{{accent}}'\nINK='{{ink}}'\nURGENT='{{urgent}}'\n"),
 ];

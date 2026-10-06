@@ -32,6 +32,11 @@ pub fn palette(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) -> 
     if let Some((r, g, b)) = rgb(&a.bar_color) {
         out += &def("bar", &format!("rgba({r}, {g}, {b}, ALPHA)"));
     }
+    // with no wallpaper the desktop the bar's colour, solid: one colour from the bar down
+    let bar = rgb(&a.bar_color).or_else(|| t.colors.get("bar").and_then(|b| rgb(&b.replace("ALPHA", "1"))));
+    if let Some((r, g, b)) = bar {
+        out += &def("ground", &format!("rgb({r}, {g}, {b})"));
+    }
     if let Some((r, g, b)) = rgb(&a.accent) {
         // what goes on the accent black or white, as the accent is light or dark
         let light = 0.2126 * r as f64 + 0.7152 * g as f64 + 0.0722 * b as f64 > 150.0;
