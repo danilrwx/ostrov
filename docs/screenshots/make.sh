@@ -29,7 +29,7 @@ if [ "${1-}" != inside ]; then
     done
     cat >"$sb/home/.config/ostrov/config.toml" <<'EOF'
 [appearance]
-theme = "dark"
+theme = "ostrov"
 accent = "#8b7cf6"
 
 [panels.control]
@@ -126,6 +126,7 @@ crops = {
     "edit": (1440, 0, 2560, 1540), "appearance": (1440, 0, 2560, 1320), "welcome": (680, 300, 1880, 1300),
     "toast": (1760, 0, 2560, 250), "lock": (680, 440, 1880, 1120), "bar": (0, 0, 2560, 760),
     "night": (1440, 0, 2560, 1600), "kit": (1440, 0, 2560, 1600),
+    "light": (0, 0, 2560, 1600), "light-calendar": (340, 0, 2220, 1310),
 }
 # the motion as a GIF: the panels' half of the screen, 30 frames a second, its own palette
 if os.path.exists(f"{raw}/motion.mp4"):
@@ -206,6 +207,17 @@ o panel
 o bar edit
 shot bar
 o bar edit
+# by day: the theme's light side, GitHub's Light; then after dark again
+sed -i 's/^\[appearance\]$/[appearance]\nmode = "light"/' "$HOME/.config/ostrov/config.toml"
+sleep 2
+o menu wifi
+shot light
+o panel
+o calendar
+shot light-calendar
+o calendar
+sed -i '/^mode = "light"$/d' "$HOME/.config/ostrov/config.toml"
+sleep 2
 o welcome
 shot welcome
 o lock

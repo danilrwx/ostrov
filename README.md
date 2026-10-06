@@ -16,8 +16,11 @@ config to write before it works.
   notifications, a lock screen. A welcome sets the look in a minute. No file to edit.
 - **Yours to arrange.** The control centre and the calendar are grids of widgets you drag, resize and add from a
   gallery, like on a Mac. The bar too: drag its blocks where you want them.
-- **Beautiful out of the box.** Blur, smooth motion, five themes and any accent colour, all set from its own
-  Appearance page.
+- **Beautiful out of the box.** Blur, smooth motion, five themes each after dark and by day, any accent colour,
+  all set from its own Appearance page.
+- **The whole desktop in its look.** GTK apps and file managers, Chrome, your terminal, tmux, Neovim, k9s,
+  Discord and more follow its theme and switch with it, dark or light; more from a catalogue, or your own in a
+  few lines.
 - **Light.** Native GTK 4 and Rust, one process, no web views.
 - **Grows with you.** Widgets in a few lines of KDL, plugins in any language, installed by name from a catalogue:
   screen recording, the night light, CalDAV calendars, removable drives, system updates.
@@ -32,12 +35,12 @@ config to write before it works.
 <td align="center">Arrange it your way</td>
 </tr>
 <tr>
-<td><img src="docs/screenshots/appearance.png" alt="The Appearance page: themes and accents"></td>
-<td><img src="docs/screenshots/night.png" alt="Brightness with the night light"></td>
+<td><img src="docs/screenshots/light.png" alt="The control centre by day, GitHub's Light"></td>
+<td><img src="docs/screenshots/appearance.png" alt="The Appearance page: themes, their dark and light sides, accents"></td>
 </tr>
 <tr>
-<td align="center">Themes and accents</td>
-<td align="center">The night light under brightness</td>
+<td align="center">By day</td>
+<td align="center">Themes, dark or light, any accent</td>
 </tr>
 </table>
 
@@ -57,7 +60,9 @@ config to write before it works.
 | grim, slurp | screenshots |
 | hyprpolkitagent, ssh-askpass | password questions in one dialog |
 
-One look, one config, one place to change it.
+One look, one config, one place to change it. And the apps you keep take that look too: `ostrov apps` connects
+alacritty, kitty, foot, ghostty, WezTerm, tmux, Neovim, Helix, btop, k9s, fzf, zathura, Discord, Telegram and
+Hyprland's borders, installs rofi and qutebrowser from its catalogue, and takes your own ([docs/apps.md](docs/apps.md)).
 
 ## Install
 
