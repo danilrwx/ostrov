@@ -7,8 +7,8 @@
 //!   ghostty, k9s.yaml, telegram.tdesktop-palette, colors.sh, colors.json) and the user's own templates rendered beside them:
 //!   ~/.config/ostrov/templates/NAME, its {{fg}}, {{accent}}... filled in, to colors/NAME. kitty is told to read its
 //!   config again; alacritty reads an import as it changes;
-//! - the browser's frame (Chrome's, Chromium's BrowserThemeColor policy) the colour the bar shows, where a policy
-//!   file of ostrov's is there for this user to write.
+//! - the browser's frame the bar's colour: GTK's headerbar is the bar's, which Chrome in its GTK theme takes; its
+//!   theme colour policy (ostrov-theme.json, where it is there to write) left empty, as it would hold over it.
 //!
 //! Each written only when what it says changed.
 
@@ -136,7 +136,7 @@ fn gtk_css(p: &Palette, vars: bool) -> String {
     let defs = [
         ("accent_bg_color", "accent"), ("accent_color", "accent"), ("accent_fg_color", "ink"),
         ("window_bg_color", "bg"), ("window_fg_color", "fg"), ("view_bg_color", "view"), ("view_fg_color", "fg"),
-        ("headerbar_bg_color", "bg"), ("headerbar_fg_color", "fg"), ("sidebar_bg_color", "sidebar"),
+        ("headerbar_bg_color", "bar"), ("headerbar_fg_color", "fg"), ("sidebar_bg_color", "sidebar"),
         ("sidebar_fg_color", "fg"), ("card_bg_color", "card"), ("card_fg_color", "fg"), ("popover_bg_color", "view"),
         ("popover_fg_color", "fg"), ("dialog_bg_color", "view"), ("dialog_fg_color", "fg"),
         ("theme_bg_color", "bg"), ("theme_fg_color", "fg"), ("theme_base_color", "view"), ("theme_text_color", "fg"),
@@ -199,6 +199,16 @@ fn import(dir: &Path) {
     }
 }
 
+/// GTK's theme set to nothing and back, the apps running reading their CSS again (DankMaterialShell's way).
+fn refresh_gtk() {
+    let Some(schema) = gio::SettingsSchemaSource::default().and_then(|s| s.lookup("org.gnome.desktop.interface", true)) else { return };
+    let s = gio::Settings::new_full(&schema, None::<&gio::SettingsBackend>, None);
+    let theme = s.string("gtk-theme");
+    let _ = s.set_string("gtk-theme", "");
+    gio::Settings::sync();
+    let _ = s.set_string("gtk-theme", &theme);
+}
+
 /// GNOME's interface settings: the scheme and the accent, where the schema has them.
 fn gnome(p: &Palette) {
     let Some(src) = gio::SettingsSchemaSource::default() else { return };
@@ -227,46 +237,18 @@ fn gnome(p: &Palette) {
 const BROWSER_POLICIES: &[&str] =
     &["/etc/opt/chrome/policies/managed/ostrov-theme.json", "/etc/chromium/policies/managed/ostrov-theme.json"];
 
-/// The browser's frame the colour the bar shows: its colour at its opacity over the wallpaper's top strip (where
-/// the bar lies, the picture stretched over the screen: about a fortieth of its height), solid with none.
-fn browser_colour(p: &Palette) -> String {
-    let bar = rgb(p.get("bar")).unwrap_or((0, 0, 0));
-    let alpha: f64 = p.get("bar_alpha").parse().unwrap_or(1.0);
-    let pick = crate::modules::wallpaper::service::pick();
-    let under = pick
-        .on
-        .then(|| gtk4::gdk_pixbuf::Pixbuf::from_file_at_scale(&pick.path, 80, 80, false).ok())
-        .flatten()
-        .and_then(|px| {
-            let (n, stride, bytes) = (px.n_channels() as usize, px.rowstride() as usize, px.read_pixel_bytes());
-            let rows = (px.height() as usize / 40).max(1);
-            let (mut sum, mut count) = ((0u64, 0u64, 0u64), 0u64);
-            for y in 0..rows {
-                for x in 0..px.width() as usize {
-                    let i = y * stride + x * n;
-                    sum = (sum.0 + bytes[i] as u64, sum.1 + bytes[i + 1] as u64, sum.2 + bytes[i + 2] as u64);
-                    count += 1;
-                }
-            }
-            (count > 0).then(|| ((sum.0 / count) as u8, (sum.1 / count) as u8, (sum.2 / count) as u8))
-        });
-    hex(match under {
-        Some(under) => mix(under, bar, alpha),
-        None => bar,
-    })
-}
-
-/// The browsers' theme colour, in each policy file there to write; Chrome reads the directory as it changes.
-fn browsers(p: &Palette) {
+/// The browsers' theme colour policy left empty, in each policy file there to write: Chrome in its GTK theme takes
+/// its frame from GTK's headerbar, the bar's colour exactly (a policy colour is a seed it makes its own palette
+/// from, and would hold over the GTK theme).
+fn browsers() {
     let files: Vec<&Path> = BROWSER_POLICIES.iter().map(Path::new).filter(|f| {
         std::fs::metadata(f).is_ok_and(|m| !m.permissions().readonly()) && std::fs::OpenOptions::new().append(true).open(f).is_ok()
     }).collect();
     if files.is_empty() {
         return;
     }
-    let policy = format!("{{ \"BrowserThemeColor\": \"{}\" }}\n", browser_colour(p));
     for f in files {
-        put(f, &policy);
+        put(f, "{}\n");
     }
 }
 
@@ -277,11 +259,16 @@ pub fn apply(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) {
     }
     let p = Palette::of(a, t, colors);
     gnome(&p);
-    browsers(&p);
+    browsers();
+    let mut css = false;
     for (v, vars) in [("gtk-3.0", false), ("gtk-4.0", true)] {
         let dir = home().join(".config").join(v);
-        put(&dir.join("ostrov.css"), &gtk_css(&p, vars));
+        css |= put(&dir.join("ostrov.css"), &gtk_css(&p, vars));
         import(&dir);
+    }
+    // the GTK apps running (Chrome's frame in its GTK theme among them) read it again: their theme named anew
+    if css {
+        refresh_gtk();
     }
     let out = home().join(".local/state/ostrov/colors");
     let mut changed = Vec::new();

@@ -166,11 +166,11 @@ As the appearance changes, ostrov puts its look into the rest of the desktop (`[
 | `telegram.tdesktop-palette` | opened in Telegram Desktop once, as a theme of one's own |
 | `colors.sh`, `colors.json` | scripts |
 
-- **The browser's frame**: Chrome's and Chromium's `BrowserThemeColor` policy, the colour the bar shows (its
-  colour at its opacity over the wallpaper's top), in `/etc/opt/chrome/policies/managed/ostrov-theme.json` (or
-  Chromium's `/etc/chromium/...`) where it is there for you to write; made once:
-  `sudo install -D -m 644 -o $USER <(echo '{}') /etc/opt/chrome/policies/managed/ostrov-theme.json`. Chrome
-  recolours as it changes.
+- **The browser's frame**: GTK's headerbar is the bar's colour, and Chrome in its GTK theme (`chrome://settings/appearance`,
+  Theme: GTK) takes its frame from it, the bar's colour exactly. A `BrowserThemeColor` policy would hold over that
+  (and Chrome makes its own palette from it, never the colour itself), so ostrov leaves its own policy file,
+  `/etc/opt/chrome/policies/managed/ostrov-theme.json` where there is one to write, empty. GTK's apps read the
+  colours again as they change (the GTK theme named anew).
 - **Templates of your own**: a file in `~/.config/ostrov/templates/` is written to `colors/` under its name with
   `{{bg}}` (the bar's colour with no wallpaper, the surface's over one), `{{bar}}`, `{{bar_alpha}}`, `{{view}}`, `{{card}}`, `{{sidebar}}`, `{{fg}}`, `{{dim}}`, `{{accent}}`, `{{ink}}`, `{{urgent}}` and
   `{{ansi0}}` to `{{ansi15}}` filled in (One Dark's or One Light's colours, as the theme is dark or light).
