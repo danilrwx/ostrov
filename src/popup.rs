@@ -279,18 +279,20 @@ fn hover_tips(host: &Rc<Host>) {
         }
         let text = host.popup().filter(|_| !held).and_then(|_| {
             let mut w = host.win.pick(x, y, gtk4::PickFlags::DEFAULT);
+            let mut found = None;
             while let Some(x) = w {
-                if let Some(t) = x.tooltip_text().filter(|t| !t.is_empty()) {
-                    // GTK's own hover held back while a popup is open, this one shown in its place: not two
-                    if x.has_tooltip() {
-                        x.set_has_tooltip(false);
-                        held_back.borrow_mut().push(x.downgrade());
-                    }
-                    return Some(t.to_string());
+                if found.is_none() {
+                    found = x.tooltip_text().filter(|t| !t.is_empty()).map(|t| t.to_string());
+                }
+                // GTK's own hover held back while a popup is open, on the way up too (GTK would go up to the
+                // next with one, the tile's), this one shown in its place: not two
+                if x.has_tooltip() {
+                    x.set_has_tooltip(false);
+                    held_back.borrow_mut().push(x.downgrade());
                 }
                 w = x.parent();
             }
-            None
+            found
         });
         if let Some(id) = tm.borrow_mut().take() {
             id.remove();
