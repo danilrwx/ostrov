@@ -53,7 +53,11 @@ impl Record {
                 h.set_timer(0, WAKE);
             };
             let Ok(region) = h.run(&["pick-region"]) else { return send(Found::Cancelled) };
-            send(record(region.trim(), audio, |pid, file| send(Found::Started(pid, file.into()))));
+            // the region framed on the screen while it is recorded (outside it, not in the video)
+            let _ = h.run(&["outline", region.trim()]);
+            let ended = record(region.trim(), audio, |pid, file| send(Found::Started(pid, file.into())));
+            let _ = h.run(&["outline", "off"]);
+            send(ended);
         });
         Ok("starting".into())
     }

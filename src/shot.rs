@@ -376,3 +376,71 @@ impl Shot {
         crate::wm::nudge();
     }
 }
+
+thread_local! {
+    /// The frame drawn round a region being recorded (outline), while one is.
+    static OUTLINE: RefCell<Option<gtk4::Window>> = const { RefCell::new(None) };
+}
+
+/// A frame round a region ("X,Y WxH" in the desktop's logical coordinates, as slurp prints one) on the monitor it
+/// starts on, over everything, outside the region (not in what is recorded of it), taking no input; None, or a
+/// region of nothing, takes it away (`ostrov outline REGION|off`: the plugin record while it records).
+pub fn outline(app: &gtk4::Application, region: Option<&str>) -> Result<(), String> {
+    OUTLINE.with(|o| {
+        if let Some(w) = o.borrow_mut().take() {
+            w.destroy();
+        }
+    });
+    let Some(region) = region else { return Ok(()) };
+    let parse = || -> Option<(i32, i32, i32, i32)> {
+        let (xy, wh) = region.trim().split_once(' ')?;
+        let (x, y) = xy.split_once(',')?;
+        let (w, h) = wh.split_once('x')?;
+        Some((x.parse().ok()?, y.parse().ok()?, w.parse().ok()?, h.parse().ok()?))
+    };
+    let (x, y, w, h) = parse().ok_or(format!("a region is X,Y WxH, not {region:?}"))?;
+    let display = gdk::Display::default().ok_or("no display")?;
+    let monitors = display.monitors();
+    let monitor = (0..monitors.n_items())
+        .filter_map(|i| monitors.item(i).and_downcast::<gdk::Monitor>())
+        .find(|m| {
+            let g = m.geometry();
+            x >= g.x() && x < g.x() + g.width() && y >= g.y() && y < g.y() + g.height()
+        })
+        .ok_or("no monitor under the region")?;
+    let origin = (monitor.geometry().x(), monitor.geometry().y());
+    let win = gtk4::Window::new();
+    win.set_application(Some(app));
+    win.init_layer_shell();
+    win.set_namespace(Some("ostrov-outline"));
+    win.set_layer(Layer::Overlay);
+    for e in [Edge::Top, Edge::Bottom, Edge::Left, Edge::Right] {
+        win.set_anchor(e, true);
+    }
+    win.set_exclusive_zone(-1);
+    win.set_keyboard_mode(KeyboardMode::None);
+    win.set_monitor(Some(&monitor));
+    win.add_css_class("outline");
+    let area = gtk4::DrawingArea::new();
+    area.add_css_class("outline-frame");
+    // the recording's colour, a dashed line just outside the region
+    area.set_draw_func(move |a, cr, _, _| {
+        let c = a.color();
+        cr.set_source_rgba(c.red() as f64, c.green() as f64, c.blue() as f64, c.alpha() as f64);
+        cr.set_line_width(2.0);
+        cr.set_dash(&[8.0, 5.0], 0.0);
+        let (rx, ry) = ((x - origin.0) as f64, (y - origin.1) as f64);
+        cr.rectangle(rx - 2.0, ry - 2.0, w as f64 + 4.0, h as f64 + 4.0);
+        let _ = cr.stroke();
+    });
+    area.set_can_target(false);
+    win.set_child(Some(&area));
+    win.connect_map(|w| {
+        if let Some(s) = w.surface() {
+            s.set_input_region(Some(&gtk4::cairo::Region::create()));
+        }
+    });
+    win.present();
+    OUTLINE.with(|o| *o.borrow_mut() = Some(win));
+    Ok(())
+}

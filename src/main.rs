@@ -64,7 +64,7 @@ thread_local! {
 /// ARGS).
 const FORMS: &[&str] = &[
     "panel", "menu NAME", "settings [SECTION]", "appearance", "kit", "calendar", "run", "clip",
-    "lock", "dnd [on|off]", "notifications clear", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region",
+    "lock", "dnd [on|off]", "notifications clear", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region", "outline REGION|off",
     "share-pick [--allow-token]",
     "bar toggle|peek|unpeek|edit", "bar edit BLOCK", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
     "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID", "plugin catalogue",
@@ -134,6 +134,7 @@ fn activate(app: &gtk4::Application) {
     let welcome = welcome::Welcome::new(app);
     welcome.first_run();
 
+    let app2 = app.clone();
     // ostrov ARGS, from a key or a script, handed over to this ostrov by GApplication
     COMMAND.with(|c| {
         *c.borrow_mut() = Some(Box::new(move |args: &[String]| {
@@ -171,6 +172,9 @@ fn activate(app: &gtk4::Application) {
                 ["dnd", "off"] => notes::get().ok_or("no notifications here")?.set_dnd(false),
                 ["notifications", "clear"] => notes::get().ok_or("no notifications here")?.clear(),
                 ["capture", path] => shot::capture(path.to_string()),
+                // a frame round the region a recorder records (plugins/record), off when it ends
+                ["outline", "off"] => shot::outline(&app2, None)?,
+                ["outline", ref region @ ..] if !region.is_empty() => shot::outline(&app2, Some(&region.join(" ")))?,
                 ["key", name] => keys.key(name)?,
                 ["bar", "edit"] => bar::edit::start()?,
                 ["bar", "edit", block] => bar::edit::start_at(block)?,

@@ -138,6 +138,9 @@ button.toggle-side { min-width: 40px; border-left: 1px solid @rule; border-radiu
 /* the bar's editor (bar/edit.rs): its parts outlined, the picked block ringed, where a drop lands */
 .editing .zone { border: 1px dashed @dim; border-radius: 6px; min-width: 48px; }
 .editing .edit-picked { box-shadow: inset 0 0 0 2px @handle; border-radius: 6px; }
+/* the frame round a region being recorded (shot.rs outline) */
+window.outline { background: transparent; }
+.outline-frame { color: @recording; }
 .drop-marker { background: @handle; min-width: 3px; border-radius: 2px; margin: 4px 2px; }
 .bar-gallery { padding: 12px 16px; }
 .gallery-item { padding: 4px 10px; }
