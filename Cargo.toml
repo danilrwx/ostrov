@@ -30,7 +30,7 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 system-tray = "0.8.9"
 tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros", "time", "process", "fs", "io-util", "sync", "net"] }
-toml = "0.9"
+toml = "1.1"
 toml_edit = "0.25"
 ureq = "3"
 wayland-backend = { version = "0.3", features = ["client_system", "dlopen"] }
