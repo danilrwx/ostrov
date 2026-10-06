@@ -40,7 +40,7 @@ opacity = 0.75          # the surface's, 0.3 to 1
 bar_color = ""          # the bar's colour; "" the theme's own
 # bar_opacity = 0.65    # 0 clear to 1 solid; unset: 0.65 over a wallpaper, solid over none
 # radius = 10           # a surface's corners in px, 0 to 20, what is on it 4 less; unset: the theme's, or 10
-# density = "normal"    # compact, normal, comfortable: the control centre's rows; unset: the theme's, or normal
+# density = "compact"   # compact, normal, comfortable: the control centre's rows; unset: the theme's, or compact
 # sliders = "thin"      # thin (a line with a round knob) or bar (thick, filled)
 # tab = "auto"          # under a hovered block and a tab: wallpaper, bar; auto: the wallpaper with blur, else the bar
 animations = true
@@ -55,12 +55,12 @@ animations = true
 # blur_brightness = 0.82 # 0 to 2
 # blur_noise = 0.01     # 0 to 0.2: grain
 font = ""               # a family (Inter, Iosevka...); "" GTK's own
-font_size = 10.0        # points; every text sized from it
+font_size = 9.0         # points; every text sized from it
 icon_size = 16          # px, on what opens
-bar_icon_size = 14      # px, in the bar
-bar_padding = 10        # px at a bar block's sides
-bar_spacing = 7         # px between a block's icons
-bar_height = 25         # px
+bar_icon_size = 12      # px, in the bar
+bar_padding = 6         # px at a bar block's sides
+bar_spacing = 10        # px between a block's icons
+bar_height = 24         # px
 
 # Any of the palette's colours over the theme's (the names in src/style.rs): fg, dim, ink, accent, accent-rule,
 # accent-pressed, bar, surface, hover, raised, card, well, sunk, rule, idle, handle, urgent, recording, lock,

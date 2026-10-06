@@ -23,7 +23,7 @@
 //!     accent = "#5e81ac"  # "" the theme's own
 //!     opacity = 0.75      # the surface's
 //!     radius = 10         # a surface's corners, what is on it 4 less; unset, the theme's or 10
-//!     density = "normal"  # compact, normal, comfortable: the control centre's rows; unset, the theme's
+//!     density = "compact" # compact, normal, comfortable: the control centre's rows; unset, the theme's
 //!     language = "ru"     # its texts' language; unset, the locale's
 //!     tab = "auto"        # a hovered block's and a tab's ground: wallpaper, bar; auto, the wallpaper with blur
 //!     blur = true         # Hyprland's blur, its blur_size and blur_passes: set only when given here or by the theme
@@ -200,12 +200,12 @@ impl Default for Appearance {
             blur_brightness: None,
             blur_noise: None,
             font: String::new(),
-            font_size: 10.0,
+            font_size: 9.0,
             icon_size: 16,
-            bar_icon_size: 14,
-            bar_height: 25,
-            bar_padding: 10,
-            bar_spacing: 7,
+            bar_icon_size: 12,
+            bar_height: 24,
+            bar_padding: 6,
+            bar_spacing: 10,
             bar_color: String::new(),
             bar_opacity: None,
             sliders: "thin".into(),

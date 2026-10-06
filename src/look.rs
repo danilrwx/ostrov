@@ -123,10 +123,10 @@ pub fn radii(css: &str, r: u32) -> String {
 /// The control centre's row height and gap: the appearance's density, else its theme's.
 pub fn density(a: &Appearance) -> (i32, i32) {
     let theirs = || crate::theme::get(&a.theme).density;
-    match a.density.clone().or_else(theirs).as_deref().unwrap_or("normal") {
-        "compact" => (40, 6),
+    match a.density.clone().or_else(theirs).as_deref().unwrap_or("compact") {
+        "normal" => (48, 8),
         "comfortable" => (56, 10),
-        _ => (48, 8),
+        _ => (40, 6),
     }
 }
 

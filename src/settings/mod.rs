@@ -474,7 +474,7 @@ pub fn appearance() -> Vec<Section> {
             .default(theme.radius.unwrap_or(10))
             .help("A surface's; what is on it 4 less."),
         Field::new("density", "Density", Kind::Choice { options: opts(&[("compact", "Compact"), ("normal", "Normal"), ("comfortable", "Comfortable")]) })
-            .default(theme.density.unwrap_or("normal".into()))
+            .default(theme.density.unwrap_or("compact".into()))
             .help("The control centre's rows."),
         Field::new("sliders", "Sliders", Kind::Choice { options: opts(&[("thin", "Thin"), ("bar", "Thick")]) })
             .default("thin")
@@ -518,7 +518,7 @@ pub fn appearance() -> Vec<Section> {
             .visible_if("blur", true),
         Field::new("font", "Font", Kind::String).default("").help("A family (Inter, Iosevka…); empty: GTK's own."),
         Field::new("font_size", "Text size", slider(8.0, 16.0, 1.0))
-            .default(10.0)
+            .default(9.0)
             .help("In points; the rest sized from it."),
         Field::new("icon_size", "Icon size", slider(10.0, 32.0, 1.0)).default(16),
     ])]
@@ -543,10 +543,10 @@ pub fn bar_look() -> Schema {
     let opt = |v: &str, l: &str| Opt::Labeled { value: v.into(), label: l.into() };
     Schema { sections: vec![
         Section::new("appearance", "Look", vec![
-            Field::new("bar_height", "Height", slider(18.0, 48.0, 1.0)).default(25),
-            Field::new("bar_padding", "Block padding", slider(0.0, 24.0, 1.0)).default(10),
-            Field::new("bar_spacing", "Icon gap", slider(0.0, 24.0, 1.0)).default(7),
-            Field::new("bar_icon_size", "Icon size", slider(10.0, 32.0, 1.0)).default(14),
+            Field::new("bar_height", "Height", slider(18.0, 48.0, 1.0)).default(24),
+            Field::new("bar_padding", "Block padding", slider(0.0, 24.0, 1.0)).default(6),
+            Field::new("bar_spacing", "Icon gap", slider(0.0, 24.0, 1.0)).default(10),
+            Field::new("bar_icon_size", "Icon size", slider(10.0, 32.0, 1.0)).default(12),
             Field::new("bar_color", "Colour", Kind::Color).default("").help("Empty: the theme's."),
             Field::new("bar_opacity", "Opacity", slider(0.0, 1.0, 0.05))
                 .default(crate::modules::wallpaper::service::bar_alpha())
