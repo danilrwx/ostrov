@@ -20,12 +20,21 @@ const BUILT_IN: &[(&str, &str, &str, &str)] = &[
     ("k9s", include_str!("../apps/k9s/app.toml"), "k9s.yaml", include_str!("../apps/k9s/k9s.yaml")),
     ("telegram", include_str!("../apps/telegram/app.toml"), "telegram.tdesktop-palette", include_str!("../apps/telegram/telegram.tdesktop-palette")),
     ("shell", include_str!("../apps/shell/app.toml"), "colors.sh", include_str!("../apps/shell/colors.sh")),
+    ("wezterm", include_str!("../apps/wezterm/app.toml"), "ostrov-wezterm.toml", include_str!("../apps/wezterm/ostrov-wezterm.toml")),
+    ("btop", include_str!("../apps/btop/app.toml"), "ostrov.theme", include_str!("../apps/btop/ostrov.theme")),
+    ("tmux", include_str!("../apps/tmux/app.toml"), "tmux.conf", include_str!("../apps/tmux/tmux.conf")),
+    ("nvim", include_str!("../apps/nvim/app.toml"), "ostrov.lua", include_str!("../apps/nvim/ostrov.lua")),
+    ("helix", include_str!("../apps/helix/app.toml"), "ostrov-helix.toml", include_str!("../apps/helix/ostrov-helix.toml")),
+    ("vesktop", include_str!("../apps/vesktop/app.toml"), "ostrov.theme.css", include_str!("../apps/vesktop/ostrov.theme.css")),
+    ("hyprland", include_str!("../apps/hyprland/app.toml"), "hyprland.conf", include_str!("../apps/hyprland/hyprland.conf")),
+    ("zathura", include_str!("../apps/zathura/app.toml"), "zathurarc", include_str!("../apps/zathura/zathurarc")),
+    ("fzf", include_str!("../apps/fzf/app.toml"), "fzf.sh", include_str!("../apps/fzf/fzf.sh")),
 ];
 
 /// How an app's config is made to read ostrov's file.
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Include {
-    /// the config, ~ the home
+    /// the config, ~ the home; alternatives split by | (the first there, else the first)
     #[serde(default)]
     pub file: String,
     /// a line put in it: at its end, or (section) right under that section's header
@@ -78,6 +87,12 @@ fn home() -> PathBuf {
 /// ~ the home.
 fn expand(p: &str) -> PathBuf {
     crate::settings::expand(p)
+}
+
+/// An include's config: of its alternatives (a|b) the first there, else the first.
+fn config(file: &str) -> PathBuf {
+    let all: Vec<PathBuf> = file.split('|').map(|f| expand(f.trim())).collect();
+    all.iter().find(|p| p.exists()).cloned().unwrap_or_else(|| all[0].clone())
 }
 
 /// Where the colour files go.
@@ -146,7 +161,7 @@ impl App {
         if !inc.link.is_empty() {
             return std::fs::read_link(expand(&inc.link)).is_ok_and(|t| t == self.file());
         }
-        let text = std::fs::read_to_string(expand(&inc.file)).unwrap_or_default();
+        let text = std::fs::read_to_string(config(&inc.file)).unwrap_or_default();
         text.contains(&self.named()) || text.contains(&self.file().to_string_lossy().into_owned())
     }
 
@@ -163,7 +178,7 @@ impl App {
             }
             return std::os::unix::fs::symlink(self.file(), &link).map_err(|e| format!("{}: {e}", link.display()));
         }
-        let path = expand(&inc.file);
+        let path = config(&inc.file);
         let text = std::fs::read_to_string(&path).unwrap_or_default();
         write_through(&path, &with(&text, inc, &self.named()))
     }
@@ -175,20 +190,20 @@ impl App {
             let link = expand(&inc.link);
             return if self.connected() { std::fs::remove_file(&link).map_err(|e| e.to_string()) } else { Ok(()) };
         }
-        let path = expand(&inc.file);
+        let path = config(&inc.file);
         let Ok(text) = std::fs::read_to_string(&path) else { return Ok(()) };
         let now = without(&text, &self.named());
         if now != text { write_through(&path, &now) } else { Ok(()) }
     }
 
-    /// Told to read its file again.
-    fn reload(&self) {
+    /// Told to read its file again (its command with the palette's tokens filled in).
+    fn reload(&self, p: &Palette) {
         let Some(r) = &self.reload else { return };
         if !r.signal.is_empty() && !r.process.is_empty() {
             let _ = std::process::Command::new("pkill").args([&format!("-{}", r.signal), "-x", &r.process]).status();
         }
         if !r.command.is_empty() {
-            let _ = std::process::Command::new("sh").args(["-c", &r.command]).spawn();
+            let _ = std::process::Command::new("sh").args(["-c", &p.fill(&r.command)]).spawn();
         }
     }
 }
@@ -272,7 +287,7 @@ pub fn apply(p: &Palette) {
     let connected = crate::config::load().apps.connected;
     for a in all().into_iter().filter(App::here) {
         if put(&a.file(), &p.fill(&a.text)) && (connected.contains(&a.id) || a.connected()) {
-            a.reload();
+            a.reload(p);
         }
     }
 }
@@ -348,7 +363,16 @@ mod tests {
     #[test]
     fn built_in_read() {
         let ids: Vec<_> = all().into_iter().filter(|a| a.built_in).map(|a| a.id).collect();
-        assert_eq!(ids, ["alacritty", "kitty", "foot", "ghostty", "k9s", "telegram", "shell"]);
+        assert_eq!(ids, [
+            "alacritty", "kitty", "foot", "ghostty", "k9s", "telegram", "shell", "wezterm", "btop", "tmux", "nvim", "helix",
+            "vesktop", "hyprland", "zathura", "fzf",
+        ]);
+        // each its own file
+        let mut files: Vec<_> = all().into_iter().map(|a| a.template).collect();
+        let n = files.len();
+        files.sort();
+        files.dedup();
+        assert_eq!(files.len(), n);
     }
 
     #[test]

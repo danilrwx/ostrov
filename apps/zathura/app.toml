@@ -1,0 +1,7 @@
+name = "zathura"
+detect = ["zathura"]
+template = "zathurarc"
+
+[include]
+file = "~/.config/zathura/zathurarc"
+line = "include ~/.local/state/ostrov/colors/zathurarc"

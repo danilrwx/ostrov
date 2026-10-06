@@ -1,0 +1,11 @@
+name = "Neovim"
+detect = ["nvim"]
+template = "ostrov.lua"
+
+# a colour scheme of its own: :colorscheme ostrov (or vim.cmd.colorscheme("ostrov") in init.lua)
+[include]
+link = "~/.config/nvim/colors/ostrov.lua"
+
+# every nvim running on it loads it again
+[reload]
+command = "for s in \"${XDG_RUNTIME_DIR:-/tmp}\"/nvim.*; do [ -S \"$s\" ] && nvim --server \"$s\" --remote-expr 'execute(\"if get(g:, \\\"colors_name\\\", \\\"\\\") ==# \\\"ostrov\\\" | colorscheme ostrov | endif\")' >/dev/null 2>&1; done; true"

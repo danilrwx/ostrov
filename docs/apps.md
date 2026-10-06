@@ -14,8 +14,23 @@ The Appearance page's **Apps** section has the same as switches, for the apps on
 for every app there is, connected or not, in `~/.local/state/ostrov/colors/`; connecting is only about the app's
 config. The ones connected are kept in `[apps] connected`.
 
-Built in: alacritty, kitty, foot, ghostty, k9s, Telegram (its palette, opened once in Telegram as a theme), and
-`colors.sh` for scripts (beside `colors.json`, every token).
+Built in:
+
+| App | Connected, its config | Then |
+|---|---|---|
+| alacritty, kitty, foot, ghostty | its colour file included | alacritty, kitty, ghostty at once; foot as a window opens |
+| WezTerm | `colors/ostrov.toml` linked | `config.color_scheme = "ostrov"` |
+| tmux | `source-file` in tmux.conf | the server reads it at once |
+| Neovim | `colors/ostrov.lua` linked | `:colorscheme ostrov`; every nvim on it loads it again at once |
+| Helix | `themes/ostrov.toml` linked | `theme = "ostrov"`; told to read it at once |
+| btop | `themes/ostrov.theme` linked | picked in its options |
+| k9s | `skins/ostrov.yaml` linked | `ui.skin: ostrov` |
+| fzf | sourced from .zshrc (or .bashrc) | as a shell starts |
+| zathura | `include` in zathurarc | as it starts |
+| Discord (Vesktop) | Vencord's `themes/ostrov.theme.css` linked | on in its Themes; at once |
+| Hyprland's borders | `source` in hyprland.conf | the running one's set at once |
+| Telegram | none: its palette to open once as a theme | |
+| Shell scripts | none: `colors.sh`, `colors.json` | |
 
 ## An integration of your own
 
@@ -50,6 +65,7 @@ The template is the app's own format with ostrov's tokens in it, filled in as th
 | `{{fg}}`, `{{dim}}` | text, and what is said second |
 | `{{accent}}`, `{{ink}}` | the accent, and what goes on it |
 | `{{urgent}}` | an error |
+| `{{mode}}` | `dark` or `light` |
 | `{{ansi0}}` … `{{ansi15}}` | a terminal's sixteen: One Dark's after dark, One Light's by day |
 
 `{{name|bare}}` is a colour without its `#` (foot's way). Connecting puts the line in once (a config that is a link,

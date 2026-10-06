@@ -1,0 +1,11 @@
+name = "Hyprland's borders"
+detect = ["hyprctl"]
+template = "hyprland.conf"
+
+[include]
+file = "~/.config/hypr/hyprland.conf"
+line = "source = ~/.local/state/ostrov/colors/hyprland.conf"
+
+# the running Hyprland's borders set at once, no reload (which would map ostrov's bar again)
+[reload]
+command = "hyprctl --batch 'keyword general:col.active_border rgb({{accent|bare}}); keyword general:col.inactive_border rgb({{card|bare}})' >/dev/null"

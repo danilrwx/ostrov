@@ -1,0 +1,7 @@
+name = "btop"
+detect = ["btop"]
+template = "ostrov.theme"
+
+# a theme of its own: picked in btop's options (Esc, Options, Color theme: ostrov)
+[include]
+link = "~/.config/btop/themes/ostrov.theme"

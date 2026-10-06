@@ -1,0 +1,8 @@
+name = "fzf"
+detect = ["fzf"]
+template = "fzf.sh"
+
+# read by the shell as it starts
+[include]
+file = "~/.zshrc|~/.bashrc"
+line = "[ -f ~/.local/state/ostrov/colors/fzf.sh ] && . ~/.local/state/ostrov/colors/fzf.sh"

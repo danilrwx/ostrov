@@ -1,0 +1,7 @@
+name = "WezTerm"
+detect = ["wezterm"]
+template = "ostrov-wezterm.toml"
+
+# a colour scheme of its own: config.color_scheme = "ostrov"
+[include]
+link = "~/.config/wezterm/colors/ostrov.toml"

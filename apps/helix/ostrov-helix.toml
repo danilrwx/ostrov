@@ -1,0 +1,65 @@
+# ostrov's colours for Helix: theme = "ostrov"; the ground the terminal's
+"ui.background" = {}
+"ui.text" = "fg"
+"ui.text.focus" = { fg = "accent" }
+"ui.linenr" = "dim"
+"ui.linenr.selected" = { fg = "accent", modifiers = ["bold"] }
+"ui.cursor" = { fg = "ink", bg = "dim" }
+"ui.cursor.primary" = { fg = "ink", bg = "accent" }
+"ui.cursor.match" = { fg = "accent", modifiers = ["bold"] }
+"ui.cursorline.primary" = { bg = "card" }
+"ui.selection" = { bg = "card" }
+"ui.selection.primary" = { fg = "ink", bg = "accent" }
+"ui.statusline" = { fg = "fg", bg = "card" }
+"ui.statusline.inactive" = { fg = "dim", bg = "card" }
+"ui.statusline.insert" = { fg = "ink", bg = "green" }
+"ui.statusline.select" = { fg = "ink", bg = "magenta" }
+"ui.popup" = { bg = "view" }
+"ui.window" = { fg = "card" }
+"ui.help" = { fg = "fg", bg = "view" }
+"ui.menu" = { fg = "fg", bg = "view" }
+"ui.menu.selected" = { fg = "ink", bg = "accent" }
+"ui.virtual.whitespace" = "card"
+"ui.virtual.ruler" = { bg = "card" }
+"ui.virtual.inlay-hint" = "dim"
+comment = { fg = "dim", modifiers = ["italic"] }
+constant = "yellow"
+"constant.numeric" = "yellow"
+string = "green"
+"variable" = "fg"
+"variable.builtin" = "cyan"
+function = "blue"
+keyword = "magenta"
+operator = "cyan"
+type = "accent"
+"type.builtin" = "accent"
+namespace = "cyan"
+punctuation = "dim"
+attribute = "cyan"
+tag = "blue"
+label = "accent"
+"markup.heading" = { fg = "accent", modifiers = ["bold"] }
+"markup.link.url" = { fg = "blue", modifiers = ["underlined"] }
+"diff.plus" = "green"
+"diff.minus" = "red"
+"diff.delta" = "yellow"
+error = "urgent"
+warning = "yellow"
+info = "blue"
+hint = "cyan"
+diagnostic = { modifiers = ["underlined"] }
+
+[palette]
+fg = "{{fg}}"
+dim = "{{dim}}"
+card = "{{card}}"
+view = "{{view}}"
+accent = "{{accent}}"
+ink = "{{ink}}"
+urgent = "{{urgent}}"
+red = "{{ansi1}}"
+green = "{{ansi2}}"
+yellow = "{{ansi3}}"
+blue = "{{ansi4}}"
+magenta = "{{ansi5}}"
+cyan = "{{ansi6}}"

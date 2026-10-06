@@ -1,0 +1,25 @@
+/**
+ * @name ostrov
+ * @description ostrov's colours, written by ostrov as its look changes
+ * @author ostrov
+ */
+.theme-dark, .theme-light, :root {
+    --background-primary: {{bg}};
+    --background-secondary: {{sidebar}};
+    --background-secondary-alt: {{card}};
+    --background-tertiary: {{bar}};
+    --background-floating: {{view}};
+    --background-modifier-hover: {{card}};
+    --background-modifier-selected: {{card}};
+    --channeltextarea-background: {{view}};
+    --text-normal: {{fg}};
+    --text-muted: {{dim}};
+    --header-primary: {{fg}};
+    --header-secondary: {{dim}};
+    --interactive-normal: {{dim}};
+    --interactive-hover: {{fg}};
+    --interactive-active: {{fg}};
+    --brand-experiment: {{accent}};
+    --brand-500: {{accent}};
+    --text-link: {{accent}};
+}

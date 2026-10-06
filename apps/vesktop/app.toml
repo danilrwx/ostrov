@@ -1,0 +1,7 @@
+name = "Discord (Vesktop)"
+detect = ["vesktop", "~/.config/vesktop"]
+template = "ostrov.theme.css"
+
+# a theme of Vencord's: on in Settings, Themes, ostrov; Vesktop reads it again as it changes
+[include]
+link = "~/.config/vesktop/themes/ostrov.theme.css"

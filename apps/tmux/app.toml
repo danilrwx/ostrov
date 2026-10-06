@@ -1,0 +1,11 @@
+name = "tmux"
+detect = ["tmux"]
+template = "tmux.conf"
+
+[include]
+file = "~/.config/tmux/tmux.conf|~/.tmux.conf"
+line = "source-file -q ~/.local/state/ostrov/colors/tmux.conf"
+
+# the server running reads it again
+[reload]
+command = "tmux source-file -q ~/.local/state/ostrov/colors/tmux.conf 2>/dev/null || true"

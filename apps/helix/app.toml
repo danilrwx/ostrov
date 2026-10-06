@@ -1,0 +1,12 @@
+name = "Helix"
+detect = ["hx", "helix"]
+template = "ostrov-helix.toml"
+
+# a theme of its own: theme = "ostrov" in config.toml
+[include]
+link = "~/.config/helix/themes/ostrov.toml"
+
+# Helix reads its config and theme again on SIGUSR1
+[reload]
+signal = "USR1"
+process = "hx"
