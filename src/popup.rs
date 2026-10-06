@@ -162,6 +162,11 @@ impl Host {
         true
     }
 
+    /// Its monitor's height: the window's own is the strip's while nothing is open.
+    pub fn screen_height(&self) -> i32 {
+        self.screen.get().1
+    }
+
     /// Its monitor's name (eDP-1).
     pub fn connector(&self) -> Option<String> {
         self.win.monitor().and_then(|m| m.connector()).map(|c| c.to_string())
@@ -215,6 +220,15 @@ impl Host {
             KeyboardMode::None
         });
         self.win.set_visible(self.docked.get() || self.peeking.get() || self.launching.get() || popup.is_some());
+        // as tall as the screen only while something unrolls out of the bar (a popup, the launcher's preview, the
+        // bar's editor): else the strip alone, its buffers a strip's, not a screen's (tens of MB at 3120x2080)
+        let full = popup.is_some() || self.launching.get() || crate::bar::edit::is_open().is_some();
+        let h = if full { self.screen.get().1 } else { bar() };
+        if self.layer.size_request().1 != h {
+            self.layer.set_size_request(-1, h);
+            // GTK keeps a window as large as it was: told the new size, it gives the surface up to it
+            self.win.set_default_size(-1, h);
+        }
         self.region(popup.as_ref().map(|p| p.column()));
     }
 

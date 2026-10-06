@@ -303,7 +303,7 @@ mod tests {
         let mut mons = parse(RECORDED);
         let laptop = Mon { name: "eDP-1".into(), enabled: true, mirror: "".into(), mode: "3120x2080@120.00".into(),
             scale: 2.0 };
-        assert_eq!(mons, [laptop.clone()]);
+        assert_eq!(mons, std::slice::from_ref(&laptop));
         assert_eq!(current(&mons), None);
         assert!(rules("extend", &mons, "right").is_err());
         assert!(parse("").is_empty() && split(&[]).is_none());
