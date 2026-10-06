@@ -3,7 +3,8 @@
 //! the palette's {{tokens}} filled in (apps.rs), to ~/.local/state/ostrov/colors/ whenever the look changes, for
 //! every app there is on this machine; the app's config made to include that file only once the user connects it
 //! (`ostrov apps connect ID`, the Appearance page's Apps), and the line taken out again as it is disconnected
-//! ([apps] connected). An app told to read it again as it changes, its way (a signal, a command). docs/apps.md.
+//! ([apps] connected). An app told to read it again as it changes, its way (a signal, a command). Plugins bring
+//! theirs in their manifests' [[apps]], their ids <plugin>-<id>. docs/apps.md.
 
 use std::path::{Path, PathBuf};
 
@@ -120,6 +121,22 @@ pub fn all() -> Vec<App> {
     let dir = home().join(".config/ostrov/apps");
     let mut own: Vec<_> = std::fs::read_dir(&dir).into_iter().flatten().flatten().filter(|e| e.path().is_dir()).collect();
     own.sort_by_key(|e| e.file_name());
+    // the plugins' running, by their ids: <plugin>-<id>
+    for (plugin, dir, table) in crate::plugins::integrations() {
+        let id = format!("{plugin}-{}", table.get("id").and_then(|v| v.as_str()).unwrap_or("app"));
+        let mut t = table.clone();
+        t.remove("id");
+        let read = toml::to_string(&t).map_err(|e| e.to_string()).and_then(|text| {
+            let a: App = toml::from_str(&text).map_err(|e| format!("{id}: {e}"))?;
+            let tmpl = std::fs::read_to_string(dir.join(&a.template)).map_err(|e| format!("{id}: {}: {e}", a.template))?;
+            parse(&id, &text, &tmpl)
+        });
+        match read {
+            Ok(a) if !out.iter().any(|b| b.id == a.id) => out.push(a),
+            Ok(_) => {}
+            Err(e) => eprintln!("ostrov: apps: {e}"),
+        }
+    }
     for e in own {
         let id = e.file_name().to_string_lossy().into_owned();
         let read = std::fs::read_to_string(e.path().join("app.toml")).map_err(|e| format!("{id}: app.toml: {e}")).and_then(|t| {

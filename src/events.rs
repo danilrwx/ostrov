@@ -15,6 +15,8 @@
 //!     bluetooth   {"on", "connected"}         Bluetooth on or off, a device connected or not
 //!     output      {"name"}                    the default sound output
 //!     media       {"playing", "title", "artist"}  the player playing or not, a new track
+//!     palette     {"bg", "fg", "accent", ...}  ostrov's colours as the look changed (apps.rs: every token,
+//!                                             colors.json's), for what colours an app of its own
 
 use std::cell::RefCell;
 use std::rc::Rc;

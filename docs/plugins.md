@@ -80,6 +80,12 @@ icon = "dialog-question-symbolic"
 events = ["window", "power"]   # ostrov's events it is sent, "*" for all (permission events; see Events)
 calendar = true                # a calendar of the calendar's (permission calendar; see Calendars)
 
+[[apps]]                       # an app it colours by a file, as ostrov's own integrations (docs/apps.md)
+id = "cava"
+name = "cava"
+detect = ["cava"]
+template = "cava-colors"       # a file in the plugin's directory, its {{tokens}} filled in
+
 [[keys]]
 combo = "SUPER, F12"           # as Hyprland's binds write it: "MODS, KEY" (see Keys)
 command = "toggle"             # its own command's words: `ostrov plugin <id> toggle`
@@ -248,6 +254,7 @@ A plugin with permission `events` is sent `on_shell_event(name, json)` for each 
 | `bluetooth` | `{"on", "connected"}`                     | Bluetooth on or off, a device connected     |
 | `output`    | `{"name"}`                                | the default sound output                    |
 | `media`     | `{"playing", "title", "artist"}`          | the player playing or not, a new track      |
+| `palette`   | `{"bg", "fg", "accent", ...}`             | ostrov's colours as the look changed (every token, colors.json's) |
 
 Without the permission, or with an empty `events`, none is sent.
 

@@ -69,6 +69,10 @@ pub struct Manifest {
     /// a calendar for the calendar's events, with permission "calendar"
     #[serde(default)]
     pub calendar: bool,
+    /// apps it colours by a file, as ostrov's own integrations are (integrations.rs, docs/apps.md): each an id
+    /// and an app.toml's keys, its template a file in the plugin's directory
+    #[serde(default)]
+    pub apps: Vec<toml::Table>,
 }
 
 impl Manifest {
@@ -456,6 +460,16 @@ fn found() -> Vec<(PathBuf, Manifest, bool)> {
     }
     all.sort_by(|a, b| a.1.id.cmp(&b.1.id));
     all
+}
+
+/// The apps the plugins running colour by a file: the plugin's id, its directory, an [[apps]] entry each.
+pub fn integrations() -> Vec<(String, PathBuf, toml::Table)> {
+    let cfg = crate::config::load();
+    found()
+        .into_iter()
+        .filter(|(_, m, official)| enabled(&cfg, &m.id, *official))
+        .flat_map(|(d, m, _)| m.apps.into_iter().map(move |a| (m.id.clone(), d.clone(), a)))
+        .collect()
 }
 
 /// Whether a plugin runs: `[plugin.<id>] enabled`, else yes for one the user installed, no for an official one.
@@ -994,6 +1008,17 @@ mod tests {
         icon = "help-symbolic"
         later = true                       # unknown: ignored
     "#;
+
+    #[test]
+    fn manifest_apps() {
+        let text = "id = \"cava\"\nname = \"Cava\"\napi = 1\nexec = \"true\"\n[[apps]]\nid = \"cava\"\nname = \"cava\"\n\
+                    detect = [\"cava\"]\ntemplate = \"cava.conf\"\n[apps.include]\nfile = \"~/.config/cava/config\"\n\
+                    line = \"x\"\n";
+        let m = parse_manifest(text, "cava").unwrap();
+        assert_eq!(m.apps.len(), 1);
+        assert_eq!(m.apps[0].get("template").and_then(|v| v.as_str()), Some("cava.conf"));
+        assert!(m.apps[0].get("include").is_some_and(|i| i.is_table()));
+    }
 
     #[test]
     fn manifest_reads() {

@@ -71,3 +71,25 @@ The template is the app's own format with ostrov's tokens in it, filled in as th
 `{{name|bare}}` is a colour without its `#` (foot's way). Connecting puts the line in once (a config that is a link,
 as dotfiles keep them, is written through it); disconnecting takes only that line out, or only the file's entry in
 an array.
+
+## From a plugin
+
+A plugin brings integrations in its `manifest.toml`, each an `[[apps]]` with an `id` and the same keys as an
+`app.toml`, its template a file in the plugin's directory. Its id becomes `<plugin>-<id>`; it is there while the
+plugin is on.
+
+```toml
+[[apps]]
+id = "cava"
+name = "cava"
+detect = ["cava"]
+template = "cava-colors"           # plugins/<plugin>/cava-colors
+
+[apps.include]
+file = "~/.config/cava/config"
+line = "..."
+```
+
+For what a file cannot do (an app with an API of its own, a browser's extension), a plugin follows the `palette`
+event (`events = ["palette"]`, the permission `events`): every token, as `colors.json` has them, whenever the look
+changes, in `on_shell_event("palette", {...})`.

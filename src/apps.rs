@@ -303,6 +303,16 @@ pub fn apply(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) {
     crate::integrations::apply(&p);
     let json: BTreeMap<_, _> = p.colors.iter().map(|(k, v)| (k.to_string(), v.clone())).collect();
     put(&crate::integrations::out().join("colors.json"), &(serde_json::to_string_pretty(&json).unwrap_or_default() + "\n"));
+    // the palette to whoever follows it (plugins' on_shell_event, KDL widgets, D-Bus), when it changed
+    let now = serde_json::to_value(&json).unwrap_or_default();
+    if LAST.with(|l| l.replace(now.clone())) != now {
+        crate::events::emit("palette", now);
+    }
+}
+
+thread_local! {
+    /// The palette last sent as the event palette.
+    static LAST: std::cell::RefCell<serde_json::Value> = const { std::cell::RefCell::new(serde_json::Value::Null) };
 }
 
 #[cfg(test)]
