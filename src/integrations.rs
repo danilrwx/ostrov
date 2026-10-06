@@ -60,6 +60,10 @@ pub struct Reload {
     pub process: String,
     #[serde(default)]
     pub command: String,
+    /// the new colours sent straight into the terminals of the processes of that name (OSC 4, 10, 11, 12, 17,
+    /// 19 to the tty of each one's shell): foot, which reads its config only as a window opens
+    #[serde(default)]
+    pub osc: bool,
 }
 
 #[derive(Deserialize, Clone, Debug, Default)]
@@ -219,8 +223,64 @@ impl App {
         if !r.signal.is_empty() && !r.process.is_empty() {
             let _ = std::process::Command::new("pkill").args([&format!("-{}", r.signal), "-x", &r.process]).status();
         }
+        if r.osc && !r.process.is_empty() {
+            osc(&r.process, p);
+        }
         if !r.command.is_empty() {
             let _ = std::process::Command::new("sh").args(["-c", &p.fill(&r.command)]).spawn();
+        }
+    }
+}
+
+/// The palette as a terminal's escape sequences: its sixteen, its text, ground, cursor and selection.
+fn sequences(p: &Palette) -> String {
+    let rgb = |c: &str| {
+        let c = c.trim_start_matches('#');
+        if c.len() == 6 { format!("rgb:{}/{}/{}", &c[0..2], &c[2..4], &c[4..6]) } else { String::new() }
+    };
+    let mut s = String::new();
+    for i in 0..16 {
+        s += &format!("\x1b]4;{i};{}\x1b\\", rgb(&p.fill(&format!("{{{{ansi{i}}}}}"))));
+    }
+    for (n, k) in [(10, "fg"), (11, "bar"), (12, "accent"), (17, "accent"), (19, "ink")] {
+        s += &format!("\x1b]{n};{}\x1b\\", rgb(&p.fill(&format!("{{{{{k}}}}}"))));
+    }
+    s
+}
+
+/// The ttys of the shells the processes of that name run (their children's stdin), the user's own.
+fn ttys(process: &str) -> Vec<PathBuf> {
+    let pids: Vec<u32> = std::fs::read_dir("/proc")
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|e| e.file_name().to_str()?.parse().ok())
+        .collect();
+    let comm = |pid: u32| std::fs::read_to_string(format!("/proc/{pid}/comm")).unwrap_or_default().trim().to_string();
+    let parent = |pid: u32| {
+        let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).unwrap_or_default();
+        // its fields after the name in parentheses: state, then the parent's pid
+        stat.rsplit_once(')').and_then(|(_, rest)| rest.split_whitespace().nth(1)?.parse::<u32>().ok())
+    };
+    let theirs: Vec<u32> = pids.iter().copied().filter(|&p| comm(p) == process).collect();
+    let mut out: Vec<PathBuf> = pids
+        .iter()
+        .filter(|&&p| parent(p).is_some_and(|pp| theirs.contains(&pp)))
+        .filter_map(|p| std::fs::read_link(format!("/proc/{p}/fd/0")).ok())
+        .filter(|t| t.starts_with("/dev/pts/"))
+        .collect();
+    out.sort();
+    out.dedup();
+    out
+}
+
+/// The new colours into every terminal of that program, as it runs.
+fn osc(process: &str, p: &Palette) {
+    let seq = sequences(p);
+    for tty in ttys(process) {
+        if let Ok(mut f) = std::fs::OpenOptions::new().write(true).open(&tty) {
+            use std::io::Write;
+            let _ = f.write_all(seq.as_bytes());
         }
     }
 }
@@ -494,6 +554,20 @@ mod tests {
         files.sort();
         files.dedup();
         assert_eq!(files.len(), n);
+    }
+
+    #[test]
+    fn terminals_told() {
+        let mut colors = std::collections::BTreeMap::new();
+        for (k, v) in [("fg", "#ffffff"), ("bar", "#000000"), ("accent", "#8b7cf6"), ("ink", "#000000")] {
+            colors.insert(k, v.to_string());
+        }
+        for i in 0..16 {
+            colors.insert(["ansi0", "ansi1", "ansi2", "ansi3", "ansi4", "ansi5", "ansi6", "ansi7", "ansi8", "ansi9", "ansi10", "ansi11", "ansi12", "ansi13", "ansi14", "ansi15"][i], "#123456".to_string());
+        }
+        let s = sequences(&Palette { dark: true, colors });
+        assert!(s.starts_with("\x1b]4;0;rgb:12/34/56\x1b\\"));
+        assert!(s.contains("\x1b]11;rgb:00/00/00\x1b\\") && s.contains("\x1b]12;rgb:8b/7c/f6\x1b\\"));
     }
 
     #[test]

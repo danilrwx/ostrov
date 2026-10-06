@@ -21,7 +21,7 @@ Built in:
 
 | App | Connected, its config | Then |
 |---|---|---|
-| alacritty, kitty, foot, ghostty | its colour file included | alacritty, kitty, ghostty at once; foot as a window opens |
+| alacritty, kitty, foot, ghostty | its colour file included | at once (foot's open windows told the colours by escape sequences) |
 | WezTerm | `colors/ostrov.toml` linked | `config.color_scheme = "ostrov"` |
 | tmux | `source-file` in tmux.conf | the server reads it at once |
 | Neovim | `colors/ostrov.lua` linked | `:colorscheme ostrov`; every nvim on it loads it again at once |
@@ -55,7 +55,8 @@ line = 'color_theme = "~/.local/state/ostrov/colors/ostrov.theme"'
 [reload]                           # how it reads the file again as it changes (left out: at its start)
 signal = "USR1"                    # a signal to the processes of that name
 process = "btop"
-# command = "..."                  # or a command
+# command = "..."                  # or a command (the palette's {{tokens}} filled in)
+# osc = true                       # or the colours sent into the terminals of the processes named (foot's way)
 ```
 
 The template is the app's own format with ostrov's tokens in it, filled in as the look changes:
