@@ -309,7 +309,8 @@ pub fn load() {
             // a tab's ground over the wallpaper matches a blurred panel; without blur the bar's is the nearer
             let a = &cfg.appearance;
             let unblurred = if a.tab == "bar" || a.tab != "wallpaper" && a.blur.or(theme.blur) == Some(false) {
-                ".slot:hover, .slot.tab { background: @bar; }\n"
+                // the block's ground the bar's already: the shadow rounding it would lay the bar twice, a square
+                ".slot:hover, .slot.tab { background: @bar; }\n.slot:hover > .pill, .slot.tab > .pill { box-shadow: none; }\n"
             } else {
                 ""
             };
