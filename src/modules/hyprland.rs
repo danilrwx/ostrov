@@ -223,6 +223,8 @@ fn worker(_: Arc<Ctx>, _: Kick) -> Fut<'static, ()> {
             return;
         }
         tokio::task::spawn_blocking(apply).await.ok();
+        // the bar mapped before its rule was there: mapped again to take it
+        gtk4::glib::MainContext::default().invoke(crate::popup::remap_when_closed);
         let Some(Ok(s)) = hypr_socket(".socket2.sock").map(std::os::unix::net::UnixStream::connect) else { return };
         let _ = s.set_nonblocking(true);
         let Ok(s) = tokio::net::UnixStream::from_std(s) else { return };
@@ -230,6 +232,7 @@ fn worker(_: Arc<Ctx>, _: Kick) -> Fut<'static, ()> {
         while let Ok(Some(line)) = lines.next_line().await {
             if line.starts_with("configreloaded>>") {
                 tokio::task::spawn_blocking(apply).await.ok();
+                gtk4::glib::MainContext::default().invoke(crate::popup::remap_when_closed);
             }
         }
     })

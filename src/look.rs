@@ -172,6 +172,7 @@ pub fn apply(a: &Appearance, t: &Theme) {
     let rule = crate::modules::hyprland::rule();
     if RULE.with(|r| r.replace(rule.clone())) != rule && crate::config::load().hyprland.rules {
         drop(crate::wm::hyprctl(&format!("keyword layerrule {rule}")));
+        crate::popup::remap_when_closed();
     }
     let flag = |b: Option<bool>| b.map(|b| (b as u8).to_string());
     let num = |n: Option<f64>| n.map(|n| format!("{n:.4}"));

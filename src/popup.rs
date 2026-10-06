@@ -376,6 +376,30 @@ fn on_top(w: &impl IsA<gtk4::Widget>) {
     }
 }
 
+thread_local! {
+    /// The bars' windows to be mapped again once no popup is open: Hyprland takes a layer's rules as it maps
+    static REMAP: Cell<bool> = const { Cell::new(false) };
+}
+
+/// The bars' windows mapped again, for Hyprland to take the layer rule ostrov just set (it reads a layer's rules
+/// only as the layer maps): at once if nothing is open, else as the popup open closes, not shut under the user.
+pub fn remap_when_closed() {
+    REMAP.with(|r| r.set(true));
+    remap();
+}
+
+fn remap() {
+    let hosts: Vec<Rc<Host>> = HOSTS.with(|h| h.borrow().iter().filter_map(Weak::upgrade).collect());
+    if !REMAP.with(Cell::get) || hosts.iter().any(|h| h.popup().is_some()) {
+        return;
+    }
+    REMAP.with(|r| r.set(false));
+    for h in hosts {
+        h.win.set_visible(false);
+        h.win.set_visible(true);
+    }
+}
+
 /// How long a popup takes to come out of the bar and to go back.
 const OPEN_MS: u32 = 240;
 const CLOSE_MS: u32 = 150;
@@ -691,6 +715,8 @@ impl Popup {
             });
         }
         self.reveal.set_reveal_child(false);
+        // a rule set while it was open taken once it is gone
+        glib::timeout_add_local_once(std::time::Duration::from_millis(CLOSE_MS as u64 + 50), remap);
     }
 
     /// Open or close; closed a moment ago, it stays closed: the click on its tab that toggles it is the one
