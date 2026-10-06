@@ -8,6 +8,8 @@ config to write before it works.
 
 ![The bar and the control centre](docs/screenshots/hero.png)
 
+![The control centre and the calendar opening, a menu unfolding, the Appearance page](docs/screenshots/motion.gif)
+
 ## Why ostrov
 
 - **It just works.** Start it and the desktop is there: Wi-Fi, Bluetooth, sound, brightness, battery,
