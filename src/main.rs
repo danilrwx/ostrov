@@ -7,6 +7,7 @@
 // GTK's callbacks kept and shared (Rc<RefCell<Option<Rc<dyn Fn>>>>) are the code's idiom, named where they recur
 #![allow(clippy::type_complexity)]
 
+mod anim;
 mod api;
 mod backend;
 mod bar;

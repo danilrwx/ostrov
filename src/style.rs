@@ -45,6 +45,11 @@ button { background: none; border: none; box-shadow: none; outline: none; min-he
 /* the keyboard's focus seen (Tab through a question's password and buttons), the pointer's clicks not ringed */
 button:disabled { opacity: 0.45; }
 button:focus-visible, entry:focus-visible, passwordentry:focus-visible { outline: 2px solid @accent; outline-offset: 2px; }
+/* what the pointer or a click changes changes over a moment, not at once (GTK's animations off: at once) */
+button, .toggle, .slot, .pill, .tile > :first-child, entry, passwordentry {
+    transition: background-color 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out,
+                box-shadow 150ms ease-out, opacity 150ms ease-out; }
+label, image { transition: color 150ms ease-out; }
 separator { background: @rule; margin: 4px; min-height: 1px; min-width: 1px; }
 
 /* a surface: everything that opens */

@@ -666,7 +666,7 @@ impl Panel {
         let menu = widget.menu.as_ref().map(|card| {
             let r = gtk4::Revealer::new();
             r.set_transition_type(gtk4::RevealerTransitionType::SlideDown);
-            r.set_transition_duration(100);
+            r.set_transition_duration(200);
             r.set_child(Some(card));
             r.set_visible(false);
             // shown before it slides open, hidden once it has slid shut: a folded menu takes no room
@@ -1362,7 +1362,7 @@ pub fn build(host: &Rc<crate::popup::Host>, hub: &Rc<Hub>, tab: &impl IsA<gtk4::
     col.add_css_class("surface");
     let pages = gtk4::Stack::new();
     pages.set_transition_type(gtk4::StackTransitionType::SlideLeftRight);
-    pages.set_transition_duration(120);
+    pages.set_transition_duration(200);
     pages.set_vhomogeneous(false);
     // as wide as the page shown: the grid's cells, not the widest page (Appearance's chips)
     pages.set_hhomogeneous(false);

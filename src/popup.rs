@@ -376,6 +376,10 @@ fn on_top(w: &impl IsA<gtk4::Widget>) {
     }
 }
 
+/// How long a popup takes to come out of the bar and to go back.
+const OPEN_MS: u32 = 240;
+const CLOSE_MS: u32 = 150;
+
 /// A monitor's size, a guess without one.
 fn size(monitor: Option<&gtk4::gdk::Monitor>) -> (i32, i32) {
     monitor.map_or((1920, 1080), |m| (m.geometry().width(), m.geometry().height()))
@@ -448,6 +452,8 @@ pub struct Popup {
     gap: gtk4::Box,
     on_open: RefCell<Vec<Box<dyn Fn()>>>,
     closed: Cell<Option<std::time::Instant>>,
+    /// its fade in and out, beside the revealer's slide
+    fade: Rc<crate::anim::Motion>,
     /// its block in every bar, a panel's: where a command opens it
     tabs: RefCell<Vec<(Weak<Host>, gtk4::Widget)>>,
 }
@@ -457,7 +463,7 @@ impl Popup {
     pub fn new(host: &Rc<Host>, tab: &impl IsA<gtk4::Widget>, side: Side, width: i32, body: &gtk4::Box) -> Rc<Popup> {
         let reveal = gtk4::Revealer::new();
         reveal.set_transition_type(gtk4::RevealerTransitionType::SlideDown);
-        reveal.set_transition_duration(120);
+        reveal.set_transition_duration(OPEN_MS);
         reveal.set_valign(Align::Start);
         reveal.set_halign(align(side));
         reveal.set_margin_top(bar());
@@ -491,6 +497,7 @@ impl Popup {
             gap,
             on_open: RefCell::default(),
             closed: Cell::default(),
+            fade: Rc::default(),
             tabs: RefCell::default(),
         });
         // rolled up: the tab a block again, the input back to the strip
@@ -578,6 +585,17 @@ impl Popup {
         }
         self.place();
         self.tab.borrow().add_css_class("tab");
+        // out of the bar unhurried, coming clear as it slides
+        if !self.reveal.reveals_child() {
+            self.reveal.set_transition_duration(OPEN_MS);
+            let s = self.shape.downgrade();
+            self.shape.set_opacity(0.0);
+            self.fade.run(&self.reveal, OPEN_MS * 3 / 4, crate::anim::Curve::Out, move |v| {
+                if let Some(s) = s.upgrade() {
+                    s.set_opacity(v);
+                }
+            });
+        }
         self.reveal.set_reveal_child(true);
         host.opened(self);
         // the keys start at its first widget (ringed only once a key is pressed, GTK's focus-visible)
@@ -663,6 +681,14 @@ impl Popup {
     pub fn close(&self) {
         if self.is_open() {
             self.closed.set(Some(std::time::Instant::now()));
+            // back into the bar quicker than it came, fading as it goes
+            self.reveal.set_transition_duration(CLOSE_MS);
+            let s = self.shape.downgrade();
+            self.fade.run(&self.reveal, CLOSE_MS, crate::anim::Curve::In, move |v| {
+                if let Some(s) = s.upgrade() {
+                    s.set_opacity(1.0 - v);
+                }
+            });
         }
         self.reveal.set_reveal_child(false);
     }
