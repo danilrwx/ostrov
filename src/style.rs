@@ -107,6 +107,8 @@ button.chip, togglebutton.chip { background: @raised; border: 1px solid @rule; b
 .toggle.on label, .toggle.on image { color: @ink; }
 .toggle.on .toggle-sub { color: alpha(@ink, 0.72); }
 .toggle-main { padding: 0 6px 0 14px; border-radius: 6px; }
+/* with its arrow beside it, square where they meet */
+.toggle-main:not(:last-child) { border-radius: 6px 0 0 6px; }
 .toggle-main:hover { background: @raised; }
 .toggle-title { font-weight: 600; }
 .toggle-glyph { font-weight: 600; min-width: 16px; }
