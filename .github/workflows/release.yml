@@ -1,0 +1,93 @@
+name: Release
+
+# A tag vX.Y.Z: the packages built where their libraries are new enough (gtk4-layer-shell 1.2+: Ubuntu 26.04,
+# Fedora 43, Arch), then a GitHub release with them and the changelog's section for that version.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  deb:
+    runs-on: ubuntu-latest
+    container: ubuntu:26.04
+    steps:
+      - name: Dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl git \
+            build-essential pkg-config libgtk-4-dev libgtk4-layer-shell-dev libpam0g-dev libwayland-dev dpkg-dev
+          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          . "$HOME/.cargo/env"
+          cargo build --release --locked --workspace
+          cargo install --locked cargo-deb
+          cargo deb --no-build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: target/debian/*.deb
+
+  rpm:
+    runs-on: ubuntu-latest
+    container: fedora:43
+    steps:
+      - name: Dependencies
+        run: |
+          dnf install -y gcc git pkgconf-pkg-config gtk4-devel gtk4-layer-shell-devel pam-devel wayland-devel curl
+          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          . "$HOME/.cargo/env"
+          cargo build --release --locked --workspace
+          cargo install --locked cargo-generate-rpm
+          cargo generate-rpm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpm
+          path: target/generate-rpm/*.rpm
+
+  arch:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Dependencies
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git rust gtk4 gtk4-layer-shell pam pkgconf wayland pipewire wireplumber
+          useradd -m builder
+      - uses: actions/checkout@v4
+      # the release's PKGBUILD, its source the tag's tarball GitHub serves; makepkg as a user of its own
+      - name: Build
+        run: |
+          cp packaging/arch/release/PKGBUILD /home/builder/
+          chown builder /home/builder/PKGBUILD
+          su builder -c 'cd ~ && makepkg --nodeps --noconfirm'
+          mkdir -p out && cp /home/builder/*.pkg.tar.zst out/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch
+          path: out/*.pkg.tar.zst
+
+  release:
+    needs: [deb, rpm, arch]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      # the changelog's section for this version, its heading left out
+      - name: Notes
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          awk -v v="$v" '/^## /{on = ($2 == v)} on && !/^## /' CHANGELOG.md > notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: notes.md
+          files: dist/*

@@ -1,6 +1,6 @@
 [package]
 name = "ostrov"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
 rust-version = "1.93"
 description = "A whole desktop shell for Hyprland in one binary: bar, panels, launcher, notifications, lock screen and more"
@@ -98,3 +98,66 @@ assets = [
     ["plugins/updates/manifest.toml", "usr/share/ostrov/plugins/updates/", "644"],
     ["plugins/updates/i18n/*", "usr/share/ostrov/plugins/updates/i18n/", "644"],
 ]
+
+# `cargo build --release --workspace && cargo generate-rpm` (cargo-generate-rpm): the .deb's files, the libraries'
+# packages named, the share picker's link made on install
+[package.metadata.generate-rpm]
+summary = "A whole desktop shell for Hyprland in one binary"
+release = "1"
+# its own requires found from the binaries came as libc.so.6(GLIBC_2.39)[WEAK], which no Fedora package provides:
+# the libraries' packages named below instead
+auto-req = "no"
+post_install_script = "ln -sf ostrov /usr/bin/ostrov-share-picker"
+post_uninstall_script = "[ \"$1\" = 0 ] && rm -f /usr/bin/ostrov-share-picker || true"
+assets = [
+    { source = "target/release/ostrov", dest = "/usr/bin/ostrov", mode = "755" },
+    { source = "completions/_ostrov", dest = "/usr/share/zsh/site-functions/_ostrov", mode = "644" },
+    { source = "completions/ostrov.bash", dest = "/usr/share/bash-completion/completions/ostrov", mode = "644" },
+    { source = "completions/ostrov.fish", dest = "/usr/share/fish/vendor_completions.d/ostrov.fish", mode = "644" },
+    { source = "packaging/pam/ostrov", dest = "/etc/pam.d/ostrov", mode = "644", config = true },
+    { source = "packaging/udev/90-ostrov-battery.rules", dest = "/usr/lib/udev/rules.d/90-ostrov-battery.rules", mode = "644" },
+    { source = "README.md", dest = "/usr/share/doc/ostrov/README.md", mode = "644" },
+    { source = "CHANGELOG.md", dest = "/usr/share/doc/ostrov/CHANGELOG.md", mode = "644" },
+    { source = "docs/*.md", dest = "/usr/share/doc/ostrov/", mode = "644" },
+    { source = "config/example.toml", dest = "/usr/share/doc/ostrov/example.toml", mode = "644" },
+    { source = "examples/widgets/*", dest = "/usr/share/doc/ostrov/examples/widgets/", mode = "644" },
+    { source = "wit/ostrov-plugin.wit", dest = "/usr/share/doc/ostrov/ostrov-plugin.wit", mode = "644" },
+    { source = "target/release/ostrov-plugin-games", dest = "/usr/bin/ostrov-plugin-games", mode = "755" },
+    { source = "plugins/games/manifest.toml", dest = "/usr/share/ostrov/plugins/games/manifest.toml", mode = "644" },
+    { source = "plugins/games/i18n/*", dest = "/usr/share/ostrov/plugins/games/i18n/", mode = "644" },
+    { source = "target/release/ostrov-plugin-record", dest = "/usr/bin/ostrov-plugin-record", mode = "755" },
+    { source = "plugins/record/manifest.toml", dest = "/usr/share/ostrov/plugins/record/manifest.toml", mode = "644" },
+    { source = "plugins/record/i18n/*", dest = "/usr/share/ostrov/plugins/record/i18n/", mode = "644" },
+    { source = "target/release/ostrov-plugin-night", dest = "/usr/bin/ostrov-plugin-night", mode = "755" },
+    { source = "plugins/night/manifest.toml", dest = "/usr/share/ostrov/plugins/night/manifest.toml", mode = "644" },
+    { source = "plugins/night/i18n/*", dest = "/usr/share/ostrov/plugins/night/i18n/", mode = "644" },
+    { source = "target/release/ostrov-plugin-caldav", dest = "/usr/bin/ostrov-plugin-caldav", mode = "755" },
+    { source = "plugins/caldav/manifest.toml", dest = "/usr/share/ostrov/plugins/caldav/manifest.toml", mode = "644" },
+    { source = "plugins/caldav/i18n/*", dest = "/usr/share/ostrov/plugins/caldav/i18n/", mode = "644" },
+    { source = "target/release/ostrov-plugin-displays", dest = "/usr/bin/ostrov-plugin-displays", mode = "755" },
+    { source = "plugins/displays/manifest.toml", dest = "/usr/share/ostrov/plugins/displays/manifest.toml", mode = "644" },
+    { source = "plugins/displays/i18n/*", dest = "/usr/share/ostrov/plugins/displays/i18n/", mode = "644" },
+    { source = "target/release/ostrov-plugin-drives", dest = "/usr/bin/ostrov-plugin-drives", mode = "755" },
+    { source = "plugins/drives/manifest.toml", dest = "/usr/share/ostrov/plugins/drives/manifest.toml", mode = "644" },
+    { source = "plugins/drives/i18n/*", dest = "/usr/share/ostrov/plugins/drives/i18n/", mode = "644" },
+    { source = "target/release/ostrov-plugin-updates", dest = "/usr/bin/ostrov-plugin-updates", mode = "755" },
+    { source = "plugins/updates/manifest.toml", dest = "/usr/share/ostrov/plugins/updates/manifest.toml", mode = "644" },
+    { source = "plugins/updates/i18n/*", dest = "/usr/share/ostrov/plugins/updates/i18n/", mode = "644" },
+]
+
+[package.metadata.generate-rpm.requires]
+gtk4 = "*"
+gtk4-layer-shell = ">= 1.2"
+glib2 = "*"
+pam = "*"
+pipewire-utils = "*"
+wireplumber = "*"
+
+[package.metadata.generate-rpm.recommends]
+hyprland = "*"
+bluez = "*"
+upower = "*"
+power-profiles-daemon = "*"
+wf-recorder = "*"
+wl-clipboard = "*"
+udisks2 = "*"

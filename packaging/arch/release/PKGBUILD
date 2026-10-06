@@ -1,13 +1,14 @@
-# ostrov from git's master: makepkg -si in this directory.
-pkgname=ostrov-git
-pkgver=0.0.1.r0.g0000000
+# ostrov's release, from its tag's tarball on GitHub: makepkg -si in this directory (the release workflow builds
+# the package attached to a release so; the AUR's ostrov is this file).
+pkgname=ostrov
+pkgver=0.0.1
 pkgrel=1
 pkgdesc='A whole desktop shell for Hyprland in one binary: bar, panels, launcher, notifications, lock screen and more'
 arch=('x86_64' 'aarch64')
 url='https://github.com/danilrwx/ostrov'
 license=('MIT')
 depends=('gtk4' 'gtk4-layer-shell' 'glib2' 'pam' 'wayland' 'pipewire' 'wireplumber')
-makedepends=('git' 'cargo' 'pkgconf')
+makedepends=('cargo' 'pkgconf')
 optdepends=('hyprland: the compositor ostrov is made for'
             'iwd: Wi-Fi'
             'networkmanager: Wi-Fi, in place of iwd'
@@ -24,41 +25,33 @@ optdepends=('hyprland: the compositor ostrov is made for'
             'kanshi: display profiles, applied as monitors are plugged in, listed by the displays plugin'
             'unicode-emoji: the launcher finding emoji'
             'gnome-keyring: secrets in the Secret Service')
-provides=('ostrov')
-conflicts=('ostrov')
 backup=('etc/pam.d/ostrov')
 # makepkg's LTO leaves ring's C objects (the plugins' TLS) out of the link: undefined ring_core_* symbols
 options=('!lto' '!debug')
-source=('git+https://github.com/danilrwx/ostrov.git')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/danilrwx/ostrov/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 
-pkgver() {
-  cd ostrov
-  git describe --long --tags --abbrev=7 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' ||
-    printf '0.0.1.r%s.g%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
-}
-
 prepare() {
-  cd ostrov
+  cd "ostrov-$pkgver"
   export RUSTUP_TOOLCHAIN=stable
   cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
 }
 
 build() {
-  cd ostrov
+  cd "ostrov-$pkgver"
   export RUSTUP_TOOLCHAIN=stable
   export CARGO_TARGET_DIR=target
   cargo build --frozen --release --workspace
 }
 
 check() {
-  cd ostrov
+  cd "ostrov-$pkgver"
   export RUSTUP_TOOLCHAIN=stable
   cargo test --frozen --release --workspace
 }
 
 package() {
-  cd ostrov
+  cd "ostrov-$pkgver"
   install -Dm755 target/release/ostrov "$pkgdir/usr/bin/ostrov"
   # xdg-desktop-portal-hyprland's screen-share picker, ostrov run by that name (README.md, Screen sharing)
   ln -s ostrov "$pkgdir/usr/bin/ostrov-share-picker"

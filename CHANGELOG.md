@@ -1,8 +1,14 @@
 # Changelog
 
-## 0.1.0
+## 0.0.1
 
-The first release: the whole shell in one binary.
+The first release: the whole shell in one binary, packaged for Ubuntu 26.04+ and Debian sid (.deb), Fedora 43+
+(.rpm) and Arch (.pkg.tar.zst).
+
+- Its look: five themes and any accent, blur under the bar and the panels (or the wallpaper alone, or the bar left
+  unblurred), thin or thick sliders with a bubble showing the value as they move, smooth motion as panels open and
+  close; sizes and density taken from the owner's.
+- A kit of its own (`ostrov kit` shows it): one slider, one set of chips and buttons, cards, every colour a token.
 
 - The bar, made of blocks: workspaces with animated dots, the focused window's title, the keyboard layout, the
   system tray with its menus, the privacy indicator (mic, camera, the screen shared; a click lists the apps, the mic
