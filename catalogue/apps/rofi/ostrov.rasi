@@ -1,0 +1,17 @@
+/* ostrov's colours for rofi, written by ostrov as its look changes */
+* {
+    background: {{view}};
+    background-alt: {{card}};
+    foreground: {{fg}};
+    selected: {{accent}};
+    selected-foreground: {{ink}};
+    dim: {{dim}};
+    urgent: {{urgent}};
+    background-color: transparent;
+    text-color: @foreground;
+}
+window { background-color: @background; border-color: @selected; }
+inputbar, prompt, entry { background-color: @background-alt; }
+element selected { background-color: @selected; text-color: @selected-foreground; }
+element-text selected { text-color: @selected-foreground; }
+element urgent { text-color: @urgent; }

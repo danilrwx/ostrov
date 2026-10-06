@@ -14,3 +14,20 @@ id = "calendar-demo"
 name = "Calendar Demo"
 description = "A calendar of one event, today at noon: how a plugin feeds the calendar."
 source = "https://github.com/danilrwx/ostrov#examples/plugins/calendar-demo"
+
+# Integrations: apps ostrov colours by a file (docs/apps.md), installable by their id (`ostrov apps install ID`),
+# listed by `ostrov apps catalogue` and on the Appearance page's Apps. The same entry, its source a directory with
+# an app.toml and its template. An app of yours: a pull request adding its directory under catalogue/apps/ and its
+# entry here.
+
+[[app]]
+id = "rofi"
+name = "rofi"
+description = "The launcher's window, its entry and the line picked in ostrov's colours."
+source = "https://github.com/danilrwx/ostrov#catalogue/apps/rofi"
+
+[[app]]
+id = "qutebrowser"
+name = "qutebrowser"
+description = "Its status bar, tabs, completion and hints; pages dark or light with ostrov."
+source = "https://github.com/danilrwx/ostrov#catalogue/apps/qutebrowser"

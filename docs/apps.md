@@ -9,6 +9,9 @@ file for, and whose config it can make read that file.
     ostrov apps connect ID           its config made to read ostrov's file (the line put in, once)
     ostrov apps disconnect ID        the line taken out again
     ostrov apps apply                every file written again now
+    ostrov apps catalogue            the integrations to install, the installed marked
+    ostrov apps install ID|PATH|GIT-URL   one from the catalogue by its id, a directory, or a git URL (#path in it)
+    ostrov apps remove ID            one of yours taken away (disconnected first)
 
 The Appearance page's **Apps** section has the same as switches, for the apps on this machine. A file is written
 for every app there is, connected or not, in `~/.local/state/ostrov/colors/`; connecting is only about the app's
@@ -93,3 +96,10 @@ line = "..."
 For what a file cannot do (an app with an API of its own, a browser's extension), a plugin follows the `palette`
 event (`events = ["palette"]`, the permission `events`): every token, as `colors.json` has them, whenever the look
 changes, in `on_shell_event("palette", {...})`.
+
+## The catalogue
+
+Integrations past the built-in ones, installable by their id: `ostrov apps install rofi`, or Install on the
+Appearance page's Apps. They live in ostrov's repository under `catalogue/apps/<id>/` with an `[[app]]` entry in
+`catalogue.toml`; one of yours goes there by a pull request. Installed, an integration is a directory of yours in
+`~/.config/ostrov/apps/<id>/` like any other. Now: rofi, qutebrowser.

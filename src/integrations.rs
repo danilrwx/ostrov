@@ -319,6 +319,90 @@ fn put(path: &Path, text: &str) -> bool {
     std::fs::write(path, text).is_ok()
 }
 
+/// An integration the catalogue knows: its source a directory (an app.toml, its template), a git URL's `#path` or
+/// a path.
+#[derive(Deserialize, Clone, Debug)]
+pub struct Entry {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+    pub source: String,
+}
+
+/// The catalogue ostrov ships with (catalogue.toml's [[app]]).
+pub fn catalogue() -> Vec<Entry> {
+    #[derive(Deserialize)]
+    struct File {
+        #[serde(default)]
+        app: Vec<Entry>,
+    }
+    toml::from_str::<File>(include_str!("../catalogue.toml")).map(|f| f.app).unwrap_or_default()
+}
+
+/// Where the user's integrations live.
+fn own() -> PathBuf {
+    home().join(".config/ostrov/apps")
+}
+
+/// An integration installed into ~/.config/ostrov/apps/<id>: by its id in the catalogue, a git URL (`#path` a
+/// directory in it) or a path; its app.toml and template read before it is put there. Blocking (git).
+pub fn install(src: &str) -> Result<String, String> {
+    let known = catalogue().into_iter().find(|e| e.id == src && !Path::new(src).exists());
+    let source = known.as_ref().map_or(src.to_string(), |e| e.source.clone());
+    let tmp = own().with_file_name(format!(".apps-clone-{}", std::process::id()));
+    let path = if crate::plugins::install::is_url(&source) {
+        let (url, sub) = source.split_once('#').unwrap_or((&source, ""));
+        if sub.split('/').any(|p| p == "..") {
+            return Err(format!("{sub}: a path inside the repository"));
+        }
+        let _ = std::fs::remove_dir_all(&tmp);
+        crate::plugins::install::clone(url, &tmp)?;
+        tmp.join(sub)
+    } else {
+        expand(&source)
+    };
+    let r = (|| {
+        let id = known.as_ref().map(|e| e.id.clone()).or_else(|| path.file_name().map(|n| n.to_string_lossy().into_owned()));
+        let id = id.filter(|i| !i.is_empty() && i.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'))
+            .ok_or(format!("{}: no id of [a-z0-9-] to install it as", path.display()))?;
+        let toml_text = std::fs::read_to_string(path.join("app.toml")).map_err(|e| format!("app.toml: {e}"))?;
+        let a: App = toml::from_str(&toml_text).map_err(|e| format!("app.toml: {e}"))?;
+        std::fs::metadata(path.join(&a.template)).map_err(|e| format!("{}: {e}", a.template))?;
+        let dest = own().join(&id);
+        let _ = std::fs::remove_dir_all(&dest);
+        crate::plugins::install::copy(&path, &dest, 0)?;
+        Ok(format!("{id}: {} installed (ostrov apps connect {id})", a.name))
+    })();
+    let _ = std::fs::remove_dir_all(&tmp);
+    if r.is_ok() {
+        // its file written now
+        glib_reload();
+    }
+    r
+}
+
+/// The look applied again on GTK's thread, from wherever: the files written, the new one's too.
+fn glib_reload() {
+    gtk4::glib::MainContext::default().invoke(crate::style::reload);
+}
+
+/// One of the user's integrations taken away, disconnected first.
+pub fn remove(id: &str) -> Result<String, String> {
+    let dest = own().join(id);
+    if id.is_empty() || id.contains('/') || !dest.is_dir() {
+        let why = if all().iter().any(|a| a.id == id && a.built_in) { "built in" } else { "not installed" };
+        return Err(format!("{id}: {why}"));
+    }
+    if let Some(a) = all().into_iter().find(|a| a.id == id) {
+        a.disconnect()?;
+        let _ = std::fs::remove_file(a.file());
+    }
+    let _ = remember(id, false);
+    std::fs::remove_dir_all(&dest).map_err(|e| format!("{}: {e}", dest.display()))?;
+    Ok(String::new())
+}
+
 /// [apps] connected with id in or out.
 fn remember(id: &str, on: bool) -> Result<(), String> {
     let mut list = crate::config::load().apps.connected;
@@ -358,12 +442,24 @@ pub fn command(args: &[&str]) -> Result<String, String> {
             .collect::<Vec<_>>()
             .join("\n")),
         ["connect", id] => set(id, true).map(|()| String::new()),
+        ["remove", id] => remove(id),
+        ["catalogue"] => {
+            let have: Vec<String> = all().into_iter().map(|a| a.id).collect();
+            Ok(catalogue()
+                .iter()
+                .map(|e| {
+                    let state = if have.contains(&e.id) { "installed" } else { "" };
+                    format!("{}\t{}\t{state}\t{}", e.id, e.name, e.description)
+                })
+                .collect::<Vec<_>>()
+                .join("\n"))
+        }
         ["disconnect", id] => set(id, false).map(|()| String::new()),
         ["apply"] => {
             crate::style::reload();
             Ok(String::new())
         }
-        _ => Err("usage: ostrov apps [list] | connect ID | disconnect ID | apply".into()),
+        _ => Err("usage: ostrov apps [list] | connect ID | disconnect ID | apply | catalogue | install ID|PATH|GIT-URL | remove ID".into()),
     }
 }
 

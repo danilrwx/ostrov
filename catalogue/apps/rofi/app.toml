@@ -1,0 +1,7 @@
+name = "rofi"
+detect = ["rofi"]
+template = "ostrov.rasi"
+
+[include]
+file = "~/.config/rofi/config.rasi"
+line = '@import "~/.local/state/ostrov/colors/ostrov.rasi"'

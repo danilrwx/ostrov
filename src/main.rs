@@ -66,7 +66,7 @@ thread_local! {
 /// ARGS).
 const FORMS: &[&str] = &[
     "panel", "menu NAME", "settings [SECTION]", "appearance", "kit", "calendar", "run", "clip",
-    "lock", "dnd [on|off]", "notifications clear", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region", "outline REGION|off", "apps [list]", "apps connect|disconnect ID", "apps apply",
+    "lock", "dnd [on|off]", "notifications clear", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region", "outline REGION|off", "apps [list]", "apps connect|disconnect ID", "apps apply", "apps catalogue", "apps install ID|PATH|GIT-URL", "apps remove ID",
     "share-pick [--allow-token]",
     "bar toggle|peek|unpeek|edit", "bar edit BLOCK", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
     "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID", "plugin catalogue",
@@ -251,6 +251,13 @@ fn command(args: &[String], input: Option<String>) -> Reply {
     match args {
         [first, rest @ ..] if first == "plugin" => return plugins::run(rest, input),
         [first] if first == "doctor" => return Box::pin(doctor::report()),
+        // an integration's install clones a repository: on GLib's pool, ostrov going on meanwhile
+        [first, sub, src] if first == "apps" && sub == "install" => {
+            let src = src.clone();
+            return Box::pin(async move {
+                gtk4::gio::spawn_blocking(move || integrations::install(&src)).await.map_err(|_| "the install's job panicked".to_string())?
+            });
+        }
         // the region waits for the user: answered once dragged out (plugins/record's, in place of slurp)
         [first] if first == "pick-region" => {
             let shot = SHOT.with(|s| s.borrow().clone());

@@ -16,7 +16,7 @@
 //! keys, "calendar" for its calendar; the rest are said, for the user.
 
 mod catalogue;
-mod install;
+pub mod install;
 pub mod node;
 mod process;
 

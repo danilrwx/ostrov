@@ -189,5 +189,29 @@ fn apps() -> gtk4::Box {
         let where_ = a.include.as_ref().map_or(String::new(), |i| if i.link.is_empty() { i.file.clone() } else { i.link.clone() });
         col.append(&setting(&a.name, &where_, &sw, false));
     }
+    // the catalogue's not installed yet, each with Install
+    let have: Vec<String> = crate::integrations::all().into_iter().map(|a| a.id).collect();
+    for e in crate::integrations::catalogue().into_iter().filter(|e| !have.contains(&e.id)) {
+        let b = crate::ui::chip(t("Install"));
+        b.set_valign(gtk4::Align::Center);
+        let id = e.id.clone();
+        b.connect_clicked(move |b| {
+            b.set_sensitive(false);
+            b.set_label(t("Installing…"));
+            let (b, id) = (b.clone(), id.clone());
+            glib::spawn_future_local(async move {
+                let r = gtk4::gio::spawn_blocking(move || crate::integrations::install(&id)).await;
+                match r.unwrap_or_else(|_| Err("the install's job panicked".into())) {
+                    Ok(_) => b.set_label(t("Installed")),
+                    Err(e) => {
+                        eprintln!("ostrov: apps: install: {e}");
+                        b.set_label(t("Install"));
+                        b.set_sensitive(true);
+                    }
+                }
+            });
+        });
+        col.append(&setting(&e.name, &e.description, &b, false));
+    }
     col
 }

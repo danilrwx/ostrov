@@ -56,7 +56,7 @@ fn about(m: &Manifest) -> String {
 
 /// A directory copied into another, its symlinks followed (not too deep: a link to a parent would go round), a
 /// .git left out. Blocking.
-fn copy(from: &Path, to: &Path, depth: u32) -> Result<(), String> {
+pub(crate) fn copy(from: &Path, to: &Path, depth: u32) -> Result<(), String> {
     if depth > 16 {
         return Err(format!("{}: too deep (a symlink going round?)", from.display()));
     }
@@ -78,7 +78,7 @@ fn copy(from: &Path, to: &Path, depth: u32) -> Result<(), String> {
 }
 
 /// A git URL cloned, its last commit alone, into a directory beside the plugins'. Blocking.
-fn clone(url: &str, into: &Path) -> Result<(), String> {
+pub(crate) fn clone(url: &str, into: &Path) -> Result<(), String> {
     let out = std::process::Command::new("git")
         .args(["clone", "--depth", "1", "--quiet", "--", url])
         .arg(into)

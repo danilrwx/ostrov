@@ -1,0 +1,11 @@
+name = "qutebrowser"
+detect = ["qutebrowser"]
+template = "qutebrowser.py"
+
+[include]
+file = "~/.config/qutebrowser/config.py"
+line = 'import os; config.source(os.path.expanduser("~/.local/state/ostrov/colors/qutebrowser.py"))'
+
+# a running one reads its config again
+[reload]
+command = "pgrep -x qutebrowser >/dev/null && qutebrowser ':config-source' >/dev/null 2>&1; true"
