@@ -11,9 +11,9 @@ pub fn screenshot(c: &Ctx) -> Widget {
     let close = c.close.clone();
     let b = round("applets-screenshooter-symbolic", move || {
         close();
-        // once the panel has rolled up out of the picture
-        let me = std::env::current_exe().unwrap_or_default();
-        run(&["sh", "-c", "sleep 0.2; exec \"$0\" screenshot", &me.to_string_lossy()]);
+        // once the panel has rolled up out of the picture; in this ostrov, not a new one run by its path (gone
+        // while a newer build is installed over it)
+        gtk4::glib::timeout_add_local_once(std::time::Duration::from_millis(200), crate::screenshot);
     });
     b.set_tooltip_text(Some(t("Screenshot")));
     Widget::new(&b, None, |_| ())

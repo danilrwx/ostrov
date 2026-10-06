@@ -247,6 +247,13 @@ pub type Reply = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Strin
 /// `ostrov ARGS` done by this ostrov, whoever asks: the command line, D-Bus (api.rs), a plugin. The one dispatch:
 /// `plugin ID ARGS` to that plugin's own (input what was piped to ostrov), `dialog JSON` a question's answer once
 /// given (a no an error), the rest ostrov's own, at once.
+/// A region or the screen to the clipboard (`ostrov screenshot`), from within: the control centre's button.
+pub fn screenshot() {
+    if let Some(s) = SHOT.with(|s| s.borrow().clone()) {
+        s.take();
+    }
+}
+
 fn command(args: &[String], input: Option<String>) -> Reply {
     match args {
         [first, rest @ ..] if first == "plugin" => return plugins::run(rest, input),
