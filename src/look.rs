@@ -18,6 +18,125 @@ fn rgb(c: &str) -> Option<(u8, u8, u8)> {
     Some((b(c.red()), b(c.green()), b(c.blue())))
 }
 
+/// The accent as the appearance says: a colour, or "wallpaper", the wallpaper's own (wallpaper_accent); "" the
+/// theme's.
+pub fn accent(a: &Appearance) -> String {
+    if a.accent == "wallpaper" {
+        return wallpaper_accent(crate::theme::light_mode()).unwrap_or_default();
+    }
+    a.accent.clone()
+}
+
+thread_local! {
+    /// The wallpaper's accent last worked out: for which picture and side.
+    static WALL: std::cell::RefCell<Option<(String, bool, Option<String>)>> = const { std::cell::RefCell::new(None) };
+}
+
+/// The wallpaper's accent: of its colours the one there is most of among the vivid ones (its pixels by hue, each
+/// as much as it is saturated and bright), made light enough to stand out after dark and dark enough by day.
+/// None with no wallpaper, or one with nothing vivid in it.
+pub fn wallpaper_accent(light: bool) -> Option<String> {
+    let pick = crate::modules::wallpaper::service::pick();
+    if !pick.on {
+        return None;
+    }
+    let key = (pick.path.clone(), light);
+    if let Some(Some(hit)) = WALL.with(|w| w.borrow().as_ref().filter(|(p, l, _)| (p, *l) == (&key.0, key.1)).map(|w| w.2.clone())) {
+        return Some(hit);
+    }
+    // GTK's own loader (gdk-pixbuf's may be sandboxed away): the picture whole, every pixel of a grid of ~100x100
+    let found = gtk4::gdk::Texture::from_filename(&pick.path).ok().and_then(|tex| {
+        use gtk4::gdk::prelude::*;
+        let (w, h) = (tex.intrinsic_width() as usize, tex.intrinsic_height() as usize);
+        let stride = w * 4;
+        let mut bytes = vec![0u8; stride * h];
+        tex.download(&mut bytes, stride);
+        let step = (w.max(h) / 100).max(1);
+        let mut pixels = Vec::new();
+        for y in (0..h).step_by(step) {
+            for x in (0..w).step_by(step) {
+                // GDK's download: B, G, R, A in memory on a little-endian machine (cairo's ARGB32)
+                let i = y * stride + x * 4;
+                pixels.push((bytes[i + 2], bytes[i + 1], bytes[i]));
+            }
+        }
+        accent_of(&pixels, light)
+    });
+    WALL.with(|w| *w.borrow_mut() = Some((key.0, key.1, found.clone())));
+    found
+}
+
+/// The accent of a picture's pixels (see wallpaper_accent).
+fn accent_of(pixels: &[(u8, u8, u8)], light: bool) -> Option<String> {
+    // 36 hues of 10°, each with its weight and its colours summed
+    let mut bins = [(0.0f64, 0.0f64, 0.0f64, 0.0f64); 36];
+    for &(r, g, b) in pixels {
+        let (h, s, v) = hsv(r, g, b);
+        let w = s * s * v;
+        if s < 0.2 || v < 0.15 {
+            continue;
+        }
+        let bin = &mut bins[(h / 10.0) as usize % 36];
+        bin.0 += w;
+        bin.1 += h * w;
+        bin.2 += s * w;
+        bin.3 += v * w;
+    }
+    // the heaviest hue with its neighbours
+    let total = |i: usize| bins[(i + 35) % 36].0 + bins[i].0 + bins[(i + 1) % 36].0;
+    let best = (0..36).max_by(|&a, &b| total(a).total_cmp(&total(b)))?;
+    // that hue and its neighbours together, the hue an angle near best's (across 0° kept whole)
+    let (mut w, mut hw, mut sw) = (0.0, 0.0, 0.0);
+    for i in [(best + 35) % 36, best, (best + 1) % 36] {
+        let (bw, bh, bs, _) = bins[i];
+        let mean = if bw > 0.0 { bh / bw } else { 0.0 };
+        let near = mean + 360.0 * ((best as f64 * 10.0 - mean) / 360.0).round();
+        w += bw;
+        hw += near * bw;
+        sw += bs;
+    }
+    if w <= 0.0 {
+        return None;
+    }
+    let (h, s) = ((hw / w).rem_euclid(360.0), (sw / w).clamp(0.45, 0.85));
+    // after dark light, by day deep: readable on either ground
+    let v = if light { 0.62 } else { 0.92 };
+    let (r, g, b) = from_hsv(h, s, v);
+    Some(format!("#{r:02x}{g:02x}{b:02x}"))
+}
+
+fn hsv(r: u8, g: u8, b: u8) -> (f64, f64, f64) {
+    let (r, g, b) = (r as f64 / 255.0, g as f64 / 255.0, b as f64 / 255.0);
+    let (max, min) = (r.max(g).max(b), r.min(g).min(b));
+    let d = max - min;
+    let h = if d == 0.0 {
+        0.0
+    } else if max == r {
+        60.0 * ((g - b) / d).rem_euclid(6.0)
+    } else if max == g {
+        60.0 * ((b - r) / d + 2.0)
+    } else {
+        60.0 * ((r - g) / d + 4.0)
+    };
+    (h, if max == 0.0 { 0.0 } else { d / max }, max)
+}
+
+fn from_hsv(h: f64, s: f64, v: f64) -> (u8, u8, u8) {
+    let c = v * s;
+    let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
+    let m = v - c;
+    let (r, g, b) = match (h / 60.0) as u32 {
+        0 => (c, x, 0.0),
+        1 => (x, c, 0.0),
+        2 => (0.0, c, x),
+        3 => (0.0, x, c),
+        4 => (x, 0.0, c),
+        _ => (c, 0.0, x),
+    };
+    let to = |u: f64| ((u + m) * 255.0).round() as u8;
+    (to(r), to(g), to(b))
+}
+
 /// The palette's colours over style.rs's, later over earlier: the theme's, its surface's colour (or the
 /// appearance's) under the appearance's opacity, the bar's colour if the appearance has one (its opacity, ALPHA,
 /// the wallpaper's: bar_alpha), the appearance's accent, then the config's [colors].
@@ -37,7 +156,7 @@ pub fn palette(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) -> 
     if let Some((r, g, b)) = bar {
         out += &def("ground", &format!("rgb({r}, {g}, {b})"));
     }
-    if let Some((r, g, b)) = rgb(&a.accent) {
+    if let Some((r, g, b)) = rgb(&accent(a)) {
         // what goes on the accent black or white, as the accent is light or dark
         let light = 0.2126 * r as f64 + 0.7152 * g as f64 + 0.0722 * b as f64 > 150.0;
         out += &format!(
@@ -190,6 +309,19 @@ pub fn blur(a: &Appearance, t: &Theme) -> Vec<(&'static str, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_pictures_accent() {
+        // a picture mostly a deep blue, a little red: the blue, made light after dark
+        let mut px = vec![(20, 40, 160); 900];
+        px.extend(vec![(200, 30, 30); 100]);
+        px.extend(vec![(128, 128, 128); 500]);
+        let a = accent_of(&px, false).unwrap();
+        let (r, g, b) = rgb(&a).unwrap();
+        assert!(b > r && b > g && b > 200, "{a}");
+        // greys alone: none
+        assert_eq!(accent_of(&[(100, 100, 100); 50], false), None);
+    }
 
     #[test]
     fn radii_only() {

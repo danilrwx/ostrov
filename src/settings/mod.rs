@@ -311,7 +311,7 @@ pub fn check(kind: &Kind, v: Value) -> Result<Value, String> {
         Kind::Url if !text.is_empty() && !text.starts_with("https://") && !text.starts_with("http://") => {
             return Err(t("an http:// or https:// address").into());
         }
-        Kind::Color if !text.is_empty() && gtk4::gdk::RGBA::parse(text.as_str()).is_err() => {
+        Kind::Color if !text.is_empty() && text != "wallpaper" && gtk4::gdk::RGBA::parse(text.as_str()).is_err() => {
             return Err(t("a colour: #5e81ac, rgb(94, 129, 172), a name").into());
         }
         Kind::Path if !text.is_empty() && !expand(&text).exists() => return Err(t("no such file or directory").into()),
@@ -472,7 +472,7 @@ pub fn appearance() -> Vec<Section> {
             .default("07:00-19:00")
             .help("When it is day: from-to, or sun for sunrise to sunset where ostrov location puts you.")
             .visible_if("mode", "auto"),
-        Field::new("accent", "Accent", Kind::Color).default("").help("Empty: the theme's own."),
+        Field::new("accent", "Accent", Kind::Color).default("").help("Empty: the theme's own; wallpaper: the colour there is most of in the wallpaper."),
         Field::new("surface", "Surface colour", Kind::Color)
             .default("")
             .help("Under everything that opens; empty: the theme's."),

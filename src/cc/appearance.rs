@@ -115,6 +115,15 @@ fn fill(body: &gtk4::Box, keep: &'static [&'static str]) {
     own.connect_clicked(move |_| set(&b2, keep, "accent", None));
     let line = gtk4::Box::new(Orientation::Horizontal, 6);
     line.append(&own);
+    // the wallpaper's own colour, as it changes
+    let wall = crate::ui::chip(t("Wallpaper's"));
+    wall.set_tooltip_text(Some(t("The colour there is most of in the wallpaper")));
+    if a.accent == "wallpaper" {
+        wall.add_css_class("picked");
+    }
+    let b3 = body.clone();
+    wall.connect_clicked(move |_| set(&b3, keep, "accent", Some("wallpaper".into())));
+    line.append(&wall);
     accent.append(&line);
     for (i, c) in ACCENTS.iter().enumerate() {
         let b = gtk4::Button::new();
@@ -135,7 +144,7 @@ fn fill(body: &gtk4::Box, keep: &'static [&'static str]) {
     custom.set_halign(gtk4::Align::Start);
     custom.set_tooltip_text(Some(t("Another colour")));
     // the accent shown here, picked, when no swatch is it; clear otherwise
-    let other = !a.accent.is_empty() && !ACCENTS.iter().any(|c| a.accent.eq_ignore_ascii_case(c));
+    let other = !a.accent.is_empty() && a.accent != "wallpaper" && !ACCENTS.iter().any(|c| a.accent.eq_ignore_ascii_case(c));
     let rgba = gtk4::gdk::RGBA::parse(a.accent.as_str()).ok().filter(|_| other);
     custom.set_rgba(&rgba.unwrap_or(gtk4::gdk::RGBA::TRANSPARENT));
     if other {

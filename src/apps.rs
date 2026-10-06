@@ -69,7 +69,7 @@ impl Palette {
         let bar_alpha = crate::modules::wallpaper::service::bar_alpha();
         let fg = pick("fg", if dark { "#ffffff" } else { "#1d1d1f" });
         let dim = pick("dim", if dark { "#888888" } else { "#505055" });
-        let (accent, ink) = match rgb(&a.accent) {
+        let (accent, ink) = match rgb(&crate::look::accent(a)) {
             Some(c) => (c, if 0.2126 * c.0 as f64 + 0.7152 * c.1 as f64 + 0.0722 * c.2 as f64 > 150.0 { (0, 0, 0) } else { (255, 255, 255) }),
             None => (pick("accent", "#ffffff"), pick("ink", "#000000")),
         };

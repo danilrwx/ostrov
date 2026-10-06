@@ -13,6 +13,10 @@ Ostrov after dark and by day.
     ostrov theme install PATH|GIT-URL  installs one from a directory or a git repository
     ostrov theme remove ID             removes an installed one
 
+The accent can be the wallpaper's own: `[appearance] accent = "wallpaper"` (Wallpaper's on the Appearance page),
+of its colours the vivid one there is most of, made light after dark and deep by day, worked out again as the
+wallpaper changes; the rest of the desktop takes it as any accent.
+
 The Appearance page in the control centre (the palette beside Edit, `ostrov appearance`) shows every theme as a card
 in its own colours; a click picks it. Picking, installing and removing take effect at once.
 
