@@ -1,8 +1,9 @@
-//! Themes as packages: a directory with a theme.toml (its name, author, version, whether it is dark, colours for
-//! style.rs's palette, suggested radius, density and blur) and an optional theme.css laid after ostrov's own. The
-//! built-in five are the same files, under themes/ in the source, compiled in; installed ones live in
-//! ~/.local/share/ostrov/themes/<id>/, the id the directory's name, and one of a built-in's id stands in for it.
-//! [appearance] theme picks one; `ostrov theme list|set|install|remove` manages them (docs/themes.md).
+//! Themes as packages: a directory with a theme.toml (its name, author, version, colours for style.rs's palette
+//! after dark and, in [light], by day; suggested radius, density and blur) and an optional theme.css laid after
+//! ostrov's own. The built-in five are the same files, under themes/ in the source, compiled in; installed ones
+//! live in ~/.local/share/ostrov/themes/<id>/, the id the directory's name, and one of a built-in's id stands in for
+//! it. [appearance] theme picks one and mode its dark or light; `ostrov theme list|set|install|remove` manages them
+//! (docs/themes.md).
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -12,12 +13,19 @@ use serde::Deserialize;
 
 /// The built-in themes, in the order the Appearance page shows them.
 const BUILT_IN: &[(&str, &str)] = &[
-    ("dark", include_str!("../themes/dark/theme.toml")),
-    ("light", include_str!("../themes/light/theme.toml")),
+    ("ostrov", include_str!("../themes/ostrov/theme.toml")),
     ("graphite", include_str!("../themes/graphite/theme.toml")),
     ("nord", include_str!("../themes/nord/theme.toml")),
     ("solarized", include_str!("../themes/solarized/theme.toml")),
+    ("catppuccin", include_str!("../themes/catppuccin/theme.toml")),
 ];
+
+/// The ids themes had before each came in two: ostrov's, after dark or by day.
+const ALIASES: &[(&str, &str, bool)] = &[("dark", "ostrov", false), ("light", "ostrov", true)];
+
+fn yes() -> bool {
+    true
+}
 
 #[derive(Deserialize, Debug, Default)]
 pub struct Theme {
@@ -28,11 +36,16 @@ pub struct Theme {
     pub author: String,
     #[serde(default)]
     pub version: String,
-    /// Whether it is a dark theme: GTK's own widgets (the colour dialog) follow it.
+    /// Whether its [colors] are for after dark (a theme of one kind, light, says false): GTK's own widgets (the
+    /// colour dialog) follow it; after variant, whether the colours taken are.
+    #[serde(default = "yes")]
     pub dark: bool,
     /// style.rs's tokens it sets; surface's colour taken under [appearance]'s opacity.
     #[serde(default)]
     pub colors: BTreeMap<String, String>,
+    /// The same by day, if it has a light side.
+    #[serde(default)]
+    pub light: BTreeMap<String, String>,
     /// Suggestions, taken while [appearance] says nothing of them.
     pub radius: Option<u32>,
     pub density: Option<String>,
@@ -60,12 +73,14 @@ pub fn parse(text: &str, id: &str, css: String) -> Result<Theme, String> {
         return Err("no name".into());
     }
     let tokens = crate::style::tokens();
-    for (k, v) in &t.colors {
-        if !tokens.contains(&k.as_str()) {
-            return Err(format!("colors.{k}: not one of ostrov's tokens ({})", tokens.join(", ")));
-        }
-        if v.trim().is_empty() || v.contains([';', '{', '}']) {
-            return Err(format!("colors.{k}: {v:?} is not a colour"));
+    for (table, colors) in [("colors", &t.colors), ("light", &t.light)] {
+        for (k, v) in colors {
+            if !tokens.contains(&k.as_str()) {
+                return Err(format!("{table}.{k}: not one of ostrov's tokens ({})", tokens.join(", ")));
+            }
+            if v.trim().is_empty() || v.contains([';', '{', '}']) {
+                return Err(format!("{table}.{k}: {v:?} is not a colour"));
+            }
         }
     }
     if let Some(d) = t.density.as_deref().filter(|d| !["compact", "normal", "comfortable"].contains(d)) {
@@ -125,13 +140,54 @@ pub fn all() -> Vec<Theme> {
     out
 }
 
-/// The theme of that id; the dark one for an id there is none of (or one that does not read).
+impl Theme {
+    /// Whether it has both sides.
+    pub fn two(&self) -> bool {
+        self.dark && !self.light.is_empty()
+    }
+
+    /// Its side for the mode: by day its [light] over the others, after dark its [colors]; a theme of one side its
+    /// one whatever the mode.
+    pub fn variant(mut self, light: bool) -> Theme {
+        if light && self.two() {
+            self.colors = std::mem::take(&mut self.light);
+            self.dark = false;
+        }
+        self
+    }
+}
+
+/// An id as it is now: an old one (dark, light) ostrov's.
+pub fn canonical(id: &str) -> &str {
+    ALIASES.iter().find(|(old, ..)| *old == id).map_or(id, |a| a.1)
+}
+
+/// Every theme on the mode's side (the Appearance page's cards).
+pub fn all_now() -> Vec<Theme> {
+    let light = light_mode();
+    all().into_iter().map(|t| t.variant(light)).collect()
+}
+
+/// Whether ostrov is by day: [appearance] mode, else (left out) as an old theme id said, "light".
+pub fn light_mode() -> bool {
+    let a = crate::config::load().appearance;
+    match a.mode.as_str() {
+        "light" => true,
+        "dark" => false,
+        _ => ALIASES.iter().any(|(old, _, light)| *old == a.theme && *light),
+    }
+}
+
+/// The theme of that id on the mode's side; ostrov's for an id there is none of (or one that does not read), an
+/// old id (dark, light) ostrov's too.
 pub fn get(id: &str) -> Theme {
+    let id = canonical(id);
     let mut all = all();
-    match all.iter().position(|t| t.id == id).or(all.iter().position(|t| t.id == "dark")) {
+    let t = match all.iter().position(|t| t.id == id).or(all.iter().position(|t| t.id == "ostrov")) {
         Some(i) => all.swap_remove(i),
         None => Theme::default(),
-    }
+    };
+    t.variant(light_mode())
 }
 
 /// `ostrov theme ARGS`, the running ostrov's.
@@ -276,9 +332,11 @@ mod tests {
     fn built_in_read() {
         let b = built_in();
         let ids: Vec<_> = b.iter().map(|t| t.id.as_str()).collect();
-        assert_eq!(ids, ["dark", "light", "graphite", "nord", "solarized"]);
-        assert!(b.iter().all(|t| t.colors.contains_key("surface")));
-        assert_eq!(b.iter().filter(|t| !t.dark).map(|t| t.id.as_str()).collect::<Vec<_>>(), ["light"]);
+        assert_eq!(ids, ["ostrov", "graphite", "nord", "solarized", "catppuccin"]);
+        // each in two, both sides with a surface
+        assert!(b.iter().all(|t| t.two() && t.colors.contains_key("surface") && t.light.contains_key("surface")));
+        let nord = b.into_iter().find(|t| t.id == "nord").unwrap().variant(true);
+        assert_eq!((nord.dark, nord.colors["surface"].as_str()), (false, "#eceff4"));
         let ex = include_str!("../examples/themes/catppuccin-mocha/theme.toml");
         let css = include_str!("../examples/themes/catppuccin-mocha/theme.css");
         assert_eq!(parse(ex, "catppuccin-mocha", css.into()).map(|t| t.name), Ok("Catppuccin Mocha".into()));
@@ -299,7 +357,7 @@ mod tests {
         assert_eq!((t.colors["fg"].as_str(), t.css.as_str()), ("#111", "label {}"));
         let bad = |text: &str, id: &str| parse(text, id, String::new()).unwrap_err();
         assert!(bad("name = \"A\"\ndark = true\n", "Has Space").contains("[a-z0-9-]"));
-        assert!(bad("name = \"A\"\n", "a").contains("dark"));
+        assert!(bad("name = \"A\"\n[light]\nfgg = \"#fff\"\n", "a").contains("light.fgg"));
         assert!(bad("name = \"\"\ndark = true\n", "a").contains("no name"));
         assert!(bad("name = \"A\"\ndark = true\n[colors]\nfgg = \"#fff\"\n", "a").contains("colors.fgg"));
         assert!(bad("name = \"A\"\ndark = true\n[colors]\nfg = \"red; }\"\n", "a").contains("not a colour"));
@@ -331,8 +389,8 @@ mod tests {
         let t = read(&root.join("paper"), "paper").unwrap();
         assert_eq!((t.name.as_str(), t.css.as_str(), t.built_in), ("Paper", ".dot { }", false));
         // a theme that does not read leaves the installed one as it was, and no staging behind
-        std::fs::write(src.join("theme.toml"), "name = \"Paper\"\n").unwrap();
-        assert!(install(&src.join("theme.toml")).unwrap_err().contains("dark"));
+        std::fs::write(src.join("theme.toml"), "name = \"\"\n").unwrap();
+        assert!(install(&src.join("theme.toml")).unwrap_err().contains("no name"));
         let all = installed(&root);
         assert_eq!(all.iter().map(|(id, t)| (id.as_str(), t.is_ok())).collect::<Vec<_>>(), [("paper", true)]);
         assert_eq!(std::fs::read_dir(&root).unwrap().count(), 1);

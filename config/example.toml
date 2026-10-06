@@ -33,7 +33,8 @@ screens_off = 900
 background = "black"    # the lock screen's ground: black, or blur (the screen as it was, blurred and darkened)
 
 [appearance]
-theme = "dark"          # dark, light, graphite, nord, solarized, or an installed one (`ostrov theme list`)
+theme = "ostrov"        # ostrov, graphite, nord, solarized, catppuccin, or an installed one (`ostrov theme list`)
+# mode = "dark"         # dark or light: the theme's side
 accent = ""             # a colour (#5e81ac, rgb(94, 129, 172), a name); "" the theme's own
 surface = ""            # the colour under everything that opens; "" the theme's own
 opacity = 0.75          # the surface's, 0.3 to 1

@@ -1,7 +1,6 @@
 name = "Nord"
 author = "ostrov"
 version = "1"
-dark = true
 
 [colors]
 surface = "#353c4a"
@@ -15,3 +14,24 @@ accent-pressed = "#81a1c1"
 rule = "#4c566a"
 idle = "#4c566a"
 urgent = "#bf616a"
+
+# Snow Storm by day
+[light]
+surface = "#eceff4"
+bar = "rgba(229, 233, 240, ALPHA)"
+fg = "#2e3440"
+dim = "#4c566a"
+ink = "#eceff4"
+accent = "#5e81ac"
+accent-rule = "#81a1c1"
+accent-pressed = "#4c6d96"
+hover = "rgba(46, 52, 64, 0.08)"
+raised = "rgba(46, 52, 64, 0.05)"
+card = "rgba(46, 52, 64, 0.04)"
+well = "rgba(46, 52, 64, 0.1)"
+sunk = "#ffffff"
+rule = "#d8dee9"
+idle = "#a3adbf"
+urgent = "#bf616a"
+lock = "#e5e9f0"
+ground = "#e5e9f0"

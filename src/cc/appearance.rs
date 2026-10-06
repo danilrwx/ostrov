@@ -55,7 +55,8 @@ fn set(body: &gtk4::Box, keep: &'static [&'static str], key: &'static str, v: Op
 
 /// The themes' ids in the page's order, and the one picked.
 fn themes() -> (Vec<String>, String) {
-    (crate::theme::all().into_iter().map(|t| t.id).collect(), crate::config::load().appearance.theme)
+    let a = crate::config::load().appearance;
+    (crate::theme::all().into_iter().map(|t| t.id).collect(), format!("{} {}", crate::theme::canonical(&a.theme), crate::theme::light_mode()))
 }
 
 fn fill(body: &gtk4::Box, keep: &'static [&'static str]) {
@@ -75,7 +76,7 @@ fn fill(body: &gtk4::Box, keep: &'static [&'static str]) {
         b.add_css_class("theme");
         b.add_css_class(&format!("theme-{}", t.id));
         b.set_tooltip_text(Some(format!("{}  {} {}", t.name, t.author, t.version).trim()));
-        if a.theme == t.id {
+        if crate::theme::canonical(&a.theme) == t.id {
             b.add_css_class("picked");
         }
         let card = gtk4::Box::new(Orientation::Vertical, 4);
@@ -88,7 +89,14 @@ fn fill(body: &gtk4::Box, keep: &'static [&'static str]) {
         card.append(&l);
         b.set_child(Some(&card));
         let body = body.clone();
-        b.connect_clicked(move |_| set(&body, keep, "theme", Some(t.id.clone().into())));
+        b.connect_clicked(move |_| {
+            // the side an old id (light) gave kept, now that the id says no side
+            if crate::config::load().appearance.mode.is_empty() {
+                let mode = if crate::theme::light_mode() { "light" } else { "dark" };
+                let _ = crate::settings::write("appearance", "mode", Some(&mode.into()), false);
+            }
+            set(&body, keep, "theme", Some(t.id.clone().into()))
+        });
         themes.insert(&b, -1);
     }
     body.append(&setting(t("Theme"), "", &themes, true));

@@ -19,7 +19,7 @@
 //!     search = "https://duckduckgo.com/?q={}"
 //!
 //!     [appearance]        # the look (style.rs), taken as the file is saved; the control centre's Appearance
-//!     theme = "dark"      # dark, light, graphite, nord, solarized, or an installed one (theme.rs)
+//!     theme = "ostrov"    # ostrov, graphite, nord, solarized, catppuccin, or an installed one (theme.rs); mode = "light"
 //!     accent = "#5e81ac"  # "" the theme's own
 //!     opacity = 0.75      # the surface's
 //!     radius = 10         # a surface's corners, what is on it 4 less; unset, the theme's or 10
@@ -140,6 +140,8 @@ impl Default for Launcher {
 #[serde(default)]
 pub struct Appearance {
     pub theme: String,
+    /// its side: "dark" or "light" ("" as an old theme id says: light for "light", else dark)
+    pub mode: String,
     pub accent: String,
     pub surface: String,
     pub opacity: f64,
@@ -183,7 +185,8 @@ pub struct Appearance {
 impl Default for Appearance {
     fn default() -> Appearance {
         Appearance {
-            theme: "dark".into(),
+            theme: "ostrov".into(),
+            mode: String::new(),
             accent: String::new(),
             surface: String::new(),
             opacity: 0.75,

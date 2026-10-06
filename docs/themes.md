@@ -1,8 +1,11 @@
 # Themes
 
 A theme is a directory: a `theme.toml` with its colours and a few suggestions, and, for changes past colours, an
-optional `theme.css`. ostrov's five (Dark, Light, Graphite, Nord, Solarized) are the same files, under `themes/` in
-the source and compiled in; yours live in `~/.local/share/ostrov/themes/<id>/`.
+optional `theme.css`. Each comes in two, after dark and by day: `[appearance] mode = "dark"|"light"` (the Mode
+chips on the Appearance page) picks the side. ostrov's five (Ostrov, its day GitHub's Light; Graphite; Nord, Polar
+Night and Snow Storm; Solarized, dark and light; Catppuccin, Mocha and Latte) are the same files, under `themes/` in
+the source and compiled in; yours live in `~/.local/share/ostrov/themes/<id>/`. The old ids `dark` and `light` are
+Ostrov after dark and by day.
 
     ostrov theme list                  the themes, built in and installed, the one picked starred
     ostrov theme set ID                picks one ([appearance] theme = "ID")
@@ -26,14 +29,18 @@ brings the built-in one back. A theme that does not read is refused at install, 
 name = "Paper"            # on its card (required)
 author = "me"
 version = "1.2"
-dark = false              # whether it is dark (required): GTK's own widgets, the colour dialog, follow it
+# dark = false            # a theme of one side, light: its [colors] by day (left out: true, [colors] after dark)
 
 # suggestions, taken while [appearance] says nothing of them
 radius = 6                # a surface's corners in px, 0 to 20; what is on it 4 less
 density = "compact"       # compact, normal, comfortable: the control centre's rows
 blur = true               # Hyprland's blur behind the bar and what opens
 
-[colors]                  # any of the tokens below; the rest stay ostrov's (Dark's)
+[colors]                  # after dark: any of the tokens below; the rest stay ostrov's own
+surface = "#202020"
+accent = "#3a6ea5"
+
+[light]                   # by day, the same tokens (left out: the theme has one side, its [colors] either way)
 surface = "#fafafa"
 fg = "#202020"
 accent = "#3a6ea5"
@@ -47,7 +54,7 @@ one (`shade(@accent, 0.8)`, `alpha(@fg, 0.1)`, `mix(@fg, @surface, 0.5)`).
 Later over earlier:
 
 1. ostrov's palette (style.rs; what Dark is);
-2. the theme's `[colors]`;
+2. the theme's `[colors]`, or by day its `[light]`;
 3. `[appearance]`'s `accent` and `surface` in config.toml (the accent also sets `ink`, `accent-pressed` and
    `accent-rule` to go with it), and its `opacity` over the surface's colour;
 4. config.toml's `[colors]`.

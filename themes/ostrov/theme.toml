@@ -1,0 +1,32 @@
+# ostrov's own look, in two: black, white and grey after dark (the palette is style.rs's, so only the surface is
+# said), GitHub's Light by day ([light], Primer's colours).
+name = "Ostrov"
+author = "ostrov"
+version = "2"
+
+[colors]
+bar = "rgba(0, 0, 0, ALPHA)"
+surface = "#161618"
+
+[light]
+surface = "#ffffff"
+bar = "rgba(246, 248, 250, ALPHA)"
+fg = "#1f2328"
+dim = "#59636e"
+ink = "#ffffff"
+accent = "#0969da"
+accent-rule = "#0550ae"
+accent-pressed = "#0757ba"
+hover = "rgba(31, 35, 40, 0.07)"
+raised = "rgba(31, 35, 40, 0.04)"
+card = "rgba(31, 35, 40, 0.03)"
+well = "rgba(175, 184, 193, 0.4)"
+sunk = "#f6f8fa"
+rule = "#d1d9e0"
+idle = "#818b98"
+handle = "#0969da"
+urgent = "#cf222e"
+recording = "#cf222e"
+shade = "rgba(31, 35, 40, 0.3)"
+lock = "#f6f8fa"
+ground = "#f6f8fa"

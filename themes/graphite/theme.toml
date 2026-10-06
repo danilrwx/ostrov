@@ -1,7 +1,6 @@
 name = "Graphite"
 author = "ostrov"
 version = "1"
-dark = true
 
 [colors]
 surface = "#2c2c30"
@@ -15,3 +14,22 @@ accent-pressed = "#a8a8ac"
 hover = "rgba(255, 255, 255, 0.12)"
 rule = "rgba(255, 255, 255, 0.12)"
 idle = "#636366"
+
+[light]
+surface = "#f2f2f4"
+bar = "rgba(229, 229, 234, ALPHA)"
+fg = "#1c1c1e"
+dim = "#6e6e73"
+ink = "#ffffff"
+accent = "#3a3a3c"
+accent-rule = "#636366"
+accent-pressed = "#2c2c2e"
+hover = "rgba(0, 0, 0, 0.07)"
+raised = "rgba(0, 0, 0, 0.05)"
+card = "rgba(0, 0, 0, 0.04)"
+well = "rgba(0, 0, 0, 0.1)"
+sunk = "#ffffff"
+rule = "rgba(0, 0, 0, 0.12)"
+idle = "#aeaeb2"
+lock = "#e5e5ea"
+ground = "#e5e5ea"

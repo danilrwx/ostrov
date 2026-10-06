@@ -1,9 +1,0 @@
-# ostrov's own look, black, white and grey: the palette is style.rs's, so only the surface is said.
-name = "Dark"
-author = "ostrov"
-version = "1"
-dark = true
-
-[colors]
-bar = "rgba(0, 0, 0, ALPHA)"
-surface = "#161618"

@@ -1,7 +1,6 @@
 name = "Solarized"
 author = "ostrov"
 version = "1"
-dark = true
 
 [colors]
 surface = "#073642"
@@ -15,3 +14,24 @@ accent-pressed = "#9c7600"
 rule = "#2a4f5a"
 idle = "#586e75"
 urgent = "#dc322f"
+
+# Solarized Light: base3 and base2 under base02's text, the accent its blue
+[light]
+surface = "#eee8d5"
+bar = "rgba(253, 246, 227, ALPHA)"
+fg = "#073642"
+dim = "#657b83"
+ink = "#fdf6e3"
+accent = "#268bd2"
+accent-rule = "#1f6fa8"
+accent-pressed = "#2079ba"
+hover = "rgba(7, 54, 66, 0.08)"
+raised = "rgba(7, 54, 66, 0.05)"
+card = "rgba(7, 54, 66, 0.04)"
+well = "rgba(7, 54, 66, 0.1)"
+sunk = "#fdf6e3"
+rule = "#d6cfb8"
+idle = "#93a1a1"
+urgent = "#dc322f"
+lock = "#fdf6e3"
+ground = "#fdf6e3"

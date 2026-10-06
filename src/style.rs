@@ -313,7 +313,7 @@ pub fn load() {
             let (palette, rules) = CSS.split_at(CSS.find("/* the shapes").unwrap_or(0));
             let rules = crate::look::radii(rules, crate::look::radius(&cfg.appearance, &theme));
             let rules = crate::look::sizes(&rules, &cfg.appearance);
-            let previews = crate::look::previews(&crate::theme::all());
+            let previews = crate::look::previews(&crate::theme::all_now());
             // a tab's ground over the wallpaper matches a blurred panel; without blur the bar's is the nearer
             let a = &cfg.appearance;
             let unblurred = if a.tab == "bar" || a.tab != "wallpaper" && a.blur.or(theme.blur) == Some(false) {

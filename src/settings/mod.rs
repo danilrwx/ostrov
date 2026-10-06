@@ -464,7 +464,10 @@ pub fn appearance() -> Vec<Section> {
         Field::new("theme", "Theme", Kind::Choice {
             options: crate::theme::all().into_iter().map(|t| Opt::Labeled { value: t.id, label: t.name }).collect(),
         })
-        .default("dark"),
+        .default("ostrov"),
+        Field::new("mode", "Mode", Kind::Choice { options: opts(&[("dark", "Dark"), ("light", "Light")]) })
+            .default(if crate::theme::light_mode() { "light" } else { "dark" })
+            .help("The theme's side: after dark or by day."),
         Field::new("accent", "Accent", Kind::Color).default("").help("Empty: the theme's own."),
         Field::new("surface", "Surface colour", Kind::Color)
             .default("")
