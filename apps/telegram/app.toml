@@ -1,0 +1,3 @@
+name = "Telegram"
+detect = ["telegram-desktop", "Telegram"]
+template = "telegram.tdesktop-palette"

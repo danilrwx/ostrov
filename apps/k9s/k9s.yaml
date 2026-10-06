@@ -1,0 +1,27 @@
+# ostrov's colours for k9s, its grounds the terminal's: ln -s ~/.local/state/ostrov/colors/k9s.yaml ~/.config/k9s/skins/ostrov.yaml, ui.skin: ostrov
+k9s:
+  body: {fgColor: "{{fg}}", bgColor: default, logoColor: "{{accent}}"}
+  prompt: {fgColor: "{{fg}}", bgColor: default, suggestColor: "{{dim}}"}
+  info: {fgColor: "{{accent}}", sectionColor: "{{fg}}"}
+  dialog: {fgColor: "{{fg}}", bgColor: default, buttonFgColor: "{{ink}}", buttonBgColor: "{{dim}}", buttonFocusFgColor: "{{ink}}", buttonFocusBgColor: "{{accent}}", labelFgColor: "{{accent}}", fieldFgColor: "{{fg}}"}
+  frame:
+    border: {fgColor: "{{dim}}", focusColor: "{{accent}}"}
+    menu: {fgColor: "{{fg}}", keyColor: "{{accent}}", numKeyColor: "{{accent}}"}
+    crumbs: {fgColor: "{{ink}}", bgColor: "{{dim}}", activeColor: "{{accent}}"}
+    status: {newColor: "{{accent}}", modifyColor: "{{ansi3}}", addColor: "{{ansi2}}", pendingColor: "{{ansi3}}", errorColor: "{{urgent}}", highlightColor: "{{accent}}", killColor: "{{dim}}", completedColor: "{{dim}}"}
+    title: {fgColor: "{{fg}}", bgColor: default, highlightColor: "{{accent}}", counterColor: "{{accent}}", filterColor: "{{accent}}"}
+  views:
+    charts: {bgColor: default, defaultDialColors: ["{{accent}}", "{{urgent}}"], defaultChartColors: ["{{accent}}", "{{urgent}}"]}
+    table:
+      fgColor: "{{fg}}"
+      bgColor: default
+      cursorFgColor: "{{ink}}"
+      cursorBgColor: "{{accent}}"
+      markColor: "{{accent}}"
+      header: {fgColor: "{{dim}}", bgColor: default, sorterColor: "{{accent}}"}
+    xray: {fgColor: "{{fg}}", bgColor: default, cursorColor: "{{accent}}", graphicColor: "{{dim}}", showIcons: false}
+    yaml: {keyColor: "{{accent}}", colonColor: "{{dim}}", valueColor: "{{fg}}"}
+    logs:
+      fgColor: "{{fg}}"
+      bgColor: default
+      indicator: {fgColor: "{{fg}}", bgColor: default, toggleOnColor: "{{accent}}", toggleOffColor: "{{dim}}"}

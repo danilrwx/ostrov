@@ -237,6 +237,14 @@ pub struct Config {
     pub hyprland: Hyprland,
     pub polkit: Polkit,
     pub lock: LockCfg,
+    pub apps: AppsCfg,
+}
+
+/// The apps whose configs ostrov made read its colour files (integrations.rs), by id.
+#[derive(Deserialize, Default)]
+#[serde(default)]
+pub struct AppsCfg {
+    pub connected: Vec<String>,
 }
 
 /// The lock screen's ground: black, or the screen as it was, blurred and darkened under the clock.

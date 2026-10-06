@@ -1,0 +1,11 @@
+name = "Ghostty"
+detect = ["ghostty"]
+template = "ghostty"
+
+[include]
+file = "~/.config/ghostty/config"
+line = "config-file = ~/.local/state/ostrov/colors/ghostty"
+
+[reload]
+signal = "USR2"
+process = "ghostty"

@@ -1,0 +1,11 @@
+name = "kitty"
+detect = ["kitty"]
+template = "kitty.conf"
+
+[include]
+file = "~/.config/kitty/kitty.conf"
+line = "include ~/.local/state/ostrov/colors/kitty.conf"
+
+[reload]
+signal = "USR1"
+process = "kitty"

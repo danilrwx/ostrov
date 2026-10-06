@@ -3,10 +3,8 @@
 //!   which the settings portal hands to GTK, libadwaita, Qt (Telegram), Chrome and Firefox;
 //! - the palette for GTK 3 and 4 (file managers, GNOME's apps): ostrov.css beside gtk.css in ~/.config/gtk-3.0 and
 //!   gtk-4.0, gtk.css importing it (a line put at its top, the file made if there is none);
-//! - colour files for the rest in ~/.local/state/ostrov/colors (alacritty.toml, kitty.conf, foot.ini,
-//!   ghostty, k9s.yaml, telegram.tdesktop-palette, colors.sh, colors.json) and the user's own templates rendered beside them:
-//!   ~/.config/ostrov/templates/NAME, its {{fg}}, {{accent}}... filled in, to colors/NAME. kitty is told to read its
-//!   config again; alacritty reads an import as it changes;
+//! - colour files for the rest in ~/.local/state/ostrov/colors, an app's each (integrations.rs: terminals, k9s,
+//!   Telegram, the user's own), and colors.json, the palette for scripts;
 //! - the browser's frame the bar's colour: GTK's headerbar is the bar's, which Chrome in its GTK theme takes; its
 //!   theme colour policy (ostrov-theme.json, where it is there to write) left empty, as it would hold over it.
 //!
@@ -157,16 +155,6 @@ fn gtk_css(p: &Palette, vars: bool) -> String {
     out + "}\n"
 }
 
-/// What ostrov writes for the apps that read a colour file: name → its template.
-const BUILT_IN: &[(&str, &str)] = &[
-    ("alacritty.toml", "# ostrov's colours, its ground the bar's, as solid: import = [\"~/.local/state/ostrov/colors/alacritty.toml\"]\n[window]\nopacity = {{bar_alpha}}\n[colors.primary]\nbackground = \"{{bar}}\"\nforeground = \"{{fg}}\"\n[colors.cursor]\ncursor = \"{{accent}}\"\ntext = \"{{ink}}\"\n[colors.selection]\nbackground = \"{{accent}}\"\ntext = \"{{ink}}\"\n[colors.normal]\nblack = \"{{ansi0}}\"\nred = \"{{ansi1}}\"\ngreen = \"{{ansi2}}\"\nyellow = \"{{ansi3}}\"\nblue = \"{{ansi4}}\"\nmagenta = \"{{ansi5}}\"\ncyan = \"{{ansi6}}\"\nwhite = \"{{ansi7}}\"\n[colors.bright]\nblack = \"{{ansi8}}\"\nred = \"{{ansi9}}\"\ngreen = \"{{ansi10}}\"\nyellow = \"{{ansi11}}\"\nblue = \"{{ansi12}}\"\nmagenta = \"{{ansi13}}\"\ncyan = \"{{ansi14}}\"\nwhite = \"{{ansi15}}\"\n"),
-    ("kitty.conf", "# ostrov's colours, its ground the bar's, as solid: include ~/.local/state/ostrov/colors/kitty.conf\nbackground {{bar}}\nbackground_opacity {{bar_alpha}}\nforeground {{fg}}\ncursor {{accent}}\nselection_background {{accent}}\nselection_foreground {{ink}}\nactive_border_color {{accent}}\nactive_tab_background {{accent}}\nactive_tab_foreground {{ink}}\ninactive_tab_background {{card}}\ninactive_tab_foreground {{dim}}\ncolor0 {{ansi0}}\ncolor1 {{ansi1}}\ncolor2 {{ansi2}}\ncolor3 {{ansi3}}\ncolor4 {{ansi4}}\ncolor5 {{ansi5}}\ncolor6 {{ansi6}}\ncolor7 {{ansi7}}\ncolor8 {{ansi8}}\ncolor9 {{ansi9}}\ncolor10 {{ansi10}}\ncolor11 {{ansi11}}\ncolor12 {{ansi12}}\ncolor13 {{ansi13}}\ncolor14 {{ansi14}}\ncolor15 {{ansi15}}\n"),
-    ("foot.ini", "# ostrov's colours, its ground the bar's, as solid: [main] include=~/.local/state/ostrov/colors/foot.ini\n[colors]\nalpha={{bar_alpha|bare}}\nbackground={{bar|bare}}\nforeground={{fg|bare}}\nselection-background={{accent|bare}}\nselection-foreground={{ink|bare}}\nregular0={{ansi0|bare}}\nregular1={{ansi1|bare}}\nregular2={{ansi2|bare}}\nregular3={{ansi3|bare}}\nregular4={{ansi4|bare}}\nregular5={{ansi5|bare}}\nregular6={{ansi6|bare}}\nregular7={{ansi7|bare}}\nbright0={{ansi8|bare}}\nbright1={{ansi9|bare}}\nbright2={{ansi10|bare}}\nbright3={{ansi11|bare}}\nbright4={{ansi12|bare}}\nbright5={{ansi13|bare}}\nbright6={{ansi14|bare}}\nbright7={{ansi15|bare}}\n"),
-    ("ghostty", "# ostrov's colours, its ground the bar's, as solid: config-file = ~/.local/state/ostrov/colors/ghostty\nbackground = {{bar}}\nbackground-opacity = {{bar_alpha}}\nforeground = {{fg}}\ncursor-color = {{accent}}\ncursor-text = {{ink}}\nselection-background = {{accent}}\nselection-foreground = {{ink}}\npalette = 0={{ansi0}}\npalette = 1={{ansi1}}\npalette = 2={{ansi2}}\npalette = 3={{ansi3}}\npalette = 4={{ansi4}}\npalette = 5={{ansi5}}\npalette = 6={{ansi6}}\npalette = 7={{ansi7}}\npalette = 8={{ansi8}}\npalette = 9={{ansi9}}\npalette = 10={{ansi10}}\npalette = 11={{ansi11}}\npalette = 12={{ansi12}}\npalette = 13={{ansi13}}\npalette = 14={{ansi14}}\npalette = 15={{ansi15}}\n"),
-    ("k9s.yaml", "# ostrov's colours for k9s, its grounds the terminal's: ln -s ~/.local/state/ostrov/colors/k9s.yaml ~/.config/k9s/skins/ostrov.yaml, ui.skin: ostrov\nk9s:\n  body: {fgColor: \"{{fg}}\", bgColor: default, logoColor: \"{{accent}}\"}\n  prompt: {fgColor: \"{{fg}}\", bgColor: default, suggestColor: \"{{dim}}\"}\n  info: {fgColor: \"{{accent}}\", sectionColor: \"{{fg}}\"}\n  dialog: {fgColor: \"{{fg}}\", bgColor: default, buttonFgColor: \"{{ink}}\", buttonBgColor: \"{{dim}}\", buttonFocusFgColor: \"{{ink}}\", buttonFocusBgColor: \"{{accent}}\", labelFgColor: \"{{accent}}\", fieldFgColor: \"{{fg}}\"}\n  frame:\n    border: {fgColor: \"{{dim}}\", focusColor: \"{{accent}}\"}\n    menu: {fgColor: \"{{fg}}\", keyColor: \"{{accent}}\", numKeyColor: \"{{accent}}\"}\n    crumbs: {fgColor: \"{{ink}}\", bgColor: \"{{dim}}\", activeColor: \"{{accent}}\"}\n    status: {newColor: \"{{accent}}\", modifyColor: \"{{ansi3}}\", addColor: \"{{ansi2}}\", pendingColor: \"{{ansi3}}\", errorColor: \"{{urgent}}\", highlightColor: \"{{accent}}\", killColor: \"{{dim}}\", completedColor: \"{{dim}}\"}\n    title: {fgColor: \"{{fg}}\", bgColor: default, highlightColor: \"{{accent}}\", counterColor: \"{{accent}}\", filterColor: \"{{accent}}\"}\n  views:\n    charts: {bgColor: default, defaultDialColors: [\"{{accent}}\", \"{{urgent}}\"], defaultChartColors: [\"{{accent}}\", \"{{urgent}}\"]}\n    table:\n      fgColor: \"{{fg}}\"\n      bgColor: default\n      cursorFgColor: \"{{ink}}\"\n      cursorBgColor: \"{{accent}}\"\n      markColor: \"{{accent}}\"\n      header: {fgColor: \"{{dim}}\", bgColor: default, sorterColor: \"{{accent}}\"}\n    xray: {fgColor: \"{{fg}}\", bgColor: default, cursorColor: \"{{accent}}\", graphicColor: \"{{dim}}\", showIcons: false}\n    yaml: {keyColor: \"{{accent}}\", colonColor: \"{{dim}}\", valueColor: \"{{fg}}\"}\n    logs:\n      fgColor: \"{{fg}}\"\n      bgColor: default\n      indicator: {fgColor: \"{{fg}}\", bgColor: default, toggleOnColor: \"{{accent}}\", toggleOffColor: \"{{dim}}\"}\n"),
-    ("telegram.tdesktop-palette", "// ostrov's colours for Telegram Desktop: Settings → Chat Settings → the three dots → Create new theme, or open this file in Telegram\nwindowBg: {{bg}};\nwindowFg: {{fg}};\nwindowBgOver: {{card}};\nwindowBgRipple: {{card}};\nwindowSubTextFg: {{dim}};\nwindowActiveTextFg: {{accent}};\nwindowBgActive: {{accent}};\nwindowFgActive: {{ink}};\nactiveButtonBg: {{accent}};\nactiveButtonFg: {{ink}};\ndialogsBg: {{sidebar}};\ndialogsBgOver: {{card}};\ndialogsBgActive: {{accent}};\ndialogsNameFg: {{fg}};\ndialogsTextFg: {{dim}};\ndialogsNameFgActive: {{ink}};\ndialogsTextFgActive: {{ink}};\ntitleBg: {{bg}};\ntitleFg: {{fg}};\nsideBarBg: {{sidebar}};\nhistoryComposeAreaBg: {{view}};\nmsgInBg: {{card}};\nmsgOutBg: {{accent}};\nmsgOutFg: {{ink}};\nmsgInFg: {{fg}};\n"),
-    ("colors.sh", "# ostrov's colours for scripts: . ~/.local/state/ostrov/colors/colors.sh\nBG='{{bg}}'\nFG='{{fg}}'\nDIM='{{dim}}'\nACCENT='{{accent}}'\nINK='{{ink}}'\nURGENT='{{urgent}}'\n"),
-];
 
 fn home() -> PathBuf {
     crate::hub::home()
@@ -310,29 +298,10 @@ pub fn apply(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) {
     if css || gtk3 {
         refresh_gtk();
     }
-    let out = home().join(".local/state/ostrov/colors");
-    let mut changed = Vec::new();
-    for (name, text) in BUILT_IN {
-        if put(&out.join(name), &p.fill(text)) {
-            changed.push(*name);
-        }
-    }
+    // the apps coloured by a file (integrations.rs), and the palette for scripts
+    crate::integrations::apply(&p);
     let json: BTreeMap<_, _> = p.colors.iter().map(|(k, v)| (k.to_string(), v.clone())).collect();
-    put(&out.join("colors.json"), &(serde_json::to_string_pretty(&json).unwrap_or_default() + "\n"));
-    // the user's own, by their names
-    if let Ok(dir) = std::fs::read_dir(home().join(".config/ostrov/templates")) {
-        for e in dir.flatten().filter(|e| e.path().is_file()) {
-            if let Ok(text) = std::fs::read_to_string(e.path()) {
-                put(&out.join(e.file_name()), &p.fill(&text));
-            }
-        }
-    }
-    // kitty reads its config again on SIGUSR1, ghostty on SIGUSR2; alacritty as its import changes; foot at its start
-    for (name, signal, app) in [("kitty.conf", "-USR1", "kitty"), ("ghostty", "-USR2", "ghostty")] {
-        if changed.contains(&name) {
-            let _ = std::process::Command::new("pkill").args([signal, "-x", app]).status();
-        }
-    }
+    put(&crate::integrations::out().join("colors.json"), &(serde_json::to_string_pretty(&json).unwrap_or_default() + "\n"));
 }
 
 #[cfg(test)]

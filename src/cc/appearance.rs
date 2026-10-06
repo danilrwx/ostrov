@@ -154,4 +154,40 @@ fn fill(body: &gtk4::Box, keep: &'static [&'static str]) {
     let kept = |k: &str| k != "theme" && k != "accent" && (keep.is_empty() || keep.contains(&k));
     rest.fields.retain(|f| kept(&f.key));
     body.append(&crate::settings::form::section(&rest));
+    // the whole page (not the welcome's few): the apps ostrov colours by a file
+    if keep.is_empty() {
+        body.append(&apps());
+    }
+}
+
+/// The apps on this machine ostrov colours by a file (integrations.rs), each a switch: its config made to read
+/// ostrov's colours or not; one without a config to connect (Telegram's palette, to open once) says where it is.
+fn apps() -> gtk4::Box {
+    let col = gtk4::Box::new(Orientation::Vertical, 0);
+    col.add_css_class("form-section");
+    col.append(&label(t("Apps"), "title"));
+    let help = label(t("Other apps in these colours, as they change: a switch makes the app's config read ostrov's file (~/.local/state/ostrov/colors)."), "field-help");
+    help.set_wrap(true);
+    col.append(&help);
+    for a in crate::integrations::all().into_iter().filter(crate::integrations::App::here) {
+        if a.include.is_none() {
+            let note = crate::i18n::fill(t("Its file: {}"), &[&a.file().display()]);
+            col.append(&setting(&a.name, &note, &gtk4::Box::new(Orientation::Horizontal, 0), false));
+            continue;
+        }
+        let sw = gtk4::Switch::new();
+        sw.set_active(a.connected());
+        let id = a.id.clone();
+        sw.connect_state_set(move |sw, on| {
+            if let Err(e) = crate::integrations::set(&id, on) {
+                eprintln!("ostrov: apps: {e}");
+                return glib::Propagation::Stop;
+            }
+            sw.set_state(on);
+            glib::Propagation::Stop
+        });
+        let where_ = a.include.as_ref().map_or(String::new(), |i| if i.link.is_empty() { i.file.clone() } else { i.link.clone() });
+        col.append(&setting(&a.name, &where_, &sw, false));
+    }
+    col
 }

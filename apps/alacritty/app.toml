@@ -1,0 +1,7 @@
+name = "alacritty"
+detect = ["alacritty"]
+template = "alacritty.toml"
+
+[include]
+file = "~/.config/alacritty/alacritty.toml"
+key = "general.import"

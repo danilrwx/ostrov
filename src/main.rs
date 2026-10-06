@@ -10,6 +10,7 @@
 mod anim;
 mod api;
 mod apps;
+mod integrations;
 mod backend;
 mod bar;
 mod bars;
@@ -65,7 +66,7 @@ thread_local! {
 /// ARGS).
 const FORMS: &[&str] = &[
     "panel", "menu NAME", "settings [SECTION]", "appearance", "kit", "calendar", "run", "clip",
-    "lock", "dnd [on|off]", "notifications clear", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region", "outline REGION|off",
+    "lock", "dnd [on|off]", "notifications clear", "restart", "hyprland", "key NAME", "awake", "screenshot", "capture FILE", "pick-region", "outline REGION|off", "apps [list]", "apps connect|disconnect ID", "apps apply",
     "share-pick [--allow-token]",
     "bar toggle|peek|unpeek|edit", "bar edit BLOCK", "state", "dump", "toast TITLE [BODY...]", "dialog JSON", "plugins",
     "plugin [ID] [ARGS...]", "plugin install SOURCE", "plugin remove ID", "plugin catalogue",
@@ -173,6 +174,8 @@ fn activate(app: &gtk4::Application) {
                 ["dnd", "off"] => notes::get().ok_or("no notifications here")?.set_dnd(false),
                 ["notifications", "clear"] => notes::get().ok_or("no notifications here")?.clear(),
                 ["capture", path] => shot::capture(path.to_string()),
+                // the apps ostrov colours by a file, connected or not (integrations.rs)
+                ["apps", ref rest @ ..] => return integrations::command(rest),
                 // a frame round the region a recorder records (plugins/record), off when it ends
                 ["outline", "off"] => shot::outline(&app2, None)?,
                 ["outline", ref region @ ..] if !region.is_empty() => shot::outline(&app2, Some(&region.join(" ")))?,

@@ -156,24 +156,9 @@ As the appearance changes, ostrov puts its look into the rest of the desktop (`[
   adw-gtk3's named colours (the accent, the window's, the views', the sidebars', the cards') and GTK 4.16's
   variables; `gtk.css` beside each imports it (a line put at its top). File managers and GNOME's apps take it as
   they start.
-- **Colour files** in `~/.local/state/ostrov/colors/`, for what a config can import:
-
-| File | Its app |
-|---|---|
-| `alacritty.toml` | `import = ["~/.local/state/ostrov/colors/alacritty.toml"]`; alacritty reads it again as it changes |
-| | (the terminals' ground is the bar's colour, as solid as the bar: one strip from the bar down) |
-| `kitty.conf` | `include ~/.local/state/ostrov/colors/kitty.conf`; kitty is told to read it again |
-| `foot.ini` | `[main] include=~/.local/state/ostrov/colors/foot.ini`, at foot's start |
-| `ghostty` | `config-file = ~/.local/state/ostrov/colors/ghostty`; ghostty is told to read it again |
-| `k9s.yaml` | a skin: linked as `~/.config/k9s/skins/ostrov.yaml`, `ui.skin: ostrov`; k9s (`reactive: true`) redraws as it changes |
-| `telegram.tdesktop-palette` | opened in Telegram Desktop once, as a theme of one's own |
-| `colors.sh`, `colors.json` | scripts |
-
 - **The browser's frame**: GTK's headerbar is the bar's colour, and Chrome in its GTK theme (`chrome://settings/appearance`,
   Theme: GTK) takes its frame from it, the bar's colour exactly. A `BrowserThemeColor` policy would hold over that
   (and Chrome makes its own palette from it, never the colour itself), so ostrov leaves its own policy file,
   `/etc/opt/chrome/policies/managed/ostrov-theme.json` where there is one to write, empty. GTK's apps read the
   colours again as they change (the GTK theme named anew).
-- **Templates of your own**: a file in `~/.config/ostrov/templates/` is written to `colors/` under its name with
-  `{{bg}}` (the bar's colour with no wallpaper, the surface's over one), `{{bar}}`, `{{bar_alpha}}`, `{{view}}`, `{{card}}`, `{{sidebar}}`, `{{fg}}`, `{{dim}}`, `{{accent}}`, `{{ink}}`, `{{urgent}}` and
-  `{{ansi0}}` to `{{ansi15}}` filled in (One Dark's or One Light's colours, as the theme is dark or light).
+- **The other apps by a colour file** (terminals, k9s, Telegram, yours): [apps.md](apps.md).

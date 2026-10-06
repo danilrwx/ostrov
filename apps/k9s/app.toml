@@ -1,0 +1,6 @@
+name = "k9s"
+detect = ["k9s"]
+template = "k9s.yaml"
+
+[include]
+link = "~/.config/k9s/skins/ostrov.yaml"

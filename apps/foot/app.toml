@@ -1,0 +1,8 @@
+name = "foot"
+detect = ["foot"]
+template = "foot.ini"
+
+[include]
+file = "~/.config/foot/foot.ini"
+section = "[main]"
+line = "include=~/.local/state/ostrov/colors/foot.ini"

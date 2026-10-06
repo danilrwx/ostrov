@@ -1,0 +1,26 @@
+// ostrov's colours for Telegram Desktop: Settings → Chat Settings → the three dots → Create new theme, or open this file in Telegram
+windowBg: {{bg}};
+windowFg: {{fg}};
+windowBgOver: {{card}};
+windowBgRipple: {{card}};
+windowSubTextFg: {{dim}};
+windowActiveTextFg: {{accent}};
+windowBgActive: {{accent}};
+windowFgActive: {{ink}};
+activeButtonBg: {{accent}};
+activeButtonFg: {{ink}};
+dialogsBg: {{sidebar}};
+dialogsBgOver: {{card}};
+dialogsBgActive: {{accent}};
+dialogsNameFg: {{fg}};
+dialogsTextFg: {{dim}};
+dialogsNameFgActive: {{ink}};
+dialogsTextFgActive: {{ink}};
+titleBg: {{bg}};
+titleFg: {{fg}};
+sideBarBg: {{sidebar}};
+historyComposeAreaBg: {{view}};
+msgInBg: {{card}};
+msgOutBg: {{accent}};
+msgOutFg: {{ink}};
+msgInFg: {{fg}};

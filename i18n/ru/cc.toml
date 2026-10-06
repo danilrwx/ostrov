@@ -132,3 +132,6 @@
 "Chips and buttons" = "Чипы и кнопки"
 "Menu" = "Меню"
 "Words and cards" = "Текст и карточки"
+"Apps" = "Приложения"
+"Other apps in these colours, as they change: a switch makes the app's config read ostrov's file (~/.local/state/ostrov/colors)." = "Другие приложения в этих цветах, следом за их сменой: переключатель подключает файл ostrov в конфиг приложения (~/.local/state/ostrov/colors)."
+"Its file: {}" = "Его файл: {}"
