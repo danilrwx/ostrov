@@ -263,6 +263,7 @@ fn hover_tips(host: &Rc<Host>) {
     host.layer.add_overlay(&tip);
     let timer: Rc<RefCell<Option<glib::SourceId>>> = Rc::default();
     let shown: Rc<RefCell<String>> = Rc::default();
+    let held_back: Rc<RefCell<Vec<glib::WeakRef<gtk4::Widget>>>> = Rc::default();
     let motion = gtk4::EventControllerMotion::new();
     let (h, t, tm, sh) = (Rc::downgrade(host), tip.clone(), timer.clone(), shown.clone());
     motion.connect_motion(move |ec, x, y| {
@@ -270,10 +271,21 @@ fn hover_tips(host: &Rc<Host>) {
         // none while a button is held (a slider dragged: its bubble says it), a popup's own: the bar alone gets
         // GTK's
         let held = ec.current_event_state().intersects(gtk4::gdk::ModifierType::BUTTON1_MASK | gtk4::gdk::ModifierType::BUTTON3_MASK);
+        // no popup open: GTK's hovers given back to those held back
+        if host.popup().is_none() {
+            for w in held_back.borrow_mut().drain(..).filter_map(|w| w.upgrade()) {
+                w.set_has_tooltip(true);
+            }
+        }
         let text = host.popup().filter(|_| !held).and_then(|_| {
             let mut w = host.win.pick(x, y, gtk4::PickFlags::DEFAULT);
             while let Some(x) = w {
                 if let Some(t) = x.tooltip_text().filter(|t| !t.is_empty()) {
+                    // GTK's own hover held back while a popup is open, this one shown in its place: not two
+                    if x.has_tooltip() {
+                        x.set_has_tooltip(false);
+                        held_back.borrow_mut().push(x.downgrade());
+                    }
                     return Some(t.to_string());
                 }
                 w = x.parent();
