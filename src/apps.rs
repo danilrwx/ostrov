@@ -199,6 +199,48 @@ fn import(dir: &Path) {
     }
 }
 
+/// The directories GTK's themes are found in.
+fn theme_dirs() -> [PathBuf; 3] {
+    [home().join(".local/share/themes"), home().join(".themes"), PathBuf::from("/usr/share/themes")]
+}
+
+/// GTK 3's theme of ostrov's own, ~/.local/share/themes/ostrov: adw-gtk3's (dark or light, as the theme is) with
+/// ostrov's colours written into it. GTK 3 reads a user's gtk.css once, as an app starts, but its theme again
+/// whenever the theme is named anew: so the apps running (Thunar, Chrome's frame) follow a change at once
+/// (DankMaterialShell's way). None without adw-gtk3; whether it changed.
+fn gtk3_theme(p: &Palette) -> Option<bool> {
+    let from = if p.dark { "adw-gtk3-dark" } else { "adw-gtk3" };
+    let src = theme_dirs().iter().map(|d| d.join(from).join("gtk-3.0")).find(|d| d.join("gtk.css").is_file())?;
+    let dst = home().join(".local/share/themes/ostrov/gtk-3.0");
+    // its assets copied once a side, from whichever adw-gtk3 there is
+    let side = dst.join(".from");
+    if std::fs::read_to_string(&side).ok().as_deref() != Some(from) {
+        let _ = std::fs::remove_dir_all(&dst);
+        copy_dir(&src, &dst).ok()?;
+        put(&side, from);
+    }
+    let base = std::fs::read_to_string(src.join("gtk.css")).ok()?;
+    let ours = gtk_css(p, false);
+    let changed = put(&dst.join("gtk.css"), &format!("{base}\n/* ostrov's colours over adw-gtk3's */\n{ours}"));
+    // its dark variant (an app asking for it) the same
+    put(&dst.join("gtk-dark.css"), "@import url(\"gtk.css\");\n");
+    put(&dst.parent()?.join("index.theme"), "[Desktop Entry]\nType=X-GNOME-Metatheme\nName=ostrov\nComment=adw-gtk3 in ostrov's colours, written by ostrov\n\n[X-GNOME-Metatheme]\nGtkTheme=ostrov\n");
+    Some(changed)
+}
+
+fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(to)?;
+    for e in std::fs::read_dir(from)?.flatten() {
+        let target = to.join(e.file_name());
+        if e.file_type()?.is_dir() {
+            copy_dir(&e.path(), &target)?;
+        } else {
+            std::fs::copy(e.path(), target)?;
+        }
+    }
+    Ok(())
+}
+
 /// GTK's theme set to nothing and back, the apps running reading their CSS again (DankMaterialShell's way).
 fn refresh_gtk() {
     let Some(schema) = gio::SettingsSchemaSource::default().and_then(|s| s.lookup("org.gnome.desktop.interface", true)) else { return };
@@ -221,14 +263,10 @@ fn gnome(p: &Palette) {
     if schema.has_key("accent-color") && s.string("accent-color") != p.accent_name() {
         let _ = s.set_string("accent-color", p.accent_name());
     }
-    // GTK 3's theme (the portal hands it on over settings.ini): adw-gtk3 where it is installed, built on the named
-    // colours ostrov.css sets, dark or light as the theme is
-    let adw = if p.dark { "adw-gtk3-dark" } else { "adw-gtk3" };
-    let there = [home().join(".local/share/themes"), home().join(".themes"), PathBuf::from("/usr/share/themes")]
-        .iter()
-        .any(|d| d.join(adw).join("gtk-3.0").is_dir());
-    if there && schema.has_key("gtk-theme") && s.string("gtk-theme") != adw {
-        let _ = s.set_string("gtk-theme", adw);
+    // GTK 3's theme (the portal hands it on over settings.ini): ostrov's own copy of adw-gtk3 in its colours where
+    // adw-gtk3 is installed (gtk3_theme), dark or light as the theme is
+    if home().join(".local/share/themes/ostrov/gtk-3.0/gtk.css").is_file() && schema.has_key("gtk-theme") && s.string("gtk-theme") != "ostrov" {
+        let _ = s.set_string("gtk-theme", "ostrov");
     }
 }
 
@@ -258,6 +296,8 @@ pub fn apply(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) {
         return;
     }
     let p = Palette::of(a, t, colors);
+    // GTK 3's own theme before the settings name it
+    let gtk3 = gtk3_theme(&p).unwrap_or(false);
     gnome(&p);
     browsers();
     let mut css = false;
@@ -267,7 +307,7 @@ pub fn apply(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) {
         import(&dir);
     }
     // the GTK apps running (Chrome's frame in its GTK theme among them) read it again: their theme named anew
-    if css {
+    if css || gtk3 {
         refresh_gtk();
     }
     let out = home().join(".local/state/ostrov/colors");

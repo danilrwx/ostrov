@@ -149,6 +149,9 @@ As the appearance changes, ostrov puts its look into the rest of the desktop (`[
 - **The scheme and the accent**, in GNOME's settings (`org.gnome.desktop.interface color-scheme` and
   `accent-color`, the named accent nearest ostrov's). The settings portal (xdg-desktop-portal-gtk) hands them on:
   GTK and libadwaita apps, Qt 6.5+ ones (Telegram), Chrome and Firefox go dark or light with it.
+- **GTK 3's theme of ostrov's own**, `~/.local/share/themes/ostrov`: adw-gtk3's (dark or light) with ostrov's colours
+  written into it, named as GNOME's `gtk-theme` where adw-gtk3 is installed. GTK 3 reads a user's `gtk.css` once, as
+  an app starts, but its theme again whenever it is named anew: so Thunar and Chrome's frame follow a change at once.
 - **GTK's palette**: `~/.config/gtk-3.0/ostrov.css` and `~/.config/gtk-4.0/ostrov.css`, libadwaita's and
   adw-gtk3's named colours (the accent, the window's, the views', the sidebars', the cards') and GTK 4.16's
   variables; `gtk.css` beside each imports it (a line put at its top). File managers and GNOME's apps take it as
