@@ -1,6 +1,7 @@
-//! ostrov at home in a Hyprland configured for nothing: what it needs of the compositor put there by itself, over
-//! its IPC, at the start and again after every reload of its config (a reload drops what keywords set). Its own
-//! layers' rules (the bar and its popups blurred under their see-through ground, the switcher and the overview
+//! ostrov at home in a Hyprland configured for nothing but sourcing ~/.local/state/ostrov/hyprland.conf: what it
+//! needs of the compositor put there by itself, at the start and again after every reload of its config (a reload
+//! drops what keywords set); the blur and its layers' rules written to that file (put_rules), keys over its IPC. Its
+//! own layers' rules (the bar and its popups blurred under their see-through ground, the switcher and the overview
 //! gone without a fade), the session lock taken over by a new ostrov after one died locked, and its keys, each
 //! only where the combination is free: a bind of the user's own is never replaced; the plugins' keys ([[keys]])
 //! the same way, after ostrov's own. [hyprland] turns either off
@@ -17,13 +18,47 @@ use crate::wm::{hypr_socket, hyprctl};
 
 pub const MODULE: Module = Module { id: "hyprland", worker: Some(worker), ..Module::NONE };
 
-/// Its layers' rules, as layerrule lines.
-const RULES: &[&str] = &[
-    concat!(
-        "blur on, ignore_alpha 0.2, xray on, ",
-        "match:namespace ^(ostrov-toast|ostrov-osd|ostrov-prompt|ostrov-welcome)$"
-    ),
-];
+/// Its layers' rules, as layerrule lines: the bar's (rule) and the toasts', the OSD's and the questions', xray
+/// as the bar's.
+fn rules() -> Vec<String> {
+    let a = crate::config::load().appearance;
+    let xray = if a.blur_xray.unwrap_or(true) { "on" } else { "off" };
+    vec![
+        rule(),
+        format!("blur on, ignore_alpha 0.2, xray {xray}, match:namespace ^(ostrov-toast|ostrov-osd|ostrov-prompt|ostrov-welcome)$"),
+    ]
+}
+
+/// The file ostrov keeps its layers' rules in, for hyprland.conf to source (`source =
+/// ~/.local/state/ostrov/hyprland.conf`): Hyprland (0.53) takes layer rules from its config's files alone, a
+/// keyword's answered ok and kept nowhere.
+pub fn rules_file() -> std::path::PathBuf {
+    crate::hub::home().join(".local/state/ostrov/hyprland.conf")
+}
+
+/// The rules written where hyprland.conf sources them and, if they changed, Hyprland's config read again (its
+/// configreloaded then maps the bar again, popup.rs, a layer taking its rules only as it maps).
+pub fn put_rules() {
+    let a = crate::config::load().appearance;
+    let theme = crate::theme::get(&a.theme);
+    let mut lines = vec!["# ostrov's, written by ostrov as its [appearance] changes: hyprland.conf sources this file".to_string()];
+    lines.extend(crate::look::blur(&a, &theme).into_iter().map(|(k, v)| format!("decoration:blur:{k} = {v}")));
+    if crate::config::load().hyprland.rules {
+        lines.extend(rules().iter().map(|r| format!("layerrule = {r}")));
+    }
+    let text = lines.join("\n") + "\n";
+    let path = rules_file();
+    if std::fs::read_to_string(&path).ok().as_deref() == Some(text.as_str()) {
+        return;
+    }
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    if let Err(e) = std::fs::write(&path, text) {
+        return eprintln!("ostrov: {}: {e}", path.display());
+    }
+    hyprctl("reload config-only");
+}
 
 /// The bar's and its popups' rule: blurred where a surface or the bar is, the threshold under the least opaque of
 /// them as the appearance has them; not blurred at all when the appearance (or its theme) says no blur. A
@@ -187,10 +222,7 @@ fn apply() {
     let cfg = crate::config::load().hyprland;
     let _one = lock(&APPLYING);
     let mut batch = vec!["keyword misc:allow_session_lock_restore 1".to_string()];
-    if cfg.rules {
-        batch.push(format!("keyword layerrule {}", rule()));
-        batch.extend(RULES.iter().map(|r| format!("keyword layerrule {r}")));
-    }
+    put_rules();
     if cfg.binds {
         let binds: Vec<Value> = serde_json::from_str(&hyprctl("j/binds")).unwrap_or_default();
         for k in keys(&binds).into_iter().filter(|k| k.by.is_none()) {
@@ -206,8 +238,7 @@ pub fn conf() -> String {
     let binds: Vec<Value> = serde_json::from_str(&hyprctl("j/binds")).unwrap_or_default();
     let mut out = vec!["# ostrov (put there by ostrov itself unless [hyprland] says rules or binds = false)".to_string()];
     out.push("misc {\n  allow_session_lock_restore = true\n}".into());
-    out.push(format!("layerrule = {}", rule()));
-    out.extend(RULES.iter().map(|r| format!("layerrule = {r}")));
+    out.extend(rules().iter().map(|r| format!("layerrule = {r}")));
     for k in keys(&binds) {
         out.push(format!("{} = {}", k.kind, k.line));
     }
@@ -223,8 +254,6 @@ fn worker(_: Arc<Ctx>, _: Kick) -> Fut<'static, ()> {
             return;
         }
         tokio::task::spawn_blocking(apply).await.ok();
-        // the bar mapped before its rule was there: mapped again to take it
-        gtk4::glib::MainContext::default().invoke(crate::popup::remap_when_closed);
         let Some(Ok(s)) = hypr_socket(".socket2.sock").map(std::os::unix::net::UnixStream::connect) else { return };
         let _ = s.set_nonblocking(true);
         let Ok(s) = tokio::net::UnixStream::from_std(s) else { return };
@@ -232,6 +261,7 @@ fn worker(_: Arc<Ctx>, _: Kick) -> Fut<'static, ()> {
         while let Ok(Some(line)) = lines.next_line().await {
             if line.starts_with("configreloaded>>") {
                 tokio::task::spawn_blocking(apply).await.ok();
+                // the bar mapped again to take the rules read now
                 gtk4::glib::MainContext::default().invoke(crate::popup::remap_when_closed);
             }
         }

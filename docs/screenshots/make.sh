@@ -87,11 +87,15 @@ img.save(sys.argv[1])
 img.crop((900, 200, 1700, 1000)).resize((256, 256)).save(sys.argv[2])
 EOF
     # a HiDPI screen, 1280x800 in points: a headless output, the nested window's own turned off once it is there
+    # ostrov's blur and layers' rules, the file it writes (modules/hyprland.rs), there before Hyprland reads it
+    mkdir -p "$sb/home/.local/state/ostrov"
+    : >"$sb/home/.local/state/ostrov/hyprland.conf"
     cat >"$sb/hypr.conf" <<EOF
 monitor = SHOT, 2560x1600@60, 0x0, 2
 animations {
     enabled = false
 }
+source = $sb/home/.local/state/ostrov/hyprland.conf
 cursor {
     inactive_timeout = 0.5
 }

@@ -47,6 +47,12 @@ fn compositor(out: &mut Vec<Line>) {
     if blur["int"].as_i64() == Some(0) {
         out.push(('·', t("blur is off in Hyprland (decoration:blur:enabled): the panels are see-through without it").into()));
     }
+    // the blur and the layers' rules come from the file hyprland.conf sources: a keyword's rules Hyprland keeps
+    // nowhere
+    let conf = std::fs::read_to_string(crate::hub::home().join(".config/hypr/hyprland.conf")).unwrap_or_default();
+    if !conf.contains("ostrov/hyprland.conf") {
+        out.push(('!', t("hyprland.conf sources no ~/.local/state/ostrov/hyprland.conf: ostrov's blur and its layers' rules unused (add: source = ~/.local/state/ostrov/hyprland.conf)").into()));
+    }
     let cfg = crate::config::load().hyprland;
     if !cfg.binds {
         out.push(('·', t("keys: [hyprland] binds = false, ostrov binds none (ostrov hyprland prints them)").into()));

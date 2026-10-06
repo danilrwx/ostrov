@@ -152,15 +152,18 @@ On NixOS, add `security.pam.services.ostrov = {};` instead.
 
 ## Quick start
 
-Start it from `hyprland.conf`:
+Start it from `hyprland.conf`, and source the file it keeps its blur and its layers' rules in (Hyprland takes
+layer rules from its config's files alone):
 
     exec-once = ostrov
+    source = ~/.local/state/ostrov/hyprland.conf
 
-That is all Hyprland needs. ostrov puts into the running Hyprland, over its IPC, what it relies on: the blur
-behind its surfaces, `misc:allow_session_lock_restore` (a restarted ostrov takes the lock over), and its keys, each
-only where the combination is free, so a bind of yours is never replaced; again after every config reload. To keep
-these in `hyprland.conf` instead, print them with `ostrov hyprland` and set `rules = false` and `binds = false`
-under `[hyprland]`.
+ostrov writes that file as its appearance changes and has Hyprland read its config again (create it empty the
+first time, before Hyprland starts: `mkdir -p ~/.local/state/ostrov && touch ~/.local/state/ostrov/hyprland.conf`).
+The rest it puts into the running Hyprland over its IPC: `misc:allow_session_lock_restore` (a restarted ostrov takes
+the lock over) and its keys, each only where the combination is free, so a bind of yours is never replaced; again
+after every config reload. To keep these in `hyprland.conf` instead, print them with `ostrov hyprland` and set
+`rules = false` and `binds = false` under `[hyprland]`.
 
 On the first run a welcome walks through the look and what is worth setting up beside it; it comes back with
 

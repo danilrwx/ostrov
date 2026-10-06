@@ -34,6 +34,10 @@ that does not read is said on stderr.
 **A KDL widget does nothing.** A file that does not read is said in a toast and on stderr with its line. A widget
 new to a file waits for `ostrov restart`; one edited redraws at once.
 
+**No blur under the panels, or its settings change nothing.** ostrov's blur and layer rules are in
+`~/.local/state/ostrov/hyprland.conf`; hyprland.conf has to `source` it (`ostrov doctor` says when it does not).
+Rules given by `hyprctl keyword` Hyprland answers `ok` and keeps nowhere.
+
 **The bar flickers when hovered, or colours differ between the bar and a panel.** Blur's `ignore_alpha` must be
 under the bar's opacity; ostrov sets its own layer rules for that. A `layerrule` of yours for the namespace
 `ostrov` overrides them: remove it, or `[hyprland] rules = false` and keep yours whole.

@@ -3,7 +3,6 @@
 //! radii, the density of the control centre's rows (the appearance's, else the theme's suggestion); and what is set
 //! outside the CSS: GTK's animations and its dark variant, Hyprland's blur.
 
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 use crate::config::Appearance;
@@ -152,31 +151,24 @@ pub fn previews(themes: &[Theme]) -> String {
     out
 }
 
-thread_local! {
-    /// Hyprland's blur as last set from here: its keywords' values.
-    static BLUR: RefCell<Vec<(&'static str, Option<String>)>> = const { RefCell::new(Vec::new()) };
-    static RULE: RefCell<String> = const { RefCell::new(String::new()) };
-}
-
-/// What the appearance sets outside the CSS: GTK's animations and dark variant, and Hyprland's blur where the file
-/// or the theme gives it and it changed (so Hyprland's own config rules while neither says anything).
+/// What the appearance sets outside the CSS: GTK's animations and dark variant; Hyprland's blur and the layers'
+/// rules, in the file hyprland.conf sources (modules/hyprland.rs), written again only when they change.
 pub fn apply(a: &Appearance, t: &Theme) {
     if let Some(s) = gtk4::Settings::default() {
         s.set_gtk_enable_animations(a.animations);
         s.set_gtk_application_prefer_dark_theme(t.dark);
     }
-    if crate::wm::wm() != crate::wm::Wm::Hyprland {
-        return;
+    if crate::wm::wm() == crate::wm::Wm::Hyprland {
+        crate::modules::hyprland::put_rules();
     }
-    // the layer's blur threshold under the opacity as it changes: a later rule over the one before
-    let rule = crate::modules::hyprland::rule();
-    if RULE.with(|r| r.replace(rule.clone())) != rule && crate::config::load().hyprland.rules {
-        drop(crate::wm::hyprctl(&format!("keyword layerrule {rule}")));
-        crate::popup::remap_when_closed();
-    }
+}
+
+/// Hyprland's blur options the appearance (or its theme) sets, as decoration:blur keywords and their values;
+/// what neither sets left to Hyprland's own config.
+pub fn blur(a: &Appearance, t: &Theme) -> Vec<(&'static str, String)> {
     let flag = |b: Option<bool>| b.map(|b| (b as u8).to_string());
     let num = |n: Option<f64>| n.map(|n| format!("{n:.4}"));
-    let now: Vec<(&'static str, Option<String>)> = vec![
+    [
         ("enabled", flag(a.blur.or(t.blur))),
         ("size", a.blur_size.map(|n| n.to_string())),
         ("passes", a.blur_passes.map(|n| n.to_string())),
@@ -184,14 +176,10 @@ pub fn apply(a: &Appearance, t: &Theme) {
         ("contrast", num(a.blur_contrast)),
         ("brightness", num(a.blur_brightness)),
         ("noise", num(a.blur_noise)),
-    ];
-    let last = BLUR.with(|b| b.replace(now.clone()));
-    for (k, v) in &now {
-        let was = last.iter().find(|(l, _)| l == k).and_then(|(_, v)| v.as_ref());
-        if let Some(v) = v.as_ref().filter(|v| Some(*v) != was) {
-            drop(crate::wm::hyprctl(&format!("keyword decoration:blur:{k} {v}")));
-        }
-    }
+    ]
+    .into_iter()
+    .filter_map(|(k, v)| Some((k, v?)))
+    .collect()
 }
 
 #[cfg(test)]

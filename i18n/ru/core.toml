@@ -65,3 +65,4 @@
 "not started, ostrov asks" = "если его не запускать, спрашивать будет ostrov"
 "polkit agent: {}, in its own look; {}" = "агент polkit: {}, в своём виде; {}"
 "polkit agent: none (polkit not there, or not answering)" = "агент polkit: нет (polkit не установлен или не отвечает)"
+"hyprland.conf sources no ~/.local/state/ostrov/hyprland.conf: ostrov's blur and its layers' rules unused (add: source = ~/.local/state/ostrov/hyprland.conf)" = "hyprland.conf не подключает ~/.local/state/ostrov/hyprland.conf: блюр ostrov и правила его слоёв не действуют (добавьте: source = ~/.local/state/ostrov/hyprland.conf)"
