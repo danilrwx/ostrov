@@ -179,7 +179,6 @@ pub fn apply(a: &Appearance, t: &Theme) {
         ("enabled", flag(a.blur.or(t.blur))),
         ("size", a.blur_size.map(|n| n.to_string())),
         ("passes", a.blur_passes.map(|n| n.to_string())),
-        ("xray", flag(a.blur_xray)),
         ("vibrancy", num(a.blur_vibrancy)),
         ("contrast", num(a.blur_contrast)),
         ("brightness", num(a.blur_brightness)),

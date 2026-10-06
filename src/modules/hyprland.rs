@@ -34,7 +34,9 @@ pub fn rule() -> String {
         return "blur off, ignore_alpha 0, match:namespace ^ostrov$".into();
     }
     let least = a.opacity.min(crate::modules::wallpaper::service::bar_alpha());
-    format!("blur on, ignore_alpha {:.2}, xray on, match:namespace ^ostrov$", (least - 0.05).clamp(0.01, 0.7))
+    // the wallpaper alone under it unless [appearance] blur_xray says no: Hyprland's own xray is the windows'
+    let xray = if a.blur_xray.unwrap_or(true) { "on" } else { "off" };
+    format!("blur on, ignore_alpha {:.2}, xray {xray}, match:namespace ^ostrov$", (least - 0.05).clamp(0.01, 0.7))
 }
 
 /// Its keys: a name ([hyprland.keys] moves one: run = "SUPER, R"), the bind's kind, the combination, the

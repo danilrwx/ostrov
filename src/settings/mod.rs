@@ -496,7 +496,7 @@ pub fn appearance() -> Vec<Section> {
             .default(live("passes", 1))
             .visible_if("blur", true),
         Field::new("blur_xray", "Wallpaper only", Kind::Bool)
-            .default(live("xray", 0) != 0)
+            .default(true)
             .help("The blur sees the wallpaper alone, not the windows under it: lighter, the same everywhere.")
             .visible_if("blur", true),
         Field::new("blur_vibrancy", "Vibrancy", slider(0.0, 1.0, 0.05))
