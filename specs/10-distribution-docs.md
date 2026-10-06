@@ -11,7 +11,7 @@
 | RUN0-4 | Three-finger workspace swipes SHALL be recommended (macOS list item 1, 2026-10-03) | ✅ | recommended by `ostrov hyprland`, not added |
 | PUB-1 | The history SHALL carry the owner's personal address, nothing of the employer or Yandex (2026-10-04) | ✅ | 176 commits by the GitHub noreply address |
 | PUB-2 | ostrov SHALL be public (2026-10-05) | ✅ | github.com/danilrwx/ostrov, the full history, branch main |
-| DOC-1 | The README SHALL show what ostrov is, with screenshots made in a sandbox, nothing personal in them, in the dark theme, the control centre 6 cells wide (2026-10-04, 2026-10-05) | ✅ | `README.md`, `docs/screenshots/make.sh` (a nested Hyprland's headless output alone) |
+| DOC-1 | The README SHALL sell ostrov to its user: short, what it gives, screenshots made in a sandbox (nothing personal, dark theme, the control centre 8 cells wide), install in three steps, the details in docs/install.md (2026-10-04, 2026-10-05, 2026-10-06) | ✅ | `README.md`, `docs/screenshots/make.sh` (a nested Hyprland's headless output alone) |
 | DOC-2 | The README SHALL not describe what is gone: the dwl status line of `ostrov-ctl` (dwl dropped 2026-10-05) | ✅ | removed |
 | DOC-3 | Docs SHALL have a page per module and widget with its config keys (ashell has one per module, 2026-10-05) | ✅ | `docs/modules.md` |
 | DOC-4 | Docs SHALL have troubleshooting: what `ostrov doctor` reports and how to fix it (2026-10-05) | ✅ | `docs/troubleshooting.md` |
