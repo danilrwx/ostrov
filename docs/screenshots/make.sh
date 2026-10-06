@@ -115,6 +115,8 @@ EOF
         dbus-run-session -- Hyprland -c "$sb/hypr.conf" >"$sb/hyprland.log" 2>&1
     # cropped to what each is of, at most 1600 px wide
     python3 - "$sb/raw" "$here" <<'EOF'
+import os
+import subprocess
 import sys
 from PIL import Image
 raw, out = sys.argv[1:]
@@ -125,6 +127,10 @@ crops = {
     "toast": (1760, 0, 2560, 250), "lock": (680, 440, 1880, 1120), "bar": (0, 0, 2560, 760),
     "night": (1440, 0, 2560, 1600), "kit": (1440, 0, 2560, 1600),
 }
+# the motion as a GIF: the panels' half of the screen, 30 frames a second, its own palette
+if os.path.exists(f"{raw}/motion.mp4"):
+    vf = "crop=2080:1400:480:0,scale=1040:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=sierra2_4a"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", f"{raw}/motion.mp4", "-vf", vf, f"{out}/motion.gif"], check=False)
 for name, box in crops.items():
     img = Image.open(f"{raw}/{name}.png").convert("RGB").crop(box)
     img.thumbnail((1600, 1600), Image.LANCZOS)
@@ -156,6 +162,28 @@ sleep 6
 o toast "Meeting in 10 minutes" "Design review"
 shot toast 1
 sleep 6
+# the motion, with wf-recorder there (and ffmpeg for the GIF): the screen recorded while the panels open and close
+rec=
+if command -v wf-recorder >/dev/null && command -v ffmpeg >/dev/null; then
+    wf-recorder -o SHOT -r 30 -f "$raw/motion.mp4" >/dev/null 2>&1 &
+    rec=$!
+    sleep 1
+fi
+o panel
+sleep 1.2
+o menu wifi
+sleep 1.4
+o menu brightness
+sleep 1.4
+o appearance
+sleep 1.4
+o panel
+sleep 1
+o calendar
+sleep 1.6
+o calendar
+sleep 0.8
+[ -n "$rec" ] && kill -INT "$rec" && sleep 1
 o menu wifi
 shot hero
 o menu brightness

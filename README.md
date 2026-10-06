@@ -41,6 +41,22 @@ config to write before it works.
 
 ![The launcher in the bar](docs/screenshots/launcher.png)
 
+## One app instead of nine
+
+| What you would glue together | ostrov |
+|---|---|
+| waybar | the bar |
+| rofi, wofi, fuzzel | the launcher, with a calculator, emoji, files and web search |
+| swaync, mako, swayosd | notifications, Do Not Disturb, the volume and brightness OSD |
+| nm-applet, blueman, pavucontrol | the control centre: Wi-Fi, Bluetooth, sound per app |
+| hyprlock, hypridle | the lock screen and idle |
+| cliphist | the clipboard's history, pictures too |
+| hyprpaper, swww | the wallpaper |
+| grim, slurp | screenshots |
+| hyprpolkitagent, ssh-askpass | password questions in one dialog |
+
+One look, one config, one place to change it.
+
 ## Install
 
 **1. Build it** (Rust 1.93+, GTK 4, gtk4-layer-shell 1.2+):
@@ -76,7 +92,50 @@ Bound only where free, never over yours.
 ## Make it yours
 
 Everything is in the UI: Edit in the control centre, Settings behind its gear, Appearance behind its palette.
-Beyond that: [widgets in KDL](docs/widgets.md), [plugins](docs/plugins.md), [themes](docs/themes.md), every
+And when you want more:
+
+**A widget in a few lines.** Drop a file in `~/.config/ostrov/widgets/`, and it is in the gallery:
+
+```kdl
+widget "vpn" name="VPN" icon="network-vpn-symbolic" {
+    poll "st" every="5s" exec="myvpn status --json"
+    toggle icon="network-vpn-symbolic" title="VPN" sub="{st.profile}" on="{st.on}" {
+        click exec="myvpn toggle"
+    }
+}
+```
+
+**Everything from the command line,** for your scripts and binds, tab-completed in zsh, bash and fish:
+
+```sh
+ostrov wifi connect HomeNet
+ostrov brightness 40
+ostrov audio mic-mute
+ostrov toast "Build finished" "all tests green"
+ostrov plugin night toggle
+```
+
+**Plugins in any language.** A program speaking JSON lines; with the Python SDK a toggle is this much:
+
+```python
+from ostrov_plugin import Plugin
+
+class Coffee(Plugin):
+    on = False
+
+    def render(self, widget):
+        return {"type": "toggle", "id": "t", "icon": "face-smile-symbolic", "title": "Coffee", "on": self.on}
+
+    def on_event(self, widget, node, event, value):
+        self.on = value == "true"
+        self.kick()
+
+Coffee().main()
+```
+
+With the SDK's file and a short `manifest.toml` beside it, `ostrov plugin install ./coffee` and it is in the
+gallery. The official ones install by name: `ostrov plugin
+catalogue`. More: [widgets](docs/widgets.md), [plugins](docs/plugins.md), [themes](docs/themes.md), every
 command in [docs/modules.md](docs/modules.md). Something off? [docs/troubleshooting.md](docs/troubleshooting.md).
 
 In English and Русский.
