@@ -1,7 +1,0 @@
-#!/bin/sh
-# xdg-desktop-portal-hyprland's screen-share picker: ostrov run by that name (README.md, Screen sharing)
-set -e
-if [ "$1" = configure ]; then
-	ln -sf ostrov /usr/bin/ostrov-share-picker
-fi
-#DEBHELPER#

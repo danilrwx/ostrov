@@ -1,7 +1,8 @@
 name: Release
 
-# A tag vX.Y.Z: the packages built where their libraries are new enough (gtk4-layer-shell 1.2+: Ubuntu 26.04,
-# Fedora 43, Arch), then a GitHub release with them and the changelog's section for that version.
+# A tag vX.Y.Z: ostrov and its official plugins built once on Fedora 43 (the oldest glibc of the systems with
+# gtk4-layer-shell 1.2+: Ubuntu 26.04, Debian sid, Fedora 43, Arch), packed by nFPM (nfpm.yaml) as .deb, .rpm and
+# Arch's .pkg.tar.zst, then a GitHub release with them and the changelog's section for that version.
 on:
   push:
     tags: ['v*']
@@ -9,79 +10,43 @@ on:
 permissions:
   contents: write
 
-jobs:
-  deb:
-    runs-on: ubuntu-latest
-    container: ubuntu:26.04
-    steps:
-      - name: Dependencies
-        run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl git \
-            build-essential pkg-config libgtk-4-dev libgtk4-layer-shell-dev libpam0g-dev libwayland-dev dpkg-dev
-          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
-      - uses: actions/checkout@v4
-      - name: Build
-        run: |
-          . "$HOME/.cargo/env"
-          cargo build --release --locked --workspace
-          cargo install --locked cargo-deb
-          cargo deb --no-build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: deb
-          path: target/debian/*.deb
+env:
+  NFPM: v2.47.0
 
-  rpm:
+jobs:
+  packages:
     runs-on: ubuntu-latest
     container: fedora:43
     steps:
       - name: Dependencies
         run: |
-          dnf install -y gcc git pkgconf-pkg-config gtk4-devel gtk4-layer-shell-devel pam-devel wayland-devel curl
+          dnf install -y gcc git pkgconf-pkg-config gtk4-devel gtk4-layer-shell-devel pam-devel wayland-devel curl tar
           curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/$NFPM/nfpm_${NFPM#v}_Linux_x86_64.tar.gz" | tar -xz -C /usr/local/bin nfpm
       - uses: actions/checkout@v4
       - name: Build
         run: |
           . "$HOME/.cargo/env"
           cargo build --release --locked --workspace
-          cargo install --locked cargo-generate-rpm
-          cargo generate-rpm
+      - name: Pack
+        run: |
+          export VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          for f in deb rpm archlinux; do nfpm package -f nfpm.yaml -p "$f" -t dist/; done
       - uses: actions/upload-artifact@v4
         with:
-          name: rpm
-          path: target/generate-rpm/*.rpm
-
-  arch:
-    runs-on: ubuntu-latest
-    container: archlinux:latest
-    steps:
-      - name: Dependencies
-        run: |
-          pacman -Syu --noconfirm --needed base-devel git rust gtk4 gtk4-layer-shell pam pkgconf wayland pipewire wireplumber
-          useradd -m builder
-      - uses: actions/checkout@v4
-      # the release's PKGBUILD, its source the tag's tarball GitHub serves; makepkg as a user of its own
-      - name: Build
-        run: |
-          cp packaging/arch/release/PKGBUILD /home/builder/
-          chown builder /home/builder/PKGBUILD
-          su builder -c 'cd ~ && makepkg --nodeps --noconfirm'
-          mkdir -p out && cp /home/builder/*.pkg.tar.zst out/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: arch
-          path: out/*.pkg.tar.zst
+          name: packages
+          path: dist/*
 
   release:
-    needs: [deb, rpm, arch]
+    needs: [packages]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
+          name: packages
           path: dist
-          merge-multiple: true
       # the changelog's section for this version, its heading left out
       - name: Notes
         run: |

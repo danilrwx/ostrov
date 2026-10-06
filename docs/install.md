@@ -35,11 +35,16 @@ and the screen-share picker's name (see [Screen sharing](#screen-sharing)):
 
 ## Packages
 
-Made from this repository, the official plugins included:
+Each release has them, built by its workflow (`.github/workflows/release.yml`): ostrov and the official plugins
+built once on Fedora 43, the oldest glibc among the systems with gtk4-layer-shell 1.2+, packed by
+[nFPM](https://nfpm.goreleaser.com) from `nfpm.yaml` as `.deb` (Ubuntu 26.04+, Debian sid), `.rpm` (Fedora 43+)
+and `.pkg.tar.zst` (Arch). The same by hand, nfpm in PATH:
 
-- **Debian/Ubuntu**: `cargo build --release --workspace && cargo deb --no-build` ([cargo-deb](https://github.com/kornelski/cargo-deb),
-  the `[package.metadata.deb]` section in `Cargo.toml`), then `apt install ./target/debian/ostrov_*.deb`.
-- **Arch**: `packaging/arch/PKGBUILD` builds `ostrov-git` from git's master: `makepkg -si` in that directory.
+    cargo build --release --locked --workspace
+    for f in deb rpm archlinux; do VERSION=0.0.1 nfpm package -f nfpm.yaml -p $f; done
+
+- **Arch from source**: `packaging/arch/release/PKGBUILD` (the AUR's `ostrov`, from a release's tarball) or
+  `packaging/arch/PKGBUILD` (`ostrov-git`, from master): `makepkg -si` in its directory.
 - **Nix**: `flake.nix`, `nix build` or `nix run`; `nix develop` for a shell to hack in.
 
 ## The lock screen's PAM profile

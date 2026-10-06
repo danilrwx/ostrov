@@ -1,0 +1,156 @@
+# ostrov's packages, one description for every format: `VERSION=0.0.1 nfpm pkg -p deb|rpm|archlinux` after
+# `cargo build --release --locked --workspace` (nFPM, https://nfpm.goreleaser.com). The release workflow builds the
+# binaries once on Fedora 43, the oldest glibc of the systems with gtk4-layer-shell 1.2+, and packs them here.
+name: ostrov
+arch: amd64
+platform: linux
+version: ${VERSION}
+release: 1
+section: x11
+priority: optional
+maintainer: "ostrov contributors <22664775+danilrwx@users.noreply.github.com>"
+description: |
+  A whole desktop shell for Hyprland in one binary.
+  The bar, panels of widgets (Wi-Fi, Bluetooth, sound, power, the calendar...), a launcher, notifications and
+  the OSD, the lock screen, the polkit agent, the clipboard's history, screenshots, the wallpaper, and official
+  plugins for screen recording, the night light, CalDAV calendars and displays.
+vendor: ostrov
+homepage: https://github.com/danilrwx/ostrov
+license: MIT
+
+contents:
+  - src: target/release/ostrov
+    dst: /usr/bin/ostrov
+    file_info: {mode: 0755}
+  - src: packaging/pam/ostrov
+    dst: /etc/pam.d/ostrov
+    type: config|noreplace
+  - src: packaging/udev/90-ostrov-battery.rules
+    dst: /usr/lib/udev/rules.d/90-ostrov-battery.rules
+  - src: completions/ostrov.bash
+    dst: /usr/share/bash-completion/completions/ostrov
+  - src: completions/ostrov.fish
+    dst: /usr/share/fish/vendor_completions.d/ostrov.fish
+  - src: completions/_ostrov
+    dst: /usr/share/zsh/site-functions/_ostrov
+  - src: README.md
+    dst: /usr/share/doc/ostrov/README.md
+  - src: CHANGELOG.md
+    dst: /usr/share/doc/ostrov/CHANGELOG.md
+  - src: LICENSE
+    dst: /usr/share/licenses/ostrov/LICENSE
+  - src: docs/*.md
+    dst: /usr/share/doc/ostrov/
+  - src: config/example.toml
+    dst: /usr/share/doc/ostrov/example.toml
+  - src: examples/widgets/*
+    dst: /usr/share/doc/ostrov/examples/widgets/
+  - src: wit/ostrov-plugin.wit
+    dst: /usr/share/doc/ostrov/ostrov-plugin.wit
+  # the official plugins: a binary beside ostrov's, the manifest and texts in /usr/share/ostrov/plugins/ID/
+  - src: target/release/ostrov-plugin-games
+    dst: /usr/bin/ostrov-plugin-games
+    file_info: {mode: 0755}
+  - src: plugins/games/manifest.toml
+    dst: /usr/share/ostrov/plugins/games/manifest.toml
+  - src: plugins/games/i18n/*
+    dst: /usr/share/ostrov/plugins/games/i18n/
+  - src: target/release/ostrov-plugin-record
+    dst: /usr/bin/ostrov-plugin-record
+    file_info: {mode: 0755}
+  - src: plugins/record/manifest.toml
+    dst: /usr/share/ostrov/plugins/record/manifest.toml
+  - src: plugins/record/i18n/*
+    dst: /usr/share/ostrov/plugins/record/i18n/
+  - src: target/release/ostrov-plugin-night
+    dst: /usr/bin/ostrov-plugin-night
+    file_info: {mode: 0755}
+  - src: plugins/night/manifest.toml
+    dst: /usr/share/ostrov/plugins/night/manifest.toml
+  - src: plugins/night/i18n/*
+    dst: /usr/share/ostrov/plugins/night/i18n/
+  - src: target/release/ostrov-plugin-caldav
+    dst: /usr/bin/ostrov-plugin-caldav
+    file_info: {mode: 0755}
+  - src: plugins/caldav/manifest.toml
+    dst: /usr/share/ostrov/plugins/caldav/manifest.toml
+  - src: plugins/caldav/i18n/*
+    dst: /usr/share/ostrov/plugins/caldav/i18n/
+  - src: target/release/ostrov-plugin-displays
+    dst: /usr/bin/ostrov-plugin-displays
+    file_info: {mode: 0755}
+  - src: plugins/displays/manifest.toml
+    dst: /usr/share/ostrov/plugins/displays/manifest.toml
+  - src: plugins/displays/i18n/*
+    dst: /usr/share/ostrov/plugins/displays/i18n/
+  - src: target/release/ostrov-plugin-drives
+    dst: /usr/bin/ostrov-plugin-drives
+    file_info: {mode: 0755}
+  - src: plugins/drives/manifest.toml
+    dst: /usr/share/ostrov/plugins/drives/manifest.toml
+  - src: plugins/drives/i18n/*
+    dst: /usr/share/ostrov/plugins/drives/i18n/
+  - src: target/release/ostrov-plugin-updates
+    dst: /usr/bin/ostrov-plugin-updates
+    file_info: {mode: 0755}
+  - src: plugins/updates/manifest.toml
+    dst: /usr/share/ostrov/plugins/updates/manifest.toml
+  - src: plugins/updates/i18n/*
+    dst: /usr/share/ostrov/plugins/updates/i18n/
+
+scripts:
+  postinstall: packaging/scripts/postinstall.sh
+  postremove: packaging/scripts/postremove.sh
+
+# what it runs on, each format's names for it
+overrides:
+  deb:
+    depends:
+      - libgtk-4-1 (>= 4.14)
+      - libgtk4-layer-shell0 (>= 1.2)
+      - libglib2.0-0t64 (>= 2.80)
+      - libpam0g
+      - libwayland-client0
+      - pipewire-bin
+      - wireplumber
+    recommends:
+      - hyprland
+      - iwd | network-manager
+      - bluez
+      - upower
+      - power-profiles-daemon
+      - polkitd
+      - wf-recorder
+      - wl-clipboard
+      - udisks2
+    suggests:
+      - fd-find
+      - unicode-data
+      - gnome-keyring
+      - kanshi
+  rpm:
+    depends:
+      - gtk4 >= 4.14
+      - gtk4-layer-shell >= 1.2
+      - glib2 >= 2.80
+      - pam
+      - pipewire-utils
+      - wireplumber
+    recommends:
+      - hyprland
+      - bluez
+      - upower
+      - power-profiles-daemon
+      - wf-recorder
+      - wl-clipboard
+      - udisks2
+  archlinux:
+    depends:
+      - gtk4
+      - gtk4-layer-shell
+      - glib2
+      - pam
+      - wayland
+      - pipewire
+      - wireplumber
+    # nFPM has no optdepends: the optional ones are the AUR PKGBUILD's (packaging/arch/release)
