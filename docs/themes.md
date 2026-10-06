@@ -155,6 +155,7 @@ As the appearance changes, ostrov puts its look into the rest of the desktop (`[
 | `kitty.conf` | `include ~/.local/state/ostrov/colors/kitty.conf`; kitty is told to read it again |
 | `foot.ini` | `[main] include=~/.local/state/ostrov/colors/foot.ini`, at foot's start |
 | `ghostty` | `config-file = ~/.local/state/ostrov/colors/ghostty`; ghostty is told to read it again |
+| `k9s.yaml` | a skin: linked as `~/.config/k9s/skins/ostrov.yaml`, `ui.skin: ostrov`; k9s (`reactive: true`) redraws as it changes |
 | `telegram.tdesktop-palette` | opened in Telegram Desktop once, as a theme of one's own |
 | `colors.sh`, `colors.json` | scripts |
 
