@@ -486,6 +486,9 @@ pub fn appearance() -> Vec<Section> {
             .default("auto")
             .help("Under a hovered block and a panel's tab. Auto: the wallpaper with blur, else the bar."),
         Field::new("animations", "Animations", Kind::Bool).default(true),
+        Field::new("apps", "Other apps", Kind::Bool)
+            .default(true)
+            .help("The other apps in this look: the dark or light scheme and the accent, GTK's colours, colour files for terminals and Telegram (~/.local/state/ostrov/colors)."),
         Field::new("blur", "Blur", Kind::Bool)
             .default(live("enabled", 1) != 0)
             .help("Hyprland's, behind the bar and what opens."),

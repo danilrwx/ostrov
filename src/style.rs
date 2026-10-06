@@ -326,6 +326,7 @@ pub fn load() {
             let all = format!("{palette}{look}{rules}{unblurred}{sliders}{previews}{}", theme.css);
             css.load_from_string(&all.replace("ALPHA", &alpha.to_string()));
             crate::look::apply(&cfg.appearance, &theme);
+            crate::apps::apply(&cfg.appearance, &theme, &cfg.colors);
             WATCHERS.with(|w| w.borrow().iter().for_each(|f| f()));
         }
     };

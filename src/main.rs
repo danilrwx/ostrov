@@ -9,6 +9,7 @@
 
 mod anim;
 mod api;
+mod apps;
 mod backend;
 mod bar;
 mod bars;

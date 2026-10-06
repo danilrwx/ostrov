@@ -100,7 +100,8 @@ Bound only where free, never over yours.
 ## Make it yours
 
 Everything is in the UI: Edit in the control centre, Settings behind its gear, Appearance behind its palette.
-And when you want more:
+The rest of the desktop follows its look: GTK apps and file managers, Telegram, Chrome, your terminal
+([themes](docs/themes.md#the-other-apps)). And when you want more:
 
 **A widget in a few lines.** Drop a file in `~/.config/ostrov/widgets/`, and it is in the gallery:
 

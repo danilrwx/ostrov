@@ -134,3 +134,28 @@ draws the focused workspace as a pill and rings the toggles that are on.
 
 To publish a theme, put the directory's files at a git repository's top, named `ostrov-theme-<id>`;
 `ostrov theme install https://.../ostrov-theme-<id>.git` then installs it as `<id>`.
+
+## The other apps
+
+As the appearance changes, ostrov puts its look into the rest of the desktop (`[appearance] apps = false` stops it):
+
+- **The scheme and the accent**, in GNOME's settings (`org.gnome.desktop.interface color-scheme` and
+  `accent-color`, the named accent nearest ostrov's). The settings portal (xdg-desktop-portal-gtk) hands them on:
+  GTK and libadwaita apps, Qt 6.5+ ones (Telegram), Chrome and Firefox go dark or light with it.
+- **GTK's palette**: `~/.config/gtk-3.0/ostrov.css` and `~/.config/gtk-4.0/ostrov.css`, libadwaita's and
+  adw-gtk3's named colours (the accent, the window's, the views', the sidebars', the cards') and GTK 4.16's
+  variables; `gtk.css` beside each imports it (a line put at its top). File managers and GNOME's apps take it as
+  they start.
+- **Colour files** in `~/.local/state/ostrov/colors/`, for what a config can import:
+
+| File | Its app |
+|---|---|
+| `alacritty.toml` | `import = ["~/.local/state/ostrov/colors/alacritty.toml"]`; alacritty reads it again as it changes |
+| `kitty.conf` | `include ~/.local/state/ostrov/colors/kitty.conf`; kitty is told to read it again |
+| `foot.ini` | `[main] include=~/.local/state/ostrov/colors/foot.ini`, at foot's start |
+| `telegram.tdesktop-palette` | opened in Telegram Desktop once, as a theme of one's own |
+| `colors.sh`, `colors.json` | scripts |
+
+- **Templates of your own**: a file in `~/.config/ostrov/templates/` is written to `colors/` under its name with
+  `{{bg}}`, `{{view}}`, `{{card}}`, `{{sidebar}}`, `{{fg}}`, `{{dim}}`, `{{accent}}`, `{{ink}}`, `{{urgent}}` and
+  `{{ansi0}}` to `{{ansi15}}` filled in (One Dark's or One Light's colours, as the theme is dark or light).

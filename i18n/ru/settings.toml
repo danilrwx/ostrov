@@ -119,3 +119,5 @@
 "Blur grain" = "Зерно размытия"
 "Blur the bar" = "Размывать бар"
 "Off: the bar a plain see-through strip, the panels alone blurred (no dark rim under it)." = "Выключено: бар — просто полупрозрачная полоса, размываются только панели (без тёмной каймы под баром)."
+"Other apps" = "Другие приложения"
+"The other apps in this look: the dark or light scheme and the accent, GTK's colours, colour files for terminals and Telegram (~/.local/state/ostrov/colors)." = "Другие приложения в этом же стиле: тёмная или светлая схема и акцент, цвета GTK, файлы цветов для терминалов и Telegram (~/.local/state/ostrov/colors)."

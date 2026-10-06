@@ -155,6 +155,8 @@ pub struct Appearance {
     pub blur_xray: Option<bool>,
     /// the bar itself blurred (unset: yes); no, its ground unblurred on a layer of its own, the popups alone blurred
     pub blur_bar: Option<bool>,
+    /// the other apps in its look: GNOME's scheme and accent, GTK's palette, colour files (apps.rs)
+    pub apps: bool,
     pub blur_vibrancy: Option<f64>,
     pub blur_contrast: Option<f64>,
     pub blur_brightness: Option<f64>,
@@ -195,6 +197,7 @@ impl Default for Appearance {
             blur_passes: None,
             blur_xray: None,
             blur_bar: None,
+            apps: true,
             blur_vibrancy: None,
             blur_contrast: None,
             blur_brightness: None,
