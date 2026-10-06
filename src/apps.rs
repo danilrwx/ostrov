@@ -6,7 +6,9 @@
 //! - colour files for the rest in ~/.local/state/ostrov/colors (alacritty.toml, kitty.conf, foot.ini,
 //!   telegram.tdesktop-palette, colors.sh, colors.json) and the user's own templates rendered beside them:
 //!   ~/.config/ostrov/templates/NAME, its {{fg}}, {{accent}}... filled in, to colors/NAME. kitty is told to read its
-//!   config again; alacritty reads an import as it changes.
+//!   config again; alacritty reads an import as it changes;
+//! - the browser's frame (Chrome's, Chromium's BrowserThemeColor policy) the colour the bar shows, where a policy
+//!   file of ostrov's is there for this user to write.
 //!
 //! Each written only when what it says changed.
 
@@ -203,6 +205,54 @@ fn gnome(p: &Palette) {
     }
 }
 
+/// Chrome's and Chromium's policy files ostrov sets the theme colour in, where one is there and this user may
+/// write it (made once: `sudo install -m 644 -o $USER /dev/null .../ostrov-theme.json`, with '{}' in it).
+const BROWSER_POLICIES: &[&str] =
+    &["/etc/opt/chrome/policies/managed/ostrov-theme.json", "/etc/chromium/policies/managed/ostrov-theme.json"];
+
+/// The browser's frame the colour the bar shows: its colour at its opacity over the wallpaper's top strip (where
+/// the bar lies, the picture stretched over the screen: about a fortieth of its height), solid with none.
+fn browser_colour(p: &Palette) -> String {
+    let bar = rgb(p.get("bar")).unwrap_or((0, 0, 0));
+    let alpha: f64 = p.get("bar_alpha").parse().unwrap_or(1.0);
+    let pick = crate::modules::wallpaper::service::pick();
+    let under = pick
+        .on
+        .then(|| gtk4::gdk_pixbuf::Pixbuf::from_file_at_scale(&pick.path, 80, 80, false).ok())
+        .flatten()
+        .and_then(|px| {
+            let (n, stride, bytes) = (px.n_channels() as usize, px.rowstride() as usize, px.read_pixel_bytes());
+            let rows = (px.height() as usize / 40).max(1);
+            let (mut sum, mut count) = ((0u64, 0u64, 0u64), 0u64);
+            for y in 0..rows {
+                for x in 0..px.width() as usize {
+                    let i = y * stride + x * n;
+                    sum = (sum.0 + bytes[i] as u64, sum.1 + bytes[i + 1] as u64, sum.2 + bytes[i + 2] as u64);
+                    count += 1;
+                }
+            }
+            (count > 0).then(|| ((sum.0 / count) as u8, (sum.1 / count) as u8, (sum.2 / count) as u8))
+        });
+    hex(match under {
+        Some(under) => mix(under, bar, alpha),
+        None => bar,
+    })
+}
+
+/// The browsers' theme colour, in each policy file there to write; Chrome reads the directory as it changes.
+fn browsers(p: &Palette) {
+    let files: Vec<&Path> = BROWSER_POLICIES.iter().map(Path::new).filter(|f| {
+        std::fs::metadata(f).is_ok_and(|m| !m.permissions().readonly()) && std::fs::OpenOptions::new().append(true).open(f).is_ok()
+    }).collect();
+    if files.is_empty() {
+        return;
+    }
+    let policy = format!("{{ \"BrowserThemeColor\": \"{}\" }}\n", browser_colour(p));
+    for f in files {
+        put(f, &policy);
+    }
+}
+
 /// Everything above, as the appearance has it now (style.rs on every config change).
 pub fn apply(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) {
     if !a.apps {
@@ -210,6 +260,7 @@ pub fn apply(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) {
     }
     let p = Palette::of(a, t, colors);
     gnome(&p);
+    browsers(&p);
     let css = gtk_css(&p);
     for v in ["gtk-3.0", "gtk-4.0"] {
         let dir = home().join(".config").join(v);
