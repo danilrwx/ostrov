@@ -58,3 +58,8 @@ The first release: the whole shell in one binary, packaged for Ubuntu 26.04+ and
 - Removable drives, an official plugin (`plugins/drives`): USB sticks, SD cards and external disks in a toast as
   they are plugged in, mounted, opened and ejected through udisks from its tile's menu, a badge while one is in.
 - Shell completion for zsh, bash and fish, answered by the running ostrov.
+- Apps in ostrov's colours (`ostrov apps`, docs/apps.md): terminals (Alacritty, kitty, foot live, Ghostty,
+  WezTerm), GTK 3 and 4, Qt, Chrome, Telegram, VS Code, Zed, Neovim, Helix, tmux, btop, k9s, Vesktop, pywal and more;
+  integrations of one's own and from the catalogue.
+- Light and dark by the time of day (`mode = "auto"`, by the clock or the sun); the accent taken from the wallpaper.
+- The bar's window a strip's height while nothing is open in it: a third less GPU memory.
