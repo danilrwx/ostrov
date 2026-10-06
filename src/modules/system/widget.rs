@@ -117,7 +117,8 @@ pub fn notifications(_: &Ctx) -> Widget {
     col.append(&label(t("Notifications"), "title"));
     let scroll = gtk4::ScrolledWindow::new();
     scroll.set_vexpand(true);
-    scroll.set_policy(gtk4::PolicyType::Never, gtk4::PolicyType::Automatic);
+    // across as wide as the tile, never its cards' widest word: a card's words wrap, its edge not cut
+    scroll.set_policy(gtk4::PolicyType::External, gtk4::PolicyType::Automatic);
     let list = gtk4::Box::new(gtk4::Orientation::Vertical, 6);
     scroll.set_child(Some(&list));
     col.append(&scroll);
@@ -128,6 +129,10 @@ pub fn notifications(_: &Ctx) -> Widget {
     dnd.set_halign(gtk4::Align::Start);
     let clear_all = crate::ui::chip(t("Clear"));
     crate::ui::shorten(&dnd);
+    // a short word: whole, Do Not Disturb the one shortened
+    if let Some(l) = clear_all.child().and_downcast::<gtk4::Label>() {
+        l.set_ellipsize(gtk4::pango::EllipsizeMode::None);
+    }
     foot.append(&dnd);
     foot.append(&clear_all);
     col.append(&foot);

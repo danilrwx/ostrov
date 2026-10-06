@@ -280,10 +280,18 @@ fn with(text: &str, inc: &Include, named: &str) -> String {
 /// The config without ostrov's file: its line, or its entry in an array.
 fn without(text: &str, named: &str) -> String {
     let mut out: Vec<String> = Vec::new();
-    for l in text.lines() {
+    let lines: Vec<&str> = text.lines().collect();
+    let header = |l: &str| l.trim_start().starts_with('[') && l.trim_end().ends_with(']') && !l.contains('=');
+    for (i, l) in lines.iter().enumerate() {
+        let l = *l;
         if !l.contains(named) {
             out.push(l.into());
             continue;
+        }
+        // its section left with nothing in it (the header put with the line): the header gone too
+        let next_is_end = lines[i + 1..].iter().find(|x| !x.trim().is_empty()).is_none_or(|x| header(x));
+        if out.last().is_some_and(|p| header(p)) && next_is_end {
+            out.pop();
         }
         // in an array beside others: only its entry
         let quoted = format!("\"{named}\"");
@@ -293,7 +301,7 @@ fn without(text: &str, named: &str) -> String {
         }
     }
     let mut s = out.join("\n");
-    if text.ends_with('\n') {
+    if text.ends_with('\n') && !s.is_empty() {
         s.push('\n');
     }
     s
@@ -501,6 +509,9 @@ mod tests {
         let i = inc("include=~/.local/state/ostrov/colors/x", "[main]", "");
         assert_eq!(with("[main]\nfont=a\n", &i, F), "[main]\ninclude=~/.local/state/ostrov/colors/x\nfont=a\n");
         assert_eq!(with("font=a\n", &i, F), "[main]\ninclude=~/.local/state/ostrov/colors/x\nfont=a\n");
+        // the header it came with gone with it, one with more in it kept
+        assert_eq!(without(&with("", &i, F), F), "");
+        assert_eq!(without("[main]\ninclude=~/.local/state/ostrov/colors/x\nfont=a\n", F), "[main]\nfont=a\n");
     }
 
     #[test]
