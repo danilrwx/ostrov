@@ -244,6 +244,12 @@ window.grounded .slot:hover > .pill, window.grounded .slot.tab > .pill { box-sha
 .recording image { color: @recording; }
 .dot { min-width: 8px; min-height: 8px; border-radius: 4px; background: @idle; transition: background 100ms; }
 .dot.focused, .dot:hover { background: @accent; }
+/* [bar.workspaces] style = "numbers": i3's, a button each; an empty one dim, the focused one the text's colour
+   with the ground's on it */
+.ws { padding: 0 6px; min-width: 10px; border-radius: 4px; color: @dim; }
+.ws.occupied { color: @fg; }
+.ws:hover { background: @hover; }
+.ws.focused { background: @fg; color: @surface-solid; }
 /* the launcher in it */
 text.query { background: none; border: none; box-shadow: none; padding: 0; }
 .hit { padding: 0 10px; }

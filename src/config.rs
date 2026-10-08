@@ -8,6 +8,11 @@
 //!     right = ["privacy", "layout", "tray", "panel.control"]
 //!     monitors = "all"            # "primary", or the ones named: ["eDP-1", "DP-2"]
 //!
+//!     [bar.workspaces]    # the workspaces block (bar/workspaces.rs)
+//!     style = "numbers"   # i3's: a button each, named; "dots", GNOME's, the default
+//!     count = 5           # shown always, empty or not; past them those there are
+//!     names = ["1", "2", "web"]   # the first's, the second's...; one not named its number
+//!
 //!     [idle]
 //!     lock = 600          # seconds idle to the lock, 0 never
 //!     screens_off = 900   # to the screens off, 0 never
@@ -50,6 +55,17 @@ pub struct Bar {
     pub right: Vec<String>,
     /// the monitors with a bar (bars.rs)
     pub monitors: Monitors,
+    /// the workspaces block's look (bar/workspaces.rs)
+    pub workspaces: Workspaces,
+}
+
+/// The workspaces block: GNOME's dots, or i3's buttons ("numbers"), so many always shown, each named.
+#[derive(Deserialize, Default)]
+#[serde(default)]
+pub struct Workspaces {
+    pub style: String,
+    pub count: u32,
+    pub names: Vec<String>,
 }
 
 /// Which monitors have a bar: "all", "primary" (the one Hyprland has focused as ostrov starts, else the first), or
@@ -76,6 +92,7 @@ impl Default for Bar {
             center: v(&["panel.calendar"]),
             right: v(&["privacy", "layout", "tray", "panel.control"]),
             monitors: Monitors::Which(Which::All),
+            workspaces: Workspaces::default(),
         }
     }
 }
@@ -324,6 +341,7 @@ mod tests {
         let d = super::Config::default();
         assert_eq!((c.bar.left, c.bar.center, c.bar.right), (d.bar.left, d.bar.center, d.bar.right));
         assert_eq!(c.bar.monitors, d.bar.monitors);
+        assert_eq!((c.bar.workspaces.style, c.bar.workspaces.count), (String::from("dots"), d.bar.workspaces.count));
         assert_eq!((c.idle.lock, c.idle.screens_off), (d.idle.lock, d.idle.screens_off));
         assert_eq!((c.appearance.theme, c.appearance.opacity, c.appearance.radius), (d.appearance.theme, 0.75, None));
         assert_eq!(c.notifications.games, d.notifications.games);
