@@ -2,8 +2,8 @@
 //! ~/.local/state/ostrov/night.json (where the built-in one kept it, so it carries over), the mode (off, on, time:
 //! from to to, sun: sunset to sunrise where `ostrov location` puts the machine, read from its
 //! ~/.local/state/ostrov/location.json) and the warmth in kelvin, 6500 neutral; a shader a warmth in
-//! ~/.cache/ostrov/night-light. The screen is set to what the config wants every 3 s, so a Hyprland reload that
-//! drops the shader gets it back.
+//! ~/.cache/ostrov/night-light. The screen is set to what the config wants every 3 s, and at once as Hyprland
+//! reloads its config (as ostrov's look rewrites a file it sources), which drops the shader.
 
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
@@ -247,6 +247,23 @@ fn set_shader(path: &str) -> Result<(), String> {
     hyprctl(&format!("keyword decoration:screen_shader {path}")).map(drop)
 }
 
+/// The shader put back as soon as Hyprland says it reloaded its config (its event socket, read in a thread of
+/// its own); gone with the socket, the tick still there.
+fn on_reload() {
+    let sig = std::env::var("HYPRLAND_INSTANCE_SIGNATURE").unwrap_or_default();
+    let run = std::env::var("XDG_RUNTIME_DIR").unwrap_or_default();
+    let Ok(s) = UnixStream::connect(format!("{run}/hypr/{sig}/.socket2.sock")) else { return };
+    std::thread::spawn(move || {
+        use std::io::BufRead;
+        for line in std::io::BufReader::new(s).lines().map_while(Result::ok) {
+            if line.starts_with("configreloaded>>") {
+                let c = load();
+                let _ = if wanted(&c, now_ns()) { shader(c.temp) } else { Ok(String::new()) }.and_then(|p| set_shader(&p));
+            }
+        }
+    });
+}
+
 struct Night {
     /// whether the screen is wanted warm, as last applied
     on: bool,
@@ -289,6 +306,7 @@ impl Plugin for Night {
     fn on_config(&mut self, host: &Host, _: &Value) {
         if !self.ticking {
             self.ticking = true;
+            on_reload();
             self.on_timer(host, TICK);
         }
     }
