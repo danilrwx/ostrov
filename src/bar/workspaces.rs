@@ -108,8 +108,9 @@ pub fn build(cx: &Rc<Ctx>) -> Block {
 /// i3's workspaces: a button each, the first count always there, past them those there are on its monitor; each
 /// named by names (its number when not), an empty one dim, the focused one lit. Made anew as they change: a few.
 fn numbers(cx: &Rc<Ctx>, ws: crate::config::Workspaces) -> Block {
-    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 2);
-    row.set_valign(gtk4::Align::Center);
+    // the bar's whole height, as i3's
+    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+    row.set_valign(gtk4::Align::Fill);
     let draw = {
         let (row, host) = (row.clone(), cx.host.clone());
         move || {
