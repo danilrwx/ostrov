@@ -267,7 +267,7 @@ fn sequences(p: &Palette) -> String {
     for i in 0..16 {
         s += &format!("\x1b]4;{i};{}\x1b\\", rgb(&p.fill(&format!("{{{{ansi{i}}}}}"))));
     }
-    for (n, k) in [(10, "fg"), (11, "bar"), (12, "accent"), (17, "accent"), (19, "ink")] {
+    for (n, k) in [(10, "fg"), (11, "bar"), (12, "fg"), (17, "accent"), (19, "ink")] {
         s += &format!("\x1b]{n};{}\x1b\\", rgb(&p.fill(&format!("{{{{{k}}}}}"))));
     }
     s
@@ -592,7 +592,7 @@ mod tests {
         }
         let s = sequences(&Palette { dark: true, colors });
         assert!(s.starts_with("\x1b]4;0;rgb:12/34/56\x1b\\"));
-        assert!(s.contains("\x1b]11;rgb:00/00/00\x1b\\") && s.contains("\x1b]12;rgb:8b/7c/f6\x1b\\"));
+        assert!(s.contains("\x1b]11;rgb:00/00/00\x1b\\") && s.contains("\x1b]12;rgb:ff/ff/ff\x1b\\"));
     }
 
     #[test]

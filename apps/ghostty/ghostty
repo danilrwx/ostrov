@@ -2,8 +2,8 @@
 background = {{bar}}
 background-opacity = {{bar_alpha}}
 foreground = {{fg}}
-cursor-color = {{accent}}
-cursor-text = {{ink}}
+cursor-color = {{fg}}
+cursor-text = {{bar}}
 selection-background = {{accent}}
 selection-foreground = {{ink}}
 palette = 0={{ansi0}}
