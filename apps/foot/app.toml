@@ -9,5 +9,7 @@ line = "include=~/.local/state/ostrov/colors/foot.ini"
 
 # its open windows told the new colours straight into their terminals
 [reload]
+# over to the mode's theme first (foot then tells the programs in it the mode), its colours sent in after
+signal = "USR{{mode_n}}"
 osc = true
 process = "foot"

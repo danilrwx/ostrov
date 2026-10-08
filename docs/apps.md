@@ -57,7 +57,7 @@ line = 'color_theme = "~/.local/state/ostrov/colors/ostrov.theme"'
 # link = "~/.config/k9s/skins/ostrov.yaml"   # instead: a link to the file
 
 [reload]                           # how it reads the file again as it changes (left out: at its start)
-signal = "USR1"                    # a signal to the processes of that name
+signal = "USR1"                    # a signal to the processes of that name (its tokens filled in)
 process = "btop"
 # command = "..."                  # or a command (the palette's {{tokens}} filled in)
 
@@ -78,6 +78,7 @@ The template is the app's own format with ostrov's tokens in it, filled in as th
 | `{{accent}}`, `{{ink}}` | the accent, and what goes on it |
 | `{{urgent}}` | an error |
 | `{{mode}}` | `dark` or `light` |
+| `{{mode_n}}` | `1` or `2`: a terminal's two themes, the first the dark one (foot's) |
 | `{{ansi0}}` … `{{ansi15}}` | a terminal's sixteen: One Dark's after dark, One Light's by day |
 
 `{{name|bare}}` is a colour without its `#` (foot's way). Connecting puts the line in once (a config that is a link,

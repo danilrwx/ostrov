@@ -246,7 +246,7 @@ impl App {
     fn reload(&self, p: &Palette) {
         let Some(r) = &self.reload else { return };
         if !r.signal.is_empty() && !r.process.is_empty() {
-            let _ = std::process::Command::new("pkill").args([&format!("-{}", r.signal), "-x", &r.process]).status();
+            let _ = std::process::Command::new("pkill").args([&format!("-{}", p.fill(&r.signal)), "-x", &r.process]).status();
         }
         if r.osc && !r.process.is_empty() {
             osc(&r.process, p);

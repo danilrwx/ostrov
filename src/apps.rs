@@ -76,6 +76,8 @@ impl Palette {
         let urgent = pick("urgent", "#cd0000");
         let mut c = BTreeMap::new();
         c.insert("mode", (if dark { "dark" } else { "light" }).to_string());
+        // a terminal's two themes, the first the dark one (foot's [colors] and [colors2], SIGUSR1 and SIGUSR2)
+        c.insert("mode_n", (if dark { "1" } else { "2" }).to_string());
         c.insert("bg", hex(surface));
         // the bar's colour and how solid it is: a terminal's ground, the same as the bar's above it
         c.insert("bar", hex(bar));
