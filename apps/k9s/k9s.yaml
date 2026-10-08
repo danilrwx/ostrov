@@ -18,7 +18,7 @@ k9s:
       cursorFgColor: "{{ink}}"
       cursorBgColor: "{{accent}}"
       markColor: "{{accent}}"
-      header: {fgColor: "{{dim}}", bgColor: default, sorterColor: "{{accent}}"}
+      header: {fgColor: "{{dim}}", bgColor: default, sorterColor: "{{fg}}"}
     xray: {fgColor: "{{fg}}", bgColor: default, cursorColor: "{{accent}}", graphicColor: "{{dim}}", showIcons: false}
     yaml: {keyColor: "{{accent}}", colonColor: "{{dim}}", valueColor: "{{fg}}"}
     logs:
