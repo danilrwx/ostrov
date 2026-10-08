@@ -156,14 +156,15 @@ As the appearance changes, ostrov puts its look into the rest of the desktop (`[
   GTK and libadwaita apps, Qt 6.5+ ones (Telegram), Chrome and Firefox go dark or light with it.
 - **GTK 3's theme of ostrov's own**, `~/.local/share/themes/ostrov`: adw-gtk3's (dark or light) with ostrov's colours
   written into it, named as GNOME's `gtk-theme` where adw-gtk3 is installed. GTK 3 reads a user's `gtk.css` once, as
-  an app starts, but its theme again whenever it is named anew: so Thunar and Chrome's frame follow a change at once.
+  an app starts, but its theme again whenever it is named anew: so Thunar follows a change at once.
 - **GTK's palette**: `~/.config/gtk-3.0/ostrov.css` and `~/.config/gtk-4.0/ostrov.css`, libadwaita's and
   adw-gtk3's named colours (the accent, the window's, the views', the sidebars', the cards') and GTK 4.16's
   variables; `gtk.css` beside each imports it (a line put at its top). File managers and GNOME's apps take it as
   they start.
-- **The browser's frame**: GTK's headerbar is the bar's colour, and Chrome in its GTK theme (`chrome://settings/appearance`,
-  Theme: GTK) takes its frame from it, the bar's colour exactly. A `BrowserThemeColor` policy would hold over that
-  (and Chrome makes its own palette from it, never the colour itself), so ostrov leaves its own policy file,
-  `/etc/opt/chrome/policies/managed/ostrov-theme.json` where there is one to write, empty. GTK's apps read the
-  colours again as they change (the GTK theme named anew).
+- **The browser's frame**: Chrome's and Chromium's `BrowserThemeColor` policy, the colour the bar shows (its
+  colour at its opacity over the wallpaper's top), in `/etc/opt/chrome/policies/managed/ostrov-theme.json` (or
+  Chromium's) where that file is there for you to write: `sudo install -D -m 644 -o $USER <(echo '{}')
+  /etc/opt/chrome/policies/managed/ostrov-theme.json`. Chrome reads the directory again as it changes, so its frame
+  follows within seconds (its GTK theme's colours it takes only as it starts); the colour is a seed Chrome makes
+  its palette from, so the frame is near the bar's, not exactly it.
 - **The other apps by a colour file** (terminals, k9s, Telegram, yours): [apps.md](apps.md).
