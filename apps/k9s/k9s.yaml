@@ -1,27 +1,28 @@
-# ostrov's colours for k9s, its grounds the terminal's: ln -s ~/.local/state/ostrov/colors/k9s.yaml ~/.config/k9s/skins/ostrov.yaml, ui.skin: ostrov
+# ostrov's colours for k9s, its grounds the terminal's, the accent a ground (the cursor, the focused button), the
+# terminal's sixteen for text that stands out (an accent may be grey, as text close to the rest): ln -s ~/.local/state/ostrov/colors/k9s.yaml ~/.config/k9s/skins/ostrov.yaml, ui.skin: ostrov
 k9s:
-  body: {fgColor: "{{fg}}", bgColor: default, logoColor: "{{accent}}"}
+  body: {fgColor: "{{fg}}", bgColor: default, logoColor: "{{ansi4}}"}
   prompt: {fgColor: "{{fg}}", bgColor: default, suggestColor: "{{dim}}"}
-  info: {fgColor: "{{accent}}", sectionColor: "{{fg}}"}
-  dialog: {fgColor: "{{fg}}", bgColor: default, buttonFgColor: "{{ink}}", buttonBgColor: "{{dim}}", buttonFocusFgColor: "{{ink}}", buttonFocusBgColor: "{{accent}}", labelFgColor: "{{accent}}", fieldFgColor: "{{fg}}"}
+  info: {fgColor: "{{dim}}", sectionColor: "{{fg}}"}
+  dialog: {fgColor: "{{fg}}", bgColor: default, buttonFgColor: "{{ink}}", buttonBgColor: "{{dim}}", buttonFocusFgColor: "{{ink}}", buttonFocusBgColor: "{{accent}}", labelFgColor: "{{ansi4}}", fieldFgColor: "{{fg}}"}
   frame:
     border: {fgColor: "{{dim}}", focusColor: "{{accent}}"}
-    menu: {fgColor: "{{fg}}", keyColor: "{{accent}}", numKeyColor: "{{accent}}"}
+    menu: {fgColor: "{{dim}}", keyColor: "{{ansi4}}", numKeyColor: "{{ansi5}}"}
     crumbs: {fgColor: "{{ink}}", bgColor: "{{dim}}", activeColor: "{{accent}}"}
-    status: {newColor: "{{accent}}", modifyColor: "{{ansi3}}", addColor: "{{ansi2}}", pendingColor: "{{ansi3}}", errorColor: "{{urgent}}", highlightColor: "{{accent}}", killColor: "{{dim}}", completedColor: "{{dim}}"}
-    title: {fgColor: "{{fg}}", bgColor: default, highlightColor: "{{accent}}", counterColor: "{{accent}}", filterColor: "{{accent}}"}
+    status: {newColor: "{{ansi4}}", modifyColor: "{{ansi3}}", addColor: "{{ansi2}}", pendingColor: "{{ansi3}}", errorColor: "{{urgent}}", highlightColor: "{{ansi6}}", killColor: "{{dim}}", completedColor: "{{dim}}"}
+    title: {fgColor: "{{fg}}", bgColor: default, highlightColor: "{{ansi4}}", counterColor: "{{ansi5}}", filterColor: "{{ansi3}}"}
   views:
-    charts: {bgColor: default, defaultDialColors: ["{{accent}}", "{{urgent}}"], defaultChartColors: ["{{accent}}", "{{urgent}}"]}
+    charts: {bgColor: default, defaultDialColors: ["{{ansi4}}", "{{ansi1}}"], defaultChartColors: ["{{ansi4}}", "{{ansi1}}"]}
     table:
       fgColor: "{{fg}}"
       bgColor: default
       cursorFgColor: "{{ink}}"
       cursorBgColor: "{{accent}}"
-      markColor: "{{accent}}"
+      markColor: "{{ansi3}}"
       header: {fgColor: "{{dim}}", bgColor: default, sorterColor: "{{fg}}"}
-    xray: {fgColor: "{{fg}}", bgColor: default, cursorColor: "{{accent}}", graphicColor: "{{dim}}", showIcons: false}
-    yaml: {keyColor: "{{accent}}", colonColor: "{{dim}}", valueColor: "{{fg}}"}
+    xray: {fgColor: "{{fg}}", bgColor: default, cursorColor: "{{ansi4}}", graphicColor: "{{dim}}", showIcons: false}
+    yaml: {keyColor: "{{ansi4}}", colonColor: "{{dim}}", valueColor: "{{fg}}"}
     logs:
       fgColor: "{{fg}}"
       bgColor: default
-      indicator: {fgColor: "{{fg}}", bgColor: default, toggleOnColor: "{{accent}}", toggleOffColor: "{{dim}}"}
+      indicator: {fgColor: "{{fg}}", bgColor: default, toggleOnColor: "{{ansi2}}", toggleOffColor: "{{dim}}"}
