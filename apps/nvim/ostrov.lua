@@ -1,7 +1,8 @@
 -- ostrov's colours for Neovim, written by ostrov as its look changes: :colorscheme ostrov
+-- background first: highlight clear picks nvim's defaults by it
+vim.o.background = "{{mode}}"
 vim.cmd("highlight clear")
 vim.g.colors_name = "ostrov"
-vim.o.background = "{{mode}}"
 local c = {
   bg = "{{bg}}", view = "{{view}}", card = "{{card}}", fg = "{{fg}}", dim = "{{dim}}",
   accent = "{{accent}}", ink = "{{ink}}", urgent = "{{urgent}}",
