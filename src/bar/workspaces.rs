@@ -2,7 +2,7 @@
 //! once and kept, so the focused one's growing and the last one's shrinking can be drawn: every frame a step of
 //! each dot's width towards its own (28 focused, 8 not), about 100 ms in all, the frame clock
 //! let go once there (a CSS transition misses a dot made focused). Its monitor's workspaces, the one shown there
-//! focused.
+//! focused. Or, as [bar.workspaces] style = "numbers" says, i3's: a button each, named (numbers()).
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -14,6 +14,10 @@ use super::{Block, Ctx};
 use crate::wm;
 
 pub fn build(cx: &Rc<Ctx>) -> Block {
+    let ws = crate::config::load().bar.workspaces;
+    if ws.style == "numbers" {
+        return numbers(cx, ws);
+    }
     let dots = gtk4::Box::new(gtk4::Orientation::Horizontal, 6);
     dots.set_valign(gtk4::Align::Center);
 
@@ -99,4 +103,46 @@ pub fn build(cx: &Rc<Ctx>) -> Block {
         }
     });
     Block::new(&dots)
+}
+
+/// i3's workspaces: a button each, the first count always there, past them those there are on its monitor; each
+/// named by names (its number when not), an empty one dim, the focused one lit. Made anew as they change: a few.
+fn numbers(cx: &Rc<Ctx>, ws: crate::config::Workspaces) -> Block {
+    // the bar's whole height, as i3's
+    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+    row.set_valign(gtk4::Align::Fill);
+    let draw = {
+        let (row, host) = (row.clone(), cx.host.clone());
+        move || {
+            let (there, active) = wm::workspaces(host.connector().as_deref());
+            let mut ids: Vec<i64> = (1..=i64::from(ws.count)).collect();
+            ids.extend(there.iter().filter(|id| **id > i64::from(ws.count)));
+            while let Some(c) = row.first_child() {
+                row.remove(&c);
+            }
+            for id in ids {
+                let name = usize::try_from(id - 1).ok().and_then(|i| ws.names.get(i)).filter(|n| !n.is_empty());
+                let b = gtk4::Label::new(Some(&name.cloned().unwrap_or_else(|| id.to_string())));
+                b.add_css_class("ws");
+                if there.contains(&id) {
+                    b.add_css_class("occupied");
+                }
+                if Some(id) == active {
+                    b.add_css_class("focused");
+                }
+                let click = gtk4::GestureClick::new();
+                click.connect_released(move |_, _, _, _| wm::go(id));
+                b.add_controller(click);
+                b.set_cursor_from_name(Some("pointer"));
+                row.append(&b);
+            }
+        }
+    };
+    draw();
+    cx.on_wm(move |e| {
+        if matches!(e, wm::Event::Workspaces) {
+            draw();
+        }
+    });
+    Block::new(&row)
 }
