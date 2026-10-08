@@ -302,23 +302,31 @@ fn ttys(process: &str) -> Vec<PathBuf> {
 /// The new colours into every terminal of that program, as it runs.
 fn osc(process: &str, p: &Palette) {
     let seq = sequences(p);
-    // tmux keeps the text and ground its client's terminal told it at attach, and answers programs
-    // asking with those; asked again on that terminal, its answer goes to tmux, which learns the new ones
-    // (asked only where a tmux client is: in a bare shell the answer would be typed into its prompt)
-    let tmux: Vec<PathBuf> = std::process::Command::new("tmux")
-        .args(["list-clients", "-F", "#{client_tty}"])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).lines().map(PathBuf::from).collect())
-        .unwrap_or_default();
     for tty in ttys(process) {
         if let Ok(mut f) = std::fs::OpenOptions::new().write(true).open(&tty) {
             use std::io::Write;
             let _ = f.write_all(seq.as_bytes());
-            if tmux.contains(&tty) {
+        }
+    }
+}
+
+/// tmux keeps the text and ground its clients' terminals told it at attach, and answers programs asking with
+/// those; asked again on each client's terminal, the answers go to tmux, which learns the new ones. Asked a
+/// second on, after the terminals that read their files again have (alacritty), and only where a tmux client
+/// is: in a bare shell the answer would be typed into its prompt.
+fn tmux_ask() {
+    std::thread::spawn(|| {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        let Ok(o) = std::process::Command::new("tmux").args(["list-clients", "-F", "#{client_tty}"]).output() else {
+            return;
+        };
+        for tty in String::from_utf8_lossy(&o.stdout).lines() {
+            if let Ok(mut f) = std::fs::OpenOptions::new().write(true).open(tty) {
+                use std::io::Write;
                 let _ = f.write_all(b"\x1b]10;?\x1b\\\x1b]11;?\x1b\\");
             }
         }
-    }
+    });
 }
 
 fn in_path(cmd: &str) -> bool {
@@ -406,10 +414,15 @@ fn without(text: &str, named: &str) -> String {
 /// Every app's file written as the palette has it, those connected told to read it again as it changed.
 pub fn apply(p: &Palette) {
     let connected = crate::config::load().apps.connected;
+    let mut changed = false;
     for a in all().into_iter().filter(App::here) {
         if put(&a.file(), &p.fill(&a.text)) && (connected.contains(&a.id) || a.connected()) {
             a.reload(p);
+            changed = true;
         }
+    }
+    if changed {
+        tmux_ask();
     }
 }
 
