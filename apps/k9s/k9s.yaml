@@ -1,4 +1,4 @@
-# ostrov's colours for k9s, its grounds the terminal's, the accent a ground (the cursor, the focused button), the
+# ostrov's colours for k9s, its grounds the terminal's, the cursor the text's colour, the accent a ground (the focused button), the
 # terminal's sixteen for text that stands out (an accent may be grey, as text close to the rest): ln -s ~/.local/state/ostrov/colors/k9s.yaml ~/.config/k9s/skins/ostrov.yaml, ui.skin: ostrov
 k9s:
   body: {fgColor: "{{fg}}", bgColor: default, logoColor: "{{ansi4}}"}
@@ -16,8 +16,8 @@ k9s:
     table:
       fgColor: "{{fg}}"
       bgColor: default
-      cursorFgColor: "{{ink}}"
-      cursorBgColor: "{{accent}}"
+      cursorFgColor: "{{bar}}"
+      cursorBgColor: "{{fg}}"
       markColor: "{{ansi3}}"
       header: {fgColor: "{{dim}}", bgColor: default, sorterColor: "{{fg}}"}
     xray: {fgColor: "{{fg}}", bgColor: default, cursorColor: "{{ansi4}}", graphicColor: "{{dim}}", showIcons: false}
