@@ -1,7 +1,7 @@
 {
   "wallpaper": "",
   "alpha": "100",
-  "special": { "background": "{{bg}}", "foreground": "{{fg}}", "cursor": "{{accent}}" },
+  "special": { "background": "{{bg}}", "foreground": "{{fg}}", "cursor": "{{fg}}" },
   "colors": {
     "color0": "{{bg}}", "color1": "{{ansi1}}", "color2": "{{ansi2}}", "color3": "{{ansi3}}",
     "color4": "{{accent}}", "color5": "{{ansi5}}", "color6": "{{ansi6}}", "color7": "{{fg}}",

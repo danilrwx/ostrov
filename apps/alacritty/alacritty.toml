@@ -5,8 +5,8 @@ opacity = {{bar_alpha}}
 background = "{{bar}}"
 foreground = "{{fg}}"
 [colors.cursor]
-cursor = "{{accent}}"
-text = "{{ink}}"
+cursor = "{{fg}}"
+text = "{{bar}}"
 [colors.selection]
 background = "{{accent}}"
 text = "{{ink}}"
