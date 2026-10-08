@@ -302,10 +302,21 @@ fn ttys(process: &str) -> Vec<PathBuf> {
 /// The new colours into every terminal of that program, as it runs.
 fn osc(process: &str, p: &Palette) {
     let seq = sequences(p);
+    // tmux keeps the text and ground its client's terminal told it at attach, and answers programs
+    // asking with those; asked again on that terminal, its answer goes to tmux, which learns the new ones
+    // (asked only where a tmux client is: in a bare shell the answer would be typed into its prompt)
+    let tmux: Vec<PathBuf> = std::process::Command::new("tmux")
+        .args(["list-clients", "-F", "#{client_tty}"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).lines().map(PathBuf::from).collect())
+        .unwrap_or_default();
     for tty in ttys(process) {
         if let Ok(mut f) = std::fs::OpenOptions::new().write(true).open(&tty) {
             use std::io::Write;
             let _ = f.write_all(seq.as_bytes());
+            if tmux.contains(&tty) {
+                let _ = f.write_all(b"\x1b]10;?\x1b\\\x1b]11;?\x1b\\");
+            }
         }
     }
 }
