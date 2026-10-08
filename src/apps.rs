@@ -5,8 +5,8 @@
 //!   gtk-4.0, gtk.css importing it (a line put at its top, the file made if there is none);
 //! - colour files for the rest in ~/.local/state/ostrov/colors, an app's each (integrations.rs: terminals, k9s,
 //!   Telegram, the user's own), and colors.json, the palette for scripts;
-//! - the browser's frame the bar's colour: GTK's headerbar is the bar's, which Chrome in its GTK theme takes; its
-//!   theme colour policy (ostrov-theme.json, where it is there to write) left empty, as it would hold over it.
+//! - the browser's frame the colour the bar shows, through Chrome's and Chromium's BrowserThemeColor policy
+//!   (ostrov-theme.json, where it is there to write), which Chrome follows as it changes.
 //!
 //! Each written only when what it says changed.
 
@@ -205,7 +205,7 @@ fn theme_dirs() -> [PathBuf; 3] {
 
 /// GTK 3's theme of ostrov's own, ~/.local/share/themes/ostrov: adw-gtk3's (dark or light, as the theme is) with
 /// ostrov's colours written into it. GTK 3 reads a user's gtk.css once, as an app starts, but its theme again
-/// whenever the theme is named anew: so the apps running (Thunar, Chrome's frame) follow a change at once
+/// whenever the theme is named anew: so the apps running (Thunar) follow a change at once
 /// (DankMaterialShell's way). None without adw-gtk3; whether it changed.
 fn gtk3_theme(p: &Palette) -> Option<bool> {
     let from = if p.dark { "adw-gtk3-dark" } else { "adw-gtk3" };
@@ -274,18 +274,48 @@ fn gnome(p: &Palette) {
 const BROWSER_POLICIES: &[&str] =
     &["/etc/opt/chrome/policies/managed/ostrov-theme.json", "/etc/chromium/policies/managed/ostrov-theme.json"];
 
-/// The browsers' theme colour policy left empty, in each policy file there to write: Chrome in its GTK theme takes
-/// its frame from GTK's headerbar, the bar's colour exactly (a policy colour is a seed it makes its own palette
-/// from, and would hold over the GTK theme).
-fn browsers() {
+/// The browser's frame the colour the bar shows: its colour at its opacity over the wallpaper's top strip (where
+/// the bar lies, the picture stretched over the screen: about a fortieth of its height), solid with none.
+fn browser_colour(p: &Palette) -> String {
+    let bar = rgb(p.get("bar")).unwrap_or((0, 0, 0));
+    let alpha: f64 = p.get("bar_alpha").parse().unwrap_or(1.0);
+    let pick = crate::modules::wallpaper::service::pick();
+    let under = pick
+        .on
+        .then(|| gtk4::gdk_pixbuf::Pixbuf::from_file_at_scale(&pick.path, 80, 80, false).ok())
+        .flatten()
+        .and_then(|px| {
+            let (n, stride, bytes) = (px.n_channels() as usize, px.rowstride() as usize, px.read_pixel_bytes());
+            let rows = (px.height() as usize / 40).max(1);
+            let (mut sum, mut count) = ((0u64, 0u64, 0u64), 0u64);
+            for y in 0..rows {
+                for x in 0..px.width() as usize {
+                    let i = y * stride + x * n;
+                    sum = (sum.0 + bytes[i] as u64, sum.1 + bytes[i + 1] as u64, sum.2 + bytes[i + 2] as u64);
+                    count += 1;
+                }
+            }
+            (count > 0).then(|| ((sum.0 / count) as u8, (sum.1 / count) as u8, (sum.2 / count) as u8))
+        });
+    hex(match under {
+        Some(under) => mix(under, bar, alpha),
+        None => bar,
+    })
+}
+
+/// The browsers' theme colour, the colour the bar shows, in each policy file there to write: Chrome reads the
+/// directory again as it changes, its frame following at once (a few seconds), where its GTK theme's does not
+/// until it starts again. The colour a seed Chrome makes its palette from, so near the bar's, not exactly it.
+fn browsers(p: &Palette) {
     let files: Vec<&Path> = BROWSER_POLICIES.iter().map(Path::new).filter(|f| {
         std::fs::metadata(f).is_ok_and(|m| !m.permissions().readonly()) && std::fs::OpenOptions::new().append(true).open(f).is_ok()
     }).collect();
     if files.is_empty() {
         return;
     }
+    let policy = format!("{{ \"BrowserThemeColor\": \"{}\" }}\n", browser_colour(p));
     for f in files {
-        put(f, "{}\n");
+        put(f, &policy);
     }
 }
 
@@ -298,14 +328,14 @@ pub fn apply(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) {
     // GTK 3's own theme before the settings name it
     let gtk3 = gtk3_theme(&p).unwrap_or(false);
     gnome(&p);
-    browsers();
+    browsers(&p);
     let mut css = false;
     for (v, vars) in [("gtk-3.0", false), ("gtk-4.0", true)] {
         let dir = home().join(".config").join(v);
         css |= put(&dir.join("ostrov.css"), &gtk_css(&p, vars));
         import(&dir);
     }
-    // the GTK apps running (Chrome's frame in its GTK theme among them) read it again: their theme named anew
+    // the GTK apps running read it again: their theme named anew
     if css || gtk3 {
         refresh_gtk();
     }
