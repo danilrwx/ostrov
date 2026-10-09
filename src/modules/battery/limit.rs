@@ -57,23 +57,26 @@ pub fn set(end: u64) -> Res {
 /// The udev rule, in ostrov itself: an ostrov installed by cargo has no packaging/ on disk.
 const RULE: &str = include_str!("../../../packaging/udev/90-ostrov-battery.rules");
 
-/// The root's script putting the rule at file in place and applying it to the batteries there now.
-pub fn install_script(file: &str) -> String {
-    format!("install -m644 '{file}' /etc/udev/rules.d/90-ostrov-battery.rules && udevadm control --reload && \
-        udevadm trigger --subsystem-match=power_supply")
-}
+/// The root's script putting the rule, handed on its stdin, in place and applying it to the batteries there now.
+/// On stdin, not through a file: one in a shared /tmp another user could put there first, or swap before root
+/// reads it.
+const INSTALL: &str = "install -m644 /dev/stdin /etc/udev/rules.d/90-ostrov-battery.rules && udevadm control --reload && \
+    udevadm trigger --subsystem-match=power_supply";
 
 /// The udev rule installed through pkexec, its password asked by ostrov's polkit agent: the thresholds the
 /// user's to write once it is done.
 pub async fn install() -> Res {
-    let file = std::env::temp_dir().join(format!("ostrov-battery-{}.rules", std::process::id()));
-    tokio::fs::write(&file, RULE).await.map_err(|e| format!("{}: {e}", file.display()))?;
-    let status = tokio::process::Command::new("pkexec")
-        .args(["sh", "-c", &install_script(&file.to_string_lossy())])
-        .status()
-        .await;
-    let _ = tokio::fs::remove_file(&file).await;
-    match status.map_err(|e| format!("pkexec: {e}"))?.code() {
+    use tokio::io::AsyncWriteExt;
+    let mut child = tokio::process::Command::new("pkexec")
+        .args(["sh", "-c", INSTALL])
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("pkexec: {e}"))?;
+    if let Some(mut stdin) = child.stdin.take() {
+        // dropped once written: install sees the end of it
+        stdin.write_all(RULE.as_bytes()).await.map_err(|e| format!("pkexec: {e}"))?;
+    }
+    match child.wait().await.map_err(|e| format!("pkexec: {e}"))?.code() {
         Some(0) => Ok(()),
         // pkexec's own: the password not given, or not allowed
         Some(126 | 127) => Err(crate::i18n::t("not authorised").into()),
@@ -86,10 +89,7 @@ mod tests {
     #[test]
     fn the_rule_installed_as_root() {
         assert!(super::RULE.contains("charge_control_end_threshold"));
-        assert_eq!(
-            super::install_script("/tmp/r"),
-            "install -m644 '/tmp/r' /etc/udev/rules.d/90-ostrov-battery.rules && udevadm control --reload && \
-        udevadm trigger --subsystem-match=power_supply"
-        );
+        // the rule from stdin, never a file in /tmp
+        assert!(super::INSTALL.starts_with("install -m644 /dev/stdin /etc/udev/rules.d/90-ostrov-battery.rules"));
     }
 }
