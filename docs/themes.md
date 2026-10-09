@@ -3,8 +3,8 @@
 A theme is a directory: a `theme.toml` with its colours and a few suggestions, and, for changes past colours, an
 optional `theme.css`. Each comes in two, after dark and by day: `[appearance] mode = "dark"|"light"|"auto"` (the
 Mode chips on the Appearance page) picks the side; auto is light by day, `[appearance] day` saying when
-(`"07:00-19:00"`, or `"sun"`: sunrise to sunset where `ostrov location` puts you), the whole desktop turning with it. ostrov's five (Ostrov, its day GitHub's Light; Graphite; Nord, Polar
-Night and Snow Storm; Solarized, dark and light; Catppuccin, Mocha and Latte) are the same files, under `themes/` in
+(`"07:00-19:00"`, or `"sun"`: sunrise to sunset where `ostrov location` puts you), the whole desktop turning with it. ostrov's six (Ostrov, its day GitHub's Light; Graphite; Nord, Polar
+Night and Snow Storm; Solarized, dark and light; Catppuccin, Mocha and Latte; Wallpaper, below) are the same files, under `themes/` in
 the source and compiled in; yours live in `~/.local/share/ostrov/themes/<id>/`. The old ids `dark` and `light` are
 Ostrov after dark and by day.
 
@@ -16,6 +16,15 @@ Ostrov after dark and by day.
 The accent can be the wallpaper's own: `[appearance] accent = "wallpaper"` (Wallpaper's on the Appearance page),
 of its colours the vivid one there is most of, made light after dark and deep by day, worked out again as the
 wallpaper changes; the rest of the desktop takes it as any accent.
+
+Or the whole theme can be the wallpaper's: `ostrov theme set wallpaper`. Its colours are made from the picture shown
+as Material You makes them (the `material-colors` crate, Google's material-color-utilities): the picture's source
+colour (its colours quantized and scored for a theme), then in HCT, a colour space whose tone is the lightness the eye
+sees, the grounds, the bar and the text near-neutral with the source's hue in them and the accent the source vivid,
+each at a tone that keeps it readable whatever the picture. The terminal's sixteen stay what they say (red is red,
+green green): One Dark's hues each turned at most 15° toward the source (harmonized), at a tone set for the
+terminal's ground, every one 4.5:1 and over on it. Worked out again whenever the wallpaper changes (a random pick, the
+interval's), grey with no wallpaper.
 
 The Appearance page in the control centre (the palette beside Edit, `ostrov appearance`) shows every theme as a card
 in its own colours; a click picks it. Picking, installing and removing take effect at once.

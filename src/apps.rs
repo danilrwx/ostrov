@@ -94,8 +94,9 @@ impl Palette {
             "ansi0", "ansi1", "ansi2", "ansi3", "ansi4", "ansi5", "ansi6", "ansi7", "ansi8", "ansi9", "ansi10",
             "ansi11", "ansi12", "ansi13", "ansi14", "ansi15",
         ];
+        // a theme's own (the wallpaper's), else One Dark's or One Light's
         for (n, v) in NAMES.iter().zip(if dark { ANSI_DARK } else { ANSI_LIGHT }) {
-            c.insert(n, v.to_string());
+            c.insert(n, t.colors.get(*n).cloned().unwrap_or_else(|| v.to_string()));
         }
         Palette { dark, colors: c }
     }

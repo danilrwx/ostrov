@@ -1,7 +1,8 @@
 //! The wallpaper picked, ostrov's own: on or off (a plain ground), the picture, kept in
 //! ~/.local/state/ostrov/wallpaper.json; the pictures to pick from in [widget.wallpaper]'s dir. A pick runs
 //! [widget.wallpaper]'s on_change after it, the picture in $OSTROV_WALLPAPER ("" off): what else follows the
-//! wallpaper (a terminal's see-through, a browser's colour) is the user's to say.
+//! wallpaper (a terminal's see-through, a browser's colour) is the user's to say. With [widget.wallpaper]
+//! interval, minutes, another picture at random once the one shown has been there that long (tick).
 
 use std::path::PathBuf;
 
@@ -79,6 +80,33 @@ fn keep(p: Pick) -> Res {
     Ok(())
 }
 
+/// Another picture than the one shown, at random, on.
+fn random(p: &Pick, all: &[String]) -> Result<Pick, String> {
+    let others: Vec<&String> = all.iter().filter(|w| **w != p.path).collect();
+    if others.is_empty() {
+        return Err("no other picture".into());
+    }
+    let i = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.subsec_nanos() as usize);
+    Ok(Pick { on: true, path: others[i % others.len()].clone() })
+}
+
+/// [widget.wallpaper] interval: every so many minutes another picture at random, once the one shown (its pick's
+/// file as old as that: a pick by hand starts it over) has been there that long; 0 or unset, never. Called every
+/// minute.
+pub fn tick() {
+    let every = crate::config::load().widget.get("wallpaper").and_then(|t| t.get("interval")?.as_integer()).unwrap_or(0);
+    let p = pick();
+    if every <= 0 || !p.on {
+        return;
+    }
+    let age = std::fs::metadata(file()).and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok());
+    if age.is_some_and(|a| a.as_secs() >= every as u64 * 60)
+        && let Err(e) = random(&p, &pictures()).and_then(keep)
+    {
+        eprintln!("ostrov: wallpaper interval: {e}");
+    }
+}
+
 pub async fn cmd(args: &[&str]) -> Res {
     let mut p = pick();
     let all = pictures();
@@ -97,14 +125,7 @@ pub async fn cmd(args: &[&str]) -> Res {
             }
             p = Pick { on: true, path: path.to_string_lossy().into() };
         }
-        ["random"] => {
-            let others: Vec<&String> = all.iter().filter(|w| **w != p.path).collect();
-            if others.is_empty() {
-                return Err("no other picture".into());
-            }
-            let i = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.subsec_nanos() as usize);
-            p = Pick { on: true, path: others[i % others.len()].clone() };
-        }
+        ["random"] => p = random(&p, &all)?,
         _ => return Err(super::MODULE.usage()),
     }
     keep(p)
