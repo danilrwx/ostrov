@@ -1,8 +1,9 @@
 //! The wallpaper picked, ostrov's own: on or off (a plain ground), the picture, kept in
 //! ~/.local/state/ostrov/wallpaper.json; the pictures to pick from in [widget.wallpaper]'s dir. A pick runs
 //! [widget.wallpaper]'s on_change after it, the picture in $OSTROV_WALLPAPER ("" off): what else follows the
-//! wallpaper (a terminal's see-through, a browser's colour) is the user's to say. With [widget.wallpaper]
-//! interval, minutes, another picture at random once the one shown has been there that long (tick).
+//! wallpaper (a terminal's see-through, a browser's colour) is the user's to say. Random is a pick of its own:
+//! a picture at random now, and with [widget.wallpaper] interval, minutes, another once the one shown has been
+//! there that long (tick); a picture picked by hand ends it.
 
 use std::path::PathBuf;
 
@@ -15,6 +16,9 @@ use crate::services::Res;
 pub struct Pick {
     pub on: bool,
     pub path: String,
+    /// picked as Random: the picture one at random, another every interval
+    #[serde(default)]
+    pub random: bool,
 }
 
 pub fn file() -> PathBuf {
@@ -59,7 +63,7 @@ pub fn bar_alpha() -> f64 {
 
 pub fn state() -> Value {
     let p = pick();
-    json!({"on": p.on, "path": p.path, "wallpapers": pictures()})
+    json!({"on": p.on, "path": p.path, "random": p.random, "wallpapers": pictures()})
 }
 
 /// The pick kept, and on_change run after it.
@@ -80,23 +84,22 @@ fn keep(p: Pick) -> Res {
     Ok(())
 }
 
-/// Another picture than the one shown, at random, on.
+/// Another picture than the one shown, at random, on, Random picked.
 fn random(p: &Pick, all: &[String]) -> Result<Pick, String> {
     let others: Vec<&String> = all.iter().filter(|w| **w != p.path).collect();
     if others.is_empty() {
         return Err("no other picture".into());
     }
     let i = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.subsec_nanos() as usize);
-    Ok(Pick { on: true, path: others[i % others.len()].clone() })
+    Ok(Pick { on: true, path: others[i % others.len()].clone(), random: true })
 }
 
-/// [widget.wallpaper] interval: every so many minutes another picture at random, once the one shown (its pick's
-/// file as old as that: a pick by hand starts it over) has been there that long; 0 or unset, never. Called every
-/// minute.
+/// Random picked, with [widget.wallpaper] interval: every so many minutes another picture at random, once the one
+/// shown (its pick's file as old as that) has been there that long; 0 or unset, never. Called every minute.
 pub fn tick() {
     let every = crate::config::load().widget.get("wallpaper").and_then(|t| t.get("interval")?.as_integer()).unwrap_or(0);
     let p = pick();
-    if every <= 0 || !p.on {
+    if every <= 0 || !p.on || !p.random {
         return;
     }
     let age = std::fs::metadata(file()).and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok());
@@ -123,7 +126,7 @@ pub async fn cmd(args: &[&str]) -> Res {
             if !path.is_file() {
                 return Err(format!("{} is no picture", path.display()));
             }
-            p = Pick { on: true, path: path.to_string_lossy().into() };
+            p = Pick { on: true, path: path.to_string_lossy().into(), random: false };
         }
         ["random"] => p = random(&p, &all)?,
         _ => return Err(super::MODULE.usage()),

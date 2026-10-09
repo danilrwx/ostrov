@@ -101,8 +101,8 @@ geocoding) or `ostrov location LAT LON`, kept in `~/.local/state/ostrov/location
 
 ostrov draws the wallpaper itself, under everything, black until a picture is picked. `ostrov wallpaper
 on|off|random`, `set PATH`; its toggle `wallpaper`, its menu the pictures of `[widget.wallpaper] dir`.
-`interval`, minutes, picks another at random once the one shown has been there that long (a pick by hand starts it
-over; 0 or unset, never). `on_change` runs a command after every pick, the picture in `$OSTROV_WALLPAPER` (to theme
+Random is a pick of its own, marked in the menu in place of a picture: a picture at random now, and with `interval`,
+minutes, another once the one shown has been there that long (0 or unset, never); a picture picked by hand ends it. `on_change` runs a command after every pick, the picture in `$OSTROV_WALLPAPER` (to theme
 a terminal from it). With `ostrov theme set wallpaper` the whole look follows the picture ([themes.md](themes.md)).
 `bar` sets how solid the bar is over a picture.
 
