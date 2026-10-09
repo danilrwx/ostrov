@@ -31,6 +31,8 @@ pub fn set_awake(on: bool) {
 /// What the threads ask of GTK's.
 enum Ask {
     Lock,
+    /// the lock before sleep, told back once it is up
+    SleepLock(async_channel::Sender<()>),
     Screens(bool),
 }
 
@@ -47,6 +49,7 @@ pub fn start(lock: &Rc<Lock>, times: &crate::config::Idle) {
         while let Ok(a) = rx.recv().await {
             match a {
                 Ask::Lock => lock.lock(),
+                Ask::SleepLock(ack) => lock.lock_for_sleep(ack),
                 Ask::Screens(on) => crate::wm::screens(on),
             }
         }
@@ -101,8 +104,8 @@ fn idle(tx: async_channel::Sender<Ask>, lock_after: u32, off_after: u32) {
     while queue.blocking_dispatch(&mut state).is_ok() {}
 }
 
-/// logind's word: the machine about to sleep (the lock first, the delay inhibitor let go once it is up, taken
-/// again on waking), the session asked to lock.
+/// logind's word: the machine about to sleep (the lock first, the delay inhibitor let go once the compositor says
+/// it is up, or after 3 s whatever it says, taken again on waking), the session asked to lock.
 fn logind(tx: async_channel::Sender<Ask>) {
     let Ok(rt) = tokio::runtime::Builder::new_current_thread().enable_all().build() else { return };
     rt.block_on(async move {
@@ -150,9 +153,11 @@ fn logind(tx: async_channel::Sender<Ask>) {
                 continue;
             }
             if m.body().deserialize::<bool>().unwrap_or(false) {
-                let _ = tx.send(Ask::Lock).await;
-                // the lock's surfaces up before the inhibitor goes and the machine with it
-                tokio::time::sleep(Duration::from_millis(800)).await;
+                // the lock up before the inhibitor goes and the machine with it; a lock that never says so keeps
+                // the machine up no longer than 3 s
+                let (ack, up) = async_channel::bounded(1);
+                let _ = tx.send(Ask::SleepLock(ack)).await;
+                let _ = tokio::time::timeout(Duration::from_secs(3), up.recv()).await;
                 held = None;
             } else if held.is_none() {
                 held = inhibit().await;
