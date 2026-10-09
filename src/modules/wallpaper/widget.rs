@@ -8,7 +8,8 @@ use crate::settings::{Field, Kind, Schema, Section};
 use crate::style::clear;
 use crate::ui::{menu, row, Memo, Toggle};
 
-/// The wallpaper's toggle: on (the picture) or off (a plain ground); its menu a random one and the pictures.
+/// The wallpaper's toggle: on (the picture) or off (a plain ground); its menu Random (a picture at random, another
+/// every interval) and the pictures, the one picked marked.
 pub fn wallpaper(c: &Ctx) -> Widget {
     let st = c.state.clone();
     let tg = Toggle::new("preferences-desktop-wallpaper-symbolic", t("Wallpaper"), move || {
@@ -27,11 +28,12 @@ pub fn wallpaper(c: &Ctx) -> Widget {
             return;
         }
         clear(&items);
-        items.append(&row("", t("Random"), "", false, || service(&["wallpaper", "random"])));
+        let random = on && w["random"].as_bool().unwrap_or(false);
+        items.append(&row("", t("Random"), "", random, || service(&["wallpaper", "random"])));
         items.append(&gtk4::Separator::new(Orientation::Horizontal));
         for p in w["wallpapers"].as_array().into_iter().flatten().filter_map(|p| p.as_str()) {
             let name = p.rsplit('/').next().unwrap_or("").to_string();
-            let picked = on && p == s(w, &["path"]);
+            let picked = on && !random && p == s(w, &["path"]);
             let p = p.to_string();
             items.append(&row("", &name, "", picked, move || service(&["wallpaper", "set", &p])));
         }
@@ -47,6 +49,6 @@ pub fn wallpaper_settings() -> Schema {
         .help("A command run after every pick, the picture in $OSTROV_WALLPAPER (empty: none), for what else follows it.");
     let every = Field::new("interval", "Change every, minutes", Kind::Number { min: 0.0, max: 1440.0, step: 5.0, slider: false })
         .default(0)
-        .help("Another picture at random once the one shown has been there this long; 0, never.");
+        .help("With Random picked, another picture at random once the one shown has been there this long; 0, never.");
     Schema { sections: vec![Section::new("", "Wallpaper", vec![dir, every, hook])] }
 }
