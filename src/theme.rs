@@ -1,6 +1,6 @@
 //! Themes as packages: a directory with a theme.toml (its name, author, version, colours for style.rs's palette
 //! after dark and, in [light], by day; suggested radius, density and blur) and an optional theme.css laid after
-//! ostrov's own. The built-in five are the same files, under themes/ in the source, compiled in; installed ones
+//! ostrov's own. The built-in six are the same files, under themes/ in the source, compiled in; installed ones
 //! live in ~/.local/share/ostrov/themes/<id>/, the id the directory's name, and one of a built-in's id stands in for
 //! it. [appearance] theme picks one and mode its dark or light; `ostrov theme list|set|install|remove` manages them
 //! (docs/themes.md).
@@ -18,6 +18,7 @@ const BUILT_IN: &[(&str, &str)] = &[
     ("nord", include_str!("../themes/nord/theme.toml")),
     ("solarized", include_str!("../themes/solarized/theme.toml")),
     ("catppuccin", include_str!("../themes/catppuccin/theme.toml")),
+    ("wallpaper", include_str!("../themes/wallpaper/theme.toml")),
 ];
 
 /// The ids themes had before each came in two: ostrov's, after dark or by day.
@@ -107,7 +108,18 @@ fn read(path: &Path, id: &str) -> Result<Theme, String> {
 
 fn built_in() -> Vec<Theme> {
     let parsed = BUILT_IN.iter().filter_map(|(id, text)| parse(text, id, String::new()).ok());
-    parsed.map(|t| Theme { built_in: true, ..t }).collect()
+    parsed
+        .map(|t| match t.id.as_str() {
+            // its colours the wallpaper's, worked out as it is now
+            "wallpaper" => Theme {
+                colors: crate::look::wallpaper_theme(false),
+                light: crate::look::wallpaper_theme(true),
+                built_in: true,
+                ..t
+            },
+            _ => Theme { built_in: true, ..t },
+        })
+        .collect()
 }
 
 /// The installed themes' directories by id, read or not, in order (a directory named with a dot, an install's
@@ -381,7 +393,7 @@ mod tests {
     fn built_in_read() {
         let b = built_in();
         let ids: Vec<_> = b.iter().map(|t| t.id.as_str()).collect();
-        assert_eq!(ids, ["ostrov", "graphite", "nord", "solarized", "catppuccin"]);
+        assert_eq!(ids, ["ostrov", "graphite", "nord", "solarized", "catppuccin", "wallpaper"]);
         // each in two, both sides with a surface
         assert!(b.iter().all(|t| t.two() && t.colors.contains_key("surface") && t.light.contains_key("surface")));
         let nord = b.into_iter().find(|t| t.id == "nord").unwrap().variant(true);

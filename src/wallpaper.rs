@@ -77,4 +77,9 @@ pub fn start(app: &gtk4::Application) {
         // kept for the program's life
         std::mem::forget(mon);
     }
+    // [widget.wallpaper] interval: another picture once the one shown has been there long enough
+    glib::timeout_add_seconds_local(60, || {
+        pick_::tick();
+        glib::ControlFlow::Continue
+    });
 }

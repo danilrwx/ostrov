@@ -44,26 +44,117 @@ pub fn wallpaper_accent(light: bool) -> Option<String> {
     if let Some(Some(hit)) = WALL.with(|w| w.borrow().as_ref().filter(|(p, l, _)| (p, *l) == (&key.0, key.1)).map(|w| w.2.clone())) {
         return Some(hit);
     }
-    // GTK's own loader (gdk-pixbuf's may be sandboxed away): the picture whole, every pixel of a grid of ~100x100
-    let found = gtk4::gdk::Texture::from_filename(&pick.path).ok().and_then(|tex| {
-        use gtk4::gdk::prelude::*;
-        let (w, h) = (tex.intrinsic_width() as usize, tex.intrinsic_height() as usize);
-        let stride = w * 4;
-        let mut bytes = vec![0u8; stride * h];
-        tex.download(&mut bytes, stride);
-        let step = (w.max(h) / 100).max(1);
-        let mut pixels = Vec::new();
-        for y in (0..h).step_by(step) {
-            for x in (0..w).step_by(step) {
-                // GDK's download: B, G, R, A in memory on a little-endian machine (cairo's ARGB32)
-                let i = y * stride + x * 4;
-                pixels.push((bytes[i + 2], bytes[i + 1], bytes[i]));
-            }
-        }
-        accent_of(&pixels, light)
-    });
+    let found = wallpaper_pixels(&pick.path).and_then(|px| accent_of(&px, light));
     WALL.with(|w| *w.borrow_mut() = Some((key.0, key.1, found.clone())));
     found
+}
+
+/// A picture's pixels, every one of a grid of about 100x100, through GTK's own loader (gdk-pixbuf's may be
+/// sandboxed away).
+fn wallpaper_pixels(path: &str) -> Option<Vec<(u8, u8, u8)>> {
+    let tex = gtk4::gdk::Texture::from_filename(path).ok()?;
+    use gtk4::gdk::prelude::*;
+    let (w, h) = (tex.intrinsic_width() as usize, tex.intrinsic_height() as usize);
+    let stride = w * 4;
+    let mut bytes = vec![0u8; stride * h];
+    tex.download(&mut bytes, stride);
+    let step = (w.max(h) / 100).max(1);
+    let mut pixels = Vec::new();
+    for y in (0..h).step_by(step) {
+        for x in (0..w).step_by(step) {
+            // GDK's download: B, G, R, A in memory on a little-endian machine (cairo's ARGB32)
+            let i = y * stride + x * 4;
+            pixels.push((bytes[i + 2], bytes[i + 1], bytes[i]));
+        }
+    }
+    Some(pixels)
+}
+
+thread_local! {
+    /// The wallpaper's source colour last worked out, for which picture.
+    static SOURCE: std::cell::RefCell<Option<(String, (u8, u8, u8))>> = const { std::cell::RefCell::new(None) };
+}
+
+/// The wallpaper's source colour as Material You picks it (its colours quantized, scored for a theme: the vivid
+/// one there is much of); grey with no wallpaper.
+fn wallpaper_source() -> (u8, u8, u8) {
+    let pick = crate::modules::wallpaper::service::pick();
+    let path = if pick.on { pick.path } else { String::new() };
+    if let Some(hit) = SOURCE.with(|s| s.borrow().as_ref().filter(|(p, _)| *p == path).map(|s| s.1)) {
+        return hit;
+    }
+    use material_colors::{color::Argb, quantize::{Quantizer, QuantizerCelebi}, score::Score};
+    let found = wallpaper_pixels(&path).map(|px| {
+        let px: Vec<Argb> = px.into_iter().map(|(r, g, b)| Argb::new(255, r, g, b)).collect();
+        let ranked = Score::score(&QuantizerCelebi::quantize(&px, 128).color_to_count, None, Some(Argb::new(255, 128, 128, 128)), None);
+        ranked.first().map_or((128, 128, 128), |c| (c.red, c.green, c.blue))
+    });
+    let found = found.unwrap_or((128, 128, 128));
+    SOURCE.with(|s| *s.borrow_mut() = Some((path, found)));
+    found
+}
+
+/// The wallpaper theme's colours, after dark or by day, as Material You makes them from the wallpaper's source
+/// colour: its grounds and text near-neutral with the source's hue in them, at tones that keep text readable
+/// whatever the picture; the accent the source's, vivid; the terminal's sixteen One Dark's hues each turned at
+/// most 15° toward the source's (harmonized), at a tone set for its ground, so red stays red and every one reads
+/// (4.5:1 and over on the terminal's ground).
+pub fn wallpaper_theme(light: bool) -> BTreeMap<String, String> {
+    theme_of(wallpaper_source(), light)
+}
+
+/// The wallpaper theme's colours from a source colour (wallpaper_theme).
+fn theme_of((r, g, b): (u8, u8, u8), light: bool) -> BTreeMap<String, String> {
+    use material_colors::{blend::harmonize, color::Argb, hct::Hct, palette::TonalPalette};
+    let src = Argb::new(255, r, g, b);
+    let s: Hct = src.into();
+    let (hue, chroma) = (s.get_hue(), s.get_chroma());
+    let n = TonalPalette::of(hue, (chroma / 6.0).clamp(4.0, 12.0));
+    let nv = TonalPalette::of(hue, (chroma / 4.0).clamp(6.0, 16.0));
+    let p = TonalPalette::of(hue, chroma.max(48.0));
+    let hex = |c: Argb| format!("#{:02x}{:02x}{:02x}", c.red, c.green, c.blue);
+    let rgba = |c: Argb, a: &str| format!("rgba({}, {}, {}, {a})", c.red, c.green, c.blue);
+    let t = |pal: &TonalPalette, dark: i32, day: i32| pal.tone(if light { day } else { dark });
+    let fg = t(&n, 93, 12);
+    let mut c = BTreeMap::new();
+    let mut put = |k: &str, v: String| drop(c.insert(k.to_string(), v));
+    put("surface", hex(t(&n, 12, 96)));
+    put("bar", rgba(t(&n, 6, 92), "ALPHA"));
+    put("fg", hex(fg));
+    put("dim", hex(t(&nv, 72, 38)));
+    put("accent", hex(t(&p, 80, 40)));
+    put("ink", hex(t(&p, 20, 100)));
+    put("accent-pressed", hex(t(&p, 70, 34)));
+    put("accent-rule", hex(t(&p, 60, 28)));
+    put("hover", rgba(fg, if light { "0.08" } else { "0.12" }));
+    put("raised", rgba(fg, if light { "0.05" } else { "0.07" }));
+    put("card", rgba(fg, if light { "0.04" } else { "0.05" }));
+    put("well", hex(t(&nv, 24, 88)));
+    put("sunk", if light { "#ffffff".into() } else { rgba(t(&n, 4, 4), "0.5") });
+    put("rule", hex(t(&nv, 30, 82)));
+    put("idle", hex(t(&nv, 45, 62)));
+    put("handle", hex(t(&p, 70, 45)));
+    let red = TonalPalette::of(25.0, 70.0);
+    put("urgent", hex(t(&red, 70, 40)));
+    put("recording", hex(t(&red, 65, 45)));
+    put("lock", hex(t(&n, 6, 92)));
+    put("ground", hex(t(&n, 6, 92)));
+    // the terminal's: black, six hues, white; then the same brighter
+    const HUES: [(u8, u8, u8); 6] = [(0xe0, 0x6c, 0x75), (0x98, 0xc3, 0x79), (0xe5, 0xc0, 0x7b), (0x61, 0xaf, 0xef), (0xc6, 0x78, 0xdd), (0x56, 0xb6, 0xc2)];
+    let hued = |(r, g, b): (u8, u8, u8), tone: f64| -> Argb {
+        let h: Hct = harmonize(Argb::new(255, r, g, b), src).into();
+        Hct::from(h.get_hue(), h.get_chroma().max(40.0), tone).into()
+    };
+    let mut ansi = vec![t(&n, 20, 20)];
+    ansi.extend(HUES.map(|h| hued(h, if light { 42.0 } else { 72.0 })));
+    ansi.push(t(&n, 80, 88));
+    ansi.push(t(&n, 50, 50));
+    ansi.extend(HUES.map(|h| hued(h, if light { 34.0 } else { 82.0 })));
+    ansi.push(t(&n, 98, 98));
+    for (i, a) in ansi.into_iter().enumerate() {
+        put(&format!("ansi{i}"), hex(a));
+    }
+    c
 }
 
 /// The accent of a picture's pixels (see wallpaper_accent).
@@ -142,7 +233,9 @@ fn from_hsv(h: f64, s: f64, v: f64) -> (u8, u8, u8) {
 /// the wallpaper's: bar_alpha), the appearance's accent, then the config's [colors].
 pub fn palette(a: &Appearance, t: &Theme, colors: &BTreeMap<String, String>) -> String {
     let def = |k: &str, v: &str| format!("@define-color {k} {v};\n");
-    let mut out: String = t.colors.iter().filter(|(k, _)| *k != "surface").map(|(k, v)| def(k, v)).collect();
+    // the terminal's sixteen (the wallpaper theme's) are the apps', not the CSS's
+    let mut out: String =
+        t.colors.iter().filter(|(k, _)| *k != "surface" && !k.starts_with("ansi")).map(|(k, v)| def(k, v)).collect();
     let theirs = t.colors.get("surface").and_then(|s| rgb(s));
     let (r, g, b) = rgb(&a.surface).or(theirs).unwrap_or((0, 0, 0));
     out += &def("surface", &format!("rgba({r}, {g}, {b}, {:.2})", a.opacity.clamp(0.0, 1.0)));
@@ -309,6 +402,29 @@ pub fn blur(a: &Appearance, t: &Theme) -> Vec<(&'static str, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wallpaper_theme_reads() {
+        use material_colors::contrast::ratio_of_tones;
+        let tone = |c: &str| {
+            let v = u32::from_str_radix(&c[1..7], 16).unwrap();
+            material_colors::color::Argb::from_u32(0xff00_0000 | v).as_lstar()
+        };
+        let ground = |c: &str| c.trim_start_matches("rgba(").split(", ").take(3).map(|n| format!("{:02x}", n.parse::<u8>().unwrap())).collect::<String>();
+        // a warm sunset, a pale beige, a deep blue, a green, grey: on either side the text and the terminal's colours
+        // (its black, white and greys aside) read on their grounds
+        for src in [(0xb0, 0x55, 0x28), (0xf2, 0xdb, 0xab), (0x20, 0x30, 0xa0), (0x30, 0xa0, 0x40), (128, 128, 128)] {
+            for light in [false, true] {
+                let t = theme_of(src, light);
+                let bar = tone(&format!("#{}", ground(&t["bar"])));
+                assert!(ratio_of_tones(tone(&t["fg"]), tone(&t["surface"])) >= 7.0, "{src:?} {light}: text");
+                for i in (1..7).chain(9..15) {
+                    let r = ratio_of_tones(tone(&t[&format!("ansi{i}")]), bar);
+                    assert!(r >= 4.5, "{src:?} {light}: ansi{i} {r:.1}:1");
+                }
+            }
+        }
+    }
 
     #[test]
     fn a_pictures_accent() {

@@ -24,7 +24,7 @@
 //!     search = "https://duckduckgo.com/?q={}"
 //!
 //!     [appearance]        # the look (style.rs), taken as the file is saved; the control centre's Appearance
-//!     theme = "ostrov"    # ostrov, graphite, nord, solarized, catppuccin, or an installed one (theme.rs); mode = "light"
+//!     theme = "ostrov"    # ostrov, graphite, nord, solarized, catppuccin, wallpaper (its colours the picture's), or an installed one (theme.rs); mode = "light"
 //!     accent = "#5e81ac"  # "" the theme's own
 //!     opacity = 0.75      # the surface's
 //!     radius = 10         # a surface's corners, what is on it 4 less; unset, the theme's or 10

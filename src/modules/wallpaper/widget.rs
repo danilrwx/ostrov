@@ -45,5 +45,8 @@ pub fn wallpaper_settings() -> Schema {
         .help("The directory whose JPEG, PNG and WebP pictures the menu lists.");
     let hook = Field::new("on_change", "On a change, run", Kind::String)
         .help("A command run after every pick, the picture in $OSTROV_WALLPAPER (empty: none), for what else follows it.");
-    Schema { sections: vec![Section::new("", "Wallpaper", vec![dir, hook])] }
+    let every = Field::new("interval", "Change every, minutes", Kind::Number { min: 0.0, max: 1440.0, step: 5.0, slider: false })
+        .default(0)
+        .help("Another picture at random once the one shown has been there this long; 0, never.");
+    Schema { sections: vec![Section::new("", "Wallpaper", vec![dir, every, hook])] }
 }

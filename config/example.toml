@@ -40,7 +40,7 @@ screens_off = 900
 background = "black"    # the lock screen's ground: black, or blur (the screen as it was, blurred and darkened)
 
 [appearance]
-theme = "ostrov"        # ostrov, graphite, nord, solarized, catppuccin, or an installed one (`ostrov theme list`)
+theme = "ostrov"        # ostrov, graphite, nord, solarized, catppuccin, wallpaper (its colours the picture's), or an installed one (`ostrov theme list`)
 # mode = "dark"         # dark, light, or auto: the theme's side, auto by day
 # day = "07:00-19:00"   # with auto, when it is day: from-to, or "sun" (sunrise to sunset, ostrov location)
 accent = ""             # a colour (#5e81ac, rgb(94, 129, 172), a name); "wallpaper" the wallpaper's; "" the theme's own
