@@ -15,6 +15,9 @@ pub struct Lock {
     inst: Instance,
     /// a lock asked and waiting for the screen to be taken first
     pending: Cell<bool>,
+    /// who waits for the lock to be up (the machine's sleep): told once the compositor says it is, or that it
+    /// refused
+    waiting: RefCell<Vec<async_channel::Sender<()>>>,
 }
 
 thread_local! {
@@ -53,11 +56,39 @@ impl Lock {
         });
     }
 
+    /// The lock before the machine sleeps: at once, on black (no second spent taking the screen), ack told once it
+    /// is up, so the machine goes down only then.
+    pub fn lock_for_sleep(self: &Rc<Self>, ack: async_channel::Sender<()>) {
+        if self.inst.is_locked() {
+            let _ = ack.try_send(());
+            return;
+        }
+        self.waiting.borrow_mut().push(ack);
+        // a lock already coming (its screen being taken) tells the waiting as it comes up
+        if !self.pending.get() {
+            self.now();
+        }
+    }
+
     fn now(&self) {
         if !self.inst.is_locked() {
             let _ = std::fs::write(marker(), "");
             self.inst.lock();
+        }
+    }
+
+    /// The compositor's word on a lock asked: up (said as the lock event), or refused (the screen not locked, its
+    /// marker gone); either way the waiting told.
+    fn answered(&self, up: bool) {
+        if up {
             crate::events::emit("lock", serde_json::json!({}));
+        } else {
+            eprintln!("ostrov: lock: the compositor refused the session lock");
+            let _ = std::fs::remove_file(marker());
+            SHOT.with(|s| s.borrow_mut().take());
+        }
+        for ack in self.waiting.take() {
+            let _ = ack.try_send(());
         }
     }
 }
@@ -102,7 +133,19 @@ pub fn build(app: &gtk4::Application) -> Rc<Lock> {
         inst.assign_window_to_monitor(&win, monitor);
         win.present();
     });
-    let lock = Rc::new(Lock { inst, pending: Cell::new(false) });
+    let lock = Rc::new(Lock { inst, pending: Cell::new(false), waiting: RefCell::default() });
+    let me = Rc::downgrade(&lock);
+    lock.inst.connect_locked(move |_| {
+        if let Some(l) = me.upgrade() {
+            l.answered(true);
+        }
+    });
+    let me = Rc::downgrade(&lock);
+    lock.inst.connect_failed(move |_| {
+        if let Some(l) = me.upgrade() {
+            l.answered(false);
+        }
+    });
     if marker().exists() {
         lock.lock();
     }
