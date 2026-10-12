@@ -33,7 +33,7 @@ jobs:
           export VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p dist
           for f in deb rpm archlinux; do nfpm package -f nfpm.yaml -p "$f" -t dist/; done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: packages
           path: dist/*
