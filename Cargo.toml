@@ -39,7 +39,7 @@ wayland-client = "0.31"
 wayland-protocols = { version = "0.32", features = ["client", "staging"] }
 wayland-protocols-hyprland = { version = "1.2", features = ["client"] }
 wayland-protocols-wlr = { version = "0.3", features = ["client"] }
-zbus = { version = "5", default-features = false, features = ["tokio"] }
+zbus = { version = "6", default-features = false, features = ["tokio"] }
 
 
 # the binaries without their symbols: the packages a half of what they were
